@@ -1,0 +1,37 @@
+# Coding Rules
+
+## Naming
+
+Use business-first, purpose-first names. Avoid vague names such as `utils`, `helpers`, `manager`, `common`, or ambiguous `service`.
+
+## File size
+
+- Python target under 250 lines, hard cap 300.
+- TS and TSX target under 220 lines, hard cap 280.
+- Functions target under 40 logical lines, hard cap 60.
+- React components target under 120 lines.
+
+Generated code, migrations, fixtures, and snapshots are the main exemptions.
+
+## No dumping grounds
+
+Do not create generic catch-all files or folders. Split responsibilities before a file becomes a mixed-purpose bucket.
+
+## Packaging
+
+- Use installable packages with `src/` layout.
+- Do not use `PYTHONPATH`, `sys.path.insert`, or folder-dependent imports.
+- Use absolute imports from installed package roots where relevant.
+
+## Async
+
+Use async when I/O dominates, such as database access, HTTP provider calls, SSE, queue work, storage access, and fan-out coordination. Do not use async as a style choice when work is CPU-bound or purely local.
+
+## Testing
+
+Every phase should add or update tests when behavior changes. The repository must support unit, integration, contract, end-to-end, and targeted property-style tests over time. Phase 0 adds smoke-level tests only.
+
+## Documentation
+
+Update architecture docs when structure changes, configuration docs when settings change, ADRs when major design choices are made, and the phase completion report before handoff.
+

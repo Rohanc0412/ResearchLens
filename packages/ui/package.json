@@ -1,0 +1,22 @@
+{
+  "name": "@researchlens/ui",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.tsx",
+  "types": "./src/index.tsx",
+  "scripts": {
+    "lint": "eslint src --ext .ts,.tsx",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "build": "tsc --noEmit",
+    "format": "prettier --write .",
+    "clean": "powershell -NoProfile -Command \"Remove-Item -Recurse -Force dist,coverage -ErrorAction SilentlyContinue\""
+  },
+  "dependencies": {
+    "react": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5"
+  }
+}
