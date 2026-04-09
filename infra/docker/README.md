@@ -1,4 +1,3 @@
 # Docker
 
-These Dockerfiles are development scaffolds for Phase 0. They are intentionally minimal and are not production-ready images.
-
+These Dockerfiles remain development-oriented, but Phase 1 updates them to install and execute workspace packages through `uv` instead of relying on path hacks or requirements files.

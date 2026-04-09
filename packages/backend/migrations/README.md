@@ -1,4 +1,3 @@
 # Migrations
 
-Database migrations are intentionally deferred. This folder exists so future phases can add migration tooling without changing the top-level repository shape.
-
+Alembic lives here and imports the installed `researchlens` package directly. Phase 1 wires migration execution and metadata loading without introducing business models yet.

@@ -1,4 +1,3 @@
 # Compose
 
-The development compose file is a local convenience scaffold only. It coordinates placeholder API, worker, and web services but does not provision a full application stack in Phase 0.
-
+The development compose file is a local convenience scaffold that now includes Postgres plus installed-package API, worker, and test execution. It remains intentionally lightweight and is not a production topology.

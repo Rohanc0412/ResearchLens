@@ -1,13 +1,16 @@
 [project]
 name = "researchlens-workspace"
 version = "0.1.0"
-description = "Phase 0 workspace configuration for the ResearchLens rebuild."
+description = "Workspace configuration for the ResearchLens rebuild."
 requires-python = ">=3.12"
 dependencies = []
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.uv]
+package = false
 
 [tool.uv.workspace]
 members = [
@@ -18,9 +21,11 @@ members = [
 
 [dependency-groups]
 dev = [
+    "import-linter>=2.0.0",
     "mypy>=1.10.0",
     "pytest>=8.3.0",
     "pytest-asyncio>=0.23.0",
+    "pytest-cov>=5.0.0",
     "ruff>=0.6.0",
 ]
 
@@ -58,9 +63,8 @@ packages = [
 
 [tool.pytest.ini_options]
 addopts = "-ra"
+asyncio_mode = "auto"
 pythonpath = []
 testpaths = [
-    "apps/api/tests",
-    "apps/worker/tests",
     "packages/backend/tests",
 ]

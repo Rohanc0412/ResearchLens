@@ -1,0 +1,1 @@
+"""Artifacts application layer placeholder."""

@@ -1,4 +1,3 @@
 # researchlens-api
 
-Bootstrap-only API service. Phase 0 exposes only a health endpoint so packaging and CI can verify startup without introducing business routes.
-
+Thin API entrypoint package. Phase 1 keeps this package transport-only and runnable from installed-package context while the reusable backend code lives under `researchlens`.

@@ -1,0 +1,1 @@
+"""Drafting domain layer placeholder."""

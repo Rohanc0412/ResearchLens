@@ -1,0 +1,1 @@
+"""Artifacts infrastructure layer placeholder."""

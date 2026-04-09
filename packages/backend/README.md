@@ -1,4 +1,3 @@
 # researchlens-backend
 
-Installable backend package for shared backend code and module boundaries. Phase 0 provides only package structure, shared cross-cutting placeholders, and smoke-testable imports.
-
+Canonical backend package for ResearchLens. Phase 1 centralizes runtime dependencies, typed settings, shared DB bootstrapping, Alembic wiring, tests, and architecture enforcement here.

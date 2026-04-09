@@ -1,8 +1,25 @@
 services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: researchlens
+      POSTGRES_USER: researchlens
+      POSTGRES_PASSWORD: researchlens
+    ports:
+      - "5432:5432"
+
   api:
     build:
       context: ../..
       dockerfile: infra/docker/api.Dockerfile
+    depends_on:
+      - postgres
+    environment:
+      APP_ENVIRONMENT: development
+      APP_API_HOST: 0.0.0.0
+      APP_API_PORT: 8000
+      DATABASE_URL: postgresql+psycopg://researchlens:researchlens@postgres:5432/researchlens
+      QUEUE_BACKEND: memory
     ports:
       - "8000:8000"
 
@@ -10,6 +27,12 @@ services:
     build:
       context: ../..
       dockerfile: infra/docker/worker.Dockerfile
+    depends_on:
+      - postgres
+    environment:
+      APP_ENVIRONMENT: development
+      DATABASE_URL: postgresql+psycopg://researchlens:researchlens@postgres:5432/researchlens
+      QUEUE_BACKEND: memory
 
   web:
     build:
@@ -18,3 +41,14 @@ services:
     ports:
       - "5173:5173"
 
+  tests:
+    build:
+      context: ../..
+      dockerfile: infra/docker/api.Dockerfile
+    depends_on:
+      - postgres
+    environment:
+      APP_ENVIRONMENT: test
+      DATABASE_URL: sqlite+aiosqlite:///./.data/test.db
+      QUEUE_BACKEND: memory
+    command: ["uv", "run", "--package", "researchlens-backend", "pytest", "packages/backend/tests"]

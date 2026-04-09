@@ -1,0 +1,1 @@
+"""Artifacts presentation layer placeholder."""

@@ -1,6 +1,6 @@
 # Module Boundaries
 
-ResearchLens backend code is expected to use explicit layers inside each module.
+ResearchLens backend code uses explicit layers inside each module, and Phase 1 adds enforcement around those boundaries.
 
 ## Required layers
 
@@ -17,6 +17,8 @@ ResearchLens backend code is expected to use explicit layers inside each module.
 - ORM or storage models must not leak into domain or presentation layers.
 - Provider SDKs stay inside infrastructure adapters.
 - Shared code must remain generic and cross-cutting only.
+- API and worker entrypoint packages must not become alternate homes for business logic.
+- Cross-module imports should be explicit and rare; default reach-through between modules is not allowed.
 
 ## Shared backend scope
 
@@ -32,3 +34,6 @@ Only the following shared backend folders are allowed:
 
 Business-specific logic does not belong in shared code.
 
+## Enforcement
+
+Phase 1 enforces part of this structure through `import-linter` contracts and backend-owned regression tests. CI runs those checks alongside lint, typecheck, and smoke tests.

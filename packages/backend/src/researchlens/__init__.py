@@ -1,2 +1,1 @@
-"""ResearchLens backend package."""
-
+"""ResearchLens installed backend package."""

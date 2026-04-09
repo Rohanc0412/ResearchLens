@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  bootstrap-checks:
+  phase-1-checks:
     runs-on: ubuntu-latest
 
     steps:
@@ -31,26 +31,28 @@ jobs:
           version: 10
 
       - name: Install Python dependencies
-        run: uv sync --all-packages --group dev
+        run: uv sync --all-packages --group dev --frozen
 
       - name: Install Node dependencies
         run: pnpm install --frozen-lockfile=false
 
       - name: Lint
         run: |
-          uv run ruff check .
+          uv run --package researchlens-backend ruff check .
           pnpm lint
 
       - name: Typecheck
         run: |
-          uv run mypy .
+          uv run --package researchlens-backend mypy apps/api/src apps/worker/src packages/backend/src packages/backend/tests
           pnpm typecheck
+
+      - name: Architecture
+        run: uv run --package researchlens-backend lint-imports --config .importlinter
 
       - name: Test
         run: |
-          uv run pytest
+          uv run --package researchlens-backend pytest packages/backend/tests
           pnpm test
 
       - name: Build
         run: pnpm build
-

@@ -6,6 +6,6 @@ RUN pip install uv
 
 COPY . .
 
-RUN uv sync --all-packages --group dev
+RUN uv sync --all-packages --group dev --frozen
 
-CMD ["uv", "run", "--package", "researchlens-api", "uvicorn", "researchlens_api.main:app", "--factory", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uv", "run", "--package", "researchlens-api", "python", "-m", "researchlens_api.main"]

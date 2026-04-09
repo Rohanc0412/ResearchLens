@@ -22,6 +22,7 @@ Do not create generic catch-all files or folders. Split responsibilities before 
 - Use installable packages with `src/` layout.
 - Do not use `PYTHONPATH`, `sys.path.insert`, or folder-dependent imports.
 - Use absolute imports from installed package roots where relevant.
+- Pytest, Alembic, API startup, worker startup, Docker, and CI must run from installed-package context.
 
 ## Async
 
@@ -35,3 +36,9 @@ Every phase should add or update tests when behavior changes. The repository mus
 
 Update architecture docs when structure changes, configuration docs when settings change, ADRs when major design choices are made, and the phase completion report before handoff.
 
+## Config
+
+- Use `pydantic-settings` under `researchlens.shared.config`.
+- Keep settings grouped by subsystem.
+- Validate incompatible startup combinations explicitly.
+- Do not scatter direct environment access across the codebase.

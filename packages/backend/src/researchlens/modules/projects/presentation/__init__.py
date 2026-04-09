@@ -1,0 +1,1 @@
+"""Projects presentation layer placeholder."""

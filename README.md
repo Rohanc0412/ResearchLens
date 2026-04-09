@@ -2,7 +2,7 @@
 
 ResearchLens is being rebuilt as a quality-first monorepo for research workflow orchestration, evidence handling, drafting, evaluation, and artifact production. This repository is the phased reconstruction, not a direct continuation of the previous code layout.
 
-Phase 0 covers bootstrap and guardrails only. The goal is to establish a clean workspace, packaging, CI, documentation, and coding constraints before any business features are rebuilt.
+Phase 1 focuses on installed-package execution, unified backend dependencies, typed settings, minimal DB and Alembic wiring, and architecture enforcement. Business features are still intentionally deferred.
 
 The cloned `ResearchLens` directory is the project root. Do not create a nested `ResearchLens/ResearchLens/` folder. All repo paths are relative to the current root.
 
@@ -20,7 +20,7 @@ The cloned `ResearchLens` directory is the project root. Do not create a nested 
 
 ## Install
 
-Python 3.12, `uv`, Node.js, and `pnpm` are the expected Phase 0 tools.
+Python 3.12, `uv`, Node.js, and `pnpm` are the expected tools.
 
 ```bash
 make install
@@ -38,12 +38,14 @@ pnpm install
 ```bash
 make lint
 make typecheck
+make architecture
 make test
+make db-upgrade
 make build
 make format
 ```
 
-The root `package.json` uses Turbo to orchestrate JavaScript and TypeScript workspace tasks.
+The root `package.json` uses Turbo to orchestrate JavaScript and TypeScript workspace tasks. Python commands run from installed-package context through `uv`.
 
 ## Placeholder services
 
@@ -65,5 +67,13 @@ Start the web scaffold:
 make dev-web
 ```
 
-These entrypoints are intentionally bootstrap-only. No business endpoints, auth flow, queue processing, or persistence logic has been implemented in Phase 0.
+Installed-package equivalents:
 
+```bash
+uv run --package researchlens-api python -m researchlens_api.main
+uv run --package researchlens-worker python -m researchlens_worker.main
+uv run --package researchlens-backend pytest packages/backend/tests
+uv run --package researchlens-backend alembic -c packages/backend/alembic.ini upgrade head
+```
+
+These entrypoints remain intentionally bootstrap-only. No business endpoints, auth flow, queue processing, or persistence logic has been implemented beyond the minimal startup and migration wiring required for Phase 1.

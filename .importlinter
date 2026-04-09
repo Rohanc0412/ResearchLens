@@ -1,0 +1,100 @@
+[importlinter]
+root_package = researchlens
+
+[importlinter:contract:shared_isolation]
+name = Shared code must not depend on business modules
+type = forbidden
+source_modules =
+    researchlens.shared
+forbidden_modules =
+    researchlens.modules
+
+[importlinter:contract:auth_layering]
+name = Auth layering
+type = layers
+containers = researchlens.modules.auth
+layers =
+    presentation
+    application
+    domain
+
+[importlinter:contract:projects_layering]
+name = Projects layering
+type = layers
+containers = researchlens.modules.projects
+layers =
+    presentation
+    application
+    domain
+
+[importlinter:contract:conversations_layering]
+name = Conversations layering
+type = layers
+containers = researchlens.modules.conversations
+layers =
+    presentation
+    application
+    domain
+
+[importlinter:contract:runs_layering]
+name = Runs layering
+type = layers
+containers = researchlens.modules.runs
+layers =
+    presentation
+    application
+    domain
+
+[importlinter:contract:retrieval_layering]
+name = Retrieval layering
+type = layers
+containers = researchlens.modules.retrieval
+layers =
+    presentation
+    application
+    domain
+
+[importlinter:contract:drafting_layering]
+name = Drafting layering
+type = layers
+containers = researchlens.modules.drafting
+layers =
+    presentation
+    application
+    domain
+
+[importlinter:contract:evaluation_layering]
+name = Evaluation layering
+type = layers
+containers = researchlens.modules.evaluation
+layers =
+    presentation
+    application
+    domain
+
+[importlinter:contract:repair_layering]
+name = Repair layering
+type = layers
+containers = researchlens.modules.repair
+layers =
+    presentation
+    application
+    domain
+
+[importlinter:contract:evidence_layering]
+name = Evidence layering
+type = layers
+containers = researchlens.modules.evidence
+layers =
+    presentation
+    application
+    domain
+
+[importlinter:contract:artifacts_layering]
+name = Artifacts layering
+type = layers
+containers = researchlens.modules.artifacts
+layers =
+    presentation
+    application
+    domain

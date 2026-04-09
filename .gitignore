@@ -5,6 +5,7 @@ __pycache__/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+.import_linter_cache/
 .coverage
 coverage.xml
 htmlcov/
@@ -21,6 +22,7 @@ test-results/
 
 # Environment
 .env
+.data/
 
 # IDEs
 .idea/
@@ -29,4 +31,3 @@ test-results/
 # OS
 .DS_Store
 Thumbs.db
-
