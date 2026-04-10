@@ -51,7 +51,11 @@ def test_app_entrypoints_do_not_import_business_modules() -> None:
     ]:
         for file_path in package_root.rglob("*.py"):
             for target in _iter_import_targets(file_path):
-                assert not target.startswith("researchlens.modules.")
+                if package_root.name == "researchlens_api":
+                    assert ".application" not in target
+                    assert ".domain" not in target
+                else:
+                    assert not target.startswith("researchlens.modules.")
 
 
 def test_domain_layers_do_not_import_framework_or_infrastructure_modules() -> None:
@@ -68,3 +72,11 @@ def test_presentation_layers_do_not_reach_into_infrastructure() -> None:
     for file_path in Path("packages/backend/src/researchlens/modules").rglob("presentation/*.py"):
         for target in _iter_import_targets(file_path):
             assert ".infrastructure" not in target
+            assert not target.startswith("sqlalchemy")
+
+
+def test_projects_application_does_not_import_sqlalchemy() -> None:
+    root = Path("packages/backend/src/researchlens/modules/projects/application")
+    for file_path in root.rglob("*.py"):
+        for target in _iter_import_targets(file_path):
+            assert not target.startswith("sqlalchemy")

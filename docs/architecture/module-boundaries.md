@@ -1,6 +1,6 @@
 # Module Boundaries
 
-ResearchLens backend code uses explicit layers inside each module, and Phase 1 adds enforcement around those boundaries.
+ResearchLens backend code uses explicit layers inside each module, and Phase 2 validates those boundaries with a real `projects` slice.
 
 ## Required layers
 
@@ -14,6 +14,7 @@ ResearchLens backend code uses explicit layers inside each module, and Phase 1 a
 
 - Route handlers must stay thin and must not contain workflow logic.
 - Repositories must stay narrow and must not make business policy decisions.
+- Transaction ownership must stay explicit. Repositories and routes do not commit or roll back.
 - ORM or storage models must not leak into domain or presentation layers.
 - Provider SDKs stay inside infrastructure adapters.
 - Shared code must remain generic and cross-cutting only.
@@ -36,4 +37,10 @@ Business-specific logic does not belong in shared code.
 
 ## Enforcement
 
-Phase 1 enforces part of this structure through `import-linter` contracts and backend-owned regression tests. CI runs those checks alongside lint, typecheck, and smoke tests.
+Phase 2 enforces this structure through `import-linter` plus backend-owned regression tests. The current regression checks cover:
+
+- no cross-module business imports
+- no FastAPI or SQLAlchemy ORM imports in domain layers
+- no SQLAlchemy imports in presentation layers
+- no direct infrastructure reach-through from presentation
+- app entrypoints limited to composition-root imports rather than application or domain logic

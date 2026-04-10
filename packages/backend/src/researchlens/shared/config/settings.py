@@ -2,6 +2,7 @@ from functools import lru_cache
 
 from researchlens.shared.config.app import AppSettings
 from researchlens.shared.config.auth import AuthSettings
+from researchlens.shared.config.bootstrap_actor import BootstrapActorSettings
 from researchlens.shared.config.database import DatabaseSettings
 from researchlens.shared.config.embeddings import EmbeddingsSettings
 from researchlens.shared.config.llm import LlmSettings
@@ -18,6 +19,7 @@ def load_settings() -> ResearchLensSettings:
     settings = ResearchLensSettings(
         app=AppSettings(),
         database=DatabaseSettings(),
+        bootstrap_actor=BootstrapActorSettings(),
         auth=AuthSettings(),
         smtp=SmtpSettings(),
         retrieval=RetrievalSettings(),
@@ -38,4 +40,3 @@ def get_settings() -> ResearchLensSettings:
 
 def reset_settings_cache() -> None:
     get_settings.cache_clear()
-

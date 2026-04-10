@@ -1,6 +1,6 @@
 # Settings
 
-Phase 1 centralizes backend configuration under `researchlens.shared.config` using `pydantic-settings`.
+Phase 2 centralizes backend configuration under `researchlens.shared.config` using `pydantic-settings`.
 
 ## Principles
 
@@ -13,6 +13,7 @@ Phase 1 centralizes backend configuration under `researchlens.shared.config` usi
 
 - `app`: environment, debug flag, phase identifier, API host and port, worker name
 - `database`: URL, echo flag, pooling defaults, startup migration toggle
+- `bootstrap_actor`: temporary tenant and user identity for Phase 2 routes before auth exists
 - `auth`: token secrets, token lifetimes, dev-mode secret safety
 - `smtp`: enablement, host, port, credentials, sender identity
 - `retrieval`: feature toggles and safety limits
@@ -40,3 +41,11 @@ Startup validation currently rejects at least these cases:
 
 Use `researchlens.shared.config.get_settings()` as the single settings entrypoint. Tests should reset the cache between scenarios with `reset_settings_cache()`.
 
+## Phase 2 bootstrap actor note
+
+The `bootstrap_actor` settings are temporary composition support for pre-auth phases. They provide explicit default values for:
+
+- tenant ID
+- user ID
+
+They are consumed through API presentation dependencies so tenant-scoped routes can behave realistically without introducing Phase 3 auth work. Treat this as replaceable bootstrap wiring, not as a permanent auth model.

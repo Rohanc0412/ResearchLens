@@ -20,22 +20,40 @@ def ensure_database_url_path(url: str) -> None:
 def normalize_async_database_url(url: str) -> str:
     if url.startswith("sqlite:///"):
         return url.replace("sqlite:///", "sqlite+aiosqlite:///", 1)
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if url.startswith("postgresql+psycopg://"):
+        return url.replace("postgresql+psycopg://", "postgresql+asyncpg://", 1)
     return url
 
 
 def normalize_migration_database_url(url: str) -> str:
     if url.startswith("sqlite+aiosqlite:///"):
         return url.replace("sqlite+aiosqlite:///", "sqlite:///", 1)
+    if url.startswith("postgres://"):
+        return url.replace("postgres://", "postgresql+psycopg://", 1)
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+psycopg://", 1)
+    if url.startswith("postgresql+asyncpg://"):
+        return url.replace("postgresql+asyncpg://", "postgresql+psycopg://", 1)
     return url
 
 
 def create_async_engine_from_settings(settings: ResearchLensSettings) -> AsyncEngine:
     normalized_url = normalize_async_database_url(settings.database.url)
     ensure_database_url_path(normalized_url)
+    engine_kwargs: dict[str, object] = {
+        "echo": settings.database.echo,
+        "pool_pre_ping": settings.database.pool_pre_ping,
+    }
+    if not normalized_url.startswith("sqlite+aiosqlite:///"):
+        engine_kwargs["pool_size"] = settings.database.pool_size
+        engine_kwargs["max_overflow"] = settings.database.max_overflow
     return create_async_engine(
         normalized_url,
-        echo=settings.database.echo,
-        pool_pre_ping=settings.database.pool_pre_ping,
+        **engine_kwargs,
     )
 
 

@@ -1,2 +1,1 @@
-"""Projects module placeholder."""
-
+"""Projects module."""
