@@ -14,4 +14,3 @@ class DatabaseSettings(BaseSettings):
         env_prefix="DATABASE_",
         extra="ignore",
     )
-

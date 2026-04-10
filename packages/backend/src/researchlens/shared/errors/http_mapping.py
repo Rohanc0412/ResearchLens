@@ -2,7 +2,9 @@ from fastapi.responses import JSONResponse
 
 from researchlens.shared.errors.base import ResearchLensError
 from researchlens.shared.errors.types import (
+    AuthenticationError,
     ConflictError,
+    ForbiddenError,
     InfrastructureError,
     NotFoundError,
     ValidationError,
@@ -14,6 +16,10 @@ def map_error_to_status_code(error: ResearchLensError) -> int:
         return 422
     if isinstance(error, ConflictError):
         return 409
+    if isinstance(error, AuthenticationError):
+        return 401
+    if isinstance(error, ForbiddenError):
+        return 403
     if isinstance(error, NotFoundError):
         return 404
     if isinstance(error, InfrastructureError):

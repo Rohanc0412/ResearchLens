@@ -3,6 +3,7 @@ from fastapi.routing import APIRouter
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
 
+from researchlens.modules.auth.presentation import router as auth_router
 from researchlens.modules.projects.presentation import router as projects_router
 from researchlens.shared.errors import InfrastructureError
 from researchlens.shared.logging import RequestLoggingMiddleware
@@ -26,7 +27,7 @@ def create_app() -> FastAPI:
     base_router = APIRouter()
 
     @base_router.get("/healthz", tags=["bootstrap"])
-    async def healthz() -> dict[str, str]:
+    def healthz() -> dict[str, str]:
         return {
             "status": "ok",
             "phase": settings.app.phase,
@@ -50,10 +51,20 @@ def create_app() -> FastAPI:
         return {"status": "ok"}
 
     app.include_router(base_router)
+    app.include_router(auth_router)
     app.include_router(projects_router)
     return app
 
 
 def _schema_is_ready(connection: Connection) -> bool:
     inspector = inspect(connection)
-    return bool(inspector.has_table("alembic_version") and inspector.has_table("projects"))
+    required_tables = {
+        "alembic_version",
+        "auth_mfa_factors",
+        "auth_password_resets",
+        "auth_refresh_tokens",
+        "auth_sessions",
+        "auth_users",
+        "projects",
+    }
+    return all(inspector.has_table(table_name) for table_name in required_tables)

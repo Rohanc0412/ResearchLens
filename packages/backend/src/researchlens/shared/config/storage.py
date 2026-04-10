@@ -14,4 +14,3 @@ class StorageSettings(BaseSettings):
         env_prefix="STORAGE_",
         extra="ignore",
     )
-

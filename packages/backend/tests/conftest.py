@@ -1,4 +1,4 @@
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
 
 import pytest
@@ -28,6 +28,7 @@ def sqlite_database_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
     database_url = f"sqlite+aiosqlite:///{database_path.as_posix()}"
     monkeypatch.setenv("APP_ENVIRONMENT", "test")
     monkeypatch.setenv("DATABASE_URL", database_url)
+    monkeypatch.setenv("AUTH_REFRESH_COOKIE_SECURE", "false")
     return database_url
 
 
@@ -40,7 +41,7 @@ def migrated_database_url(sqlite_database_url: str) -> str:
 @pytest.fixture
 async def database_runtime(
     migrated_database_url: str,
-) -> Generator[DatabaseRuntime, None, None]:
+) -> AsyncGenerator[DatabaseRuntime, None]:
     runtime = build_database_runtime(get_settings())
     try:
         yield runtime

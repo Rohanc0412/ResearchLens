@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(ResearchLensError)
-    async def handle_known_error(
+    def handle_known_error(
         request: Request,
         exc: ResearchLensError,
     ) -> JSONResponse:
@@ -18,7 +18,7 @@ def register_exception_handlers(app: FastAPI) -> None:
         return error_response(exc)
 
     @app.exception_handler(Exception)
-    async def handle_unexpected_error(
+    def handle_unexpected_error(
         request: Request,
         exc: Exception,
     ) -> JSONResponse:

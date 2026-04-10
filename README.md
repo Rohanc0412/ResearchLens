@@ -2,7 +2,7 @@
 
 ResearchLens is being rebuilt as a quality-first monorepo for research workflow orchestration, evidence handling, drafting, evaluation, and artifact production. This repository is the phased reconstruction, not a direct continuation of the previous code layout.
 
-Phase 1 focuses on installed-package execution, unified backend dependencies, typed settings, minimal DB and Alembic wiring, and architecture enforcement. Business features are still intentionally deferred.
+Phase 3 adds the first real auth-backed protected flows on top of the installed-package execution, typed settings, DB/Alembic wiring, shared runtime foundation, and Phase 2 `projects` vertical slice. Conversations, runs, retrieval, drafting, evaluation, repair, and frontend auth flows remain deferred.
 
 The cloned `ResearchLens` directory is the project root. Do not create a nested `ResearchLens/ResearchLens/` folder. All repo paths are relative to the current root.
 
@@ -20,7 +20,7 @@ The cloned `ResearchLens` directory is the project root. Do not create a nested 
 
 ## Install
 
-Python 3.12, `uv`, Node.js, and `pnpm` are the expected tools.
+Python 3.12, the `uv` Python module or CLI, Node.js, and Corepack-provided `pnpm` are the expected tools.
 
 ```bash
 make install
@@ -29,8 +29,8 @@ make install
 Equivalent commands:
 
 ```bash
-uv sync --all-packages --group dev
-pnpm install
+python -m uv sync --all-packages --group dev
+corepack pnpm install
 ```
 
 ## Common commands
@@ -45,7 +45,7 @@ make build
 make format
 ```
 
-The root `package.json` uses Turbo to orchestrate JavaScript and TypeScript workspace tasks. Python commands run from installed-package context through `uv`.
+The root `package.json` uses recursive pnpm workspace scripts for JavaScript and TypeScript tasks. Python commands run from installed-package context through `python -m uv`.
 
 ## Placeholder services
 
@@ -70,10 +70,10 @@ make dev-web
 Installed-package equivalents:
 
 ```bash
-uv run --package researchlens-api python -m researchlens_api.main
-uv run --package researchlens-worker python -m researchlens_worker.main
-uv run --package researchlens-backend pytest packages/backend/tests
-uv run --package researchlens-backend alembic -c packages/backend/alembic.ini upgrade head
+python -m uv run --package researchlens-api python -m researchlens_api.main
+python -m uv run --package researchlens-worker python -m researchlens_worker.main
+python -m uv run --package researchlens-backend pytest packages/backend/tests
+python -m uv run --package researchlens-backend alembic -c packages/backend/alembic.ini upgrade head
 ```
 
-These entrypoints remain intentionally bootstrap-only. No business endpoints, auth flow, queue processing, or persistence logic has been implemented beyond the minimal startup and migration wiring required for Phase 1.
+The API entrypoint stays composition-only and wires health, auth, and projects routers from the backend package. Worker queue processing and later research workflow modules remain deferred.

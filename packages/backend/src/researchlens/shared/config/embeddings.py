@@ -13,4 +13,3 @@ class EmbeddingsSettings(BaseSettings):
         env_prefix="EMBEDDINGS_",
         extra="ignore",
     )
-

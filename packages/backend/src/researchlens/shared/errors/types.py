@@ -13,5 +13,13 @@ class NotFoundError(ResearchLensError):
     code = "not_found"
 
 
+class AuthenticationError(ResearchLensError):
+    code = "authentication_error"
+
+
+class ForbiddenError(ResearchLensError):
+    code = "forbidden"
+
+
 class InfrastructureError(ResearchLensError):
     code = "infrastructure_error"

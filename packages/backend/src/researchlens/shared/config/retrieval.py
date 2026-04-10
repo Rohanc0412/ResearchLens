@@ -11,4 +11,3 @@ class RetrievalSettings(BaseSettings):
         env_prefix="RETRIEVAL_",
         extra="ignore",
     )
-

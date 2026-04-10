@@ -11,4 +11,3 @@ class ObservabilitySettings(BaseSettings):
         env_prefix="OBSERVABILITY_",
         extra="ignore",
     )
-

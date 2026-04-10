@@ -7,11 +7,7 @@ class WorkerRuntime:
 
     def describe(self) -> str:
         settings = self._state.settings
-        return (
-            f"{settings.app.worker_name}:"
-            f"{settings.app.phase}:"
-            f"{settings.app.environment}"
-        )
+        return f"{settings.app.worker_name}:{settings.app.phase}:{settings.app.environment}"
 
     async def shutdown(self) -> None:
         await self._state.database.dispose()

@@ -12,7 +12,7 @@ def test_api_startup_smoke(monkeypatch: MonkeyPatch) -> None:
     assert response.status_code == 200
     assert response.json() == {
         "status": "ok",
-        "phase": "phase-2",
+        "phase": "phase-3",
         "service": "researchlens",
         "environment": "test",
     }

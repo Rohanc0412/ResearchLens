@@ -12,6 +12,7 @@ from researchlens.modules.projects.application import (
     ListProjectsUseCase,
     RenameProjectUseCase,
 )
+from researchlens.shared.errors import AuthenticationError
 from researchlens.shared.logging import bind_tenant_id, reset_tenant_id
 
 
@@ -32,6 +33,16 @@ class ProjectsRuntime(Protocol):
     def request_context(self) -> AbstractAsyncContextManager[ProjectsRequestContext]: ...
 
 
+class AuthenticatedActor(Protocol):
+    tenant_id: UUID
+    user_id: UUID
+    roles: list[str]
+
+
+class AuthRuntime(Protocol):
+    async def resolve_actor(self, *, access_token: str) -> AuthenticatedActor: ...
+
+
 async def get_projects_context(request: Request) -> AsyncIterator[ProjectsRequestContext]:
     runtime = cast(ProjectsRuntime, request.app.state.bootstrap.projects_runtime)
     async with runtime.request_context() as context:
@@ -39,10 +50,13 @@ async def get_projects_context(request: Request) -> AsyncIterator[ProjectsReques
 
 
 async def get_request_actor(request: Request) -> AsyncIterator[RequestActor]:
-    actor_settings = request.app.state.bootstrap.settings.bootstrap_actor
+    auth_runtime = cast(AuthRuntime, request.app.state.bootstrap.auth_runtime)
+    actor_identity = await auth_runtime.resolve_actor(
+        access_token=_extract_bearer_token(request),
+    )
     actor = RequestActor(
-        tenant_id=actor_settings.tenant_id,
-        user_id=actor_settings.user_id,
+        tenant_id=actor_identity.tenant_id,
+        user_id=str(actor_identity.user_id),
     )
     token = bind_tenant_id(str(actor.tenant_id))
     try:
@@ -52,6 +66,16 @@ async def get_request_actor(request: Request) -> AsyncIterator[RequestActor]:
 
 
 ProjectsContext = Annotated[ProjectsRequestContext, Depends(get_projects_context)]
+
+
+def _extract_bearer_token(request: Request) -> str:
+    authorization = request.headers.get("Authorization")
+    if not authorization:
+        raise AuthenticationError("Bearer access token is required.")
+    scheme, _, token = authorization.partition(" ")
+    if scheme.lower() != "bearer" or not token:
+        raise AuthenticationError("Bearer access token is required.")
+    return token
 
 
 def get_create_project_use_case(context: ProjectsContext) -> CreateProjectUseCase:

@@ -1,6 +1,7 @@
 import logging
 from dataclasses import dataclass
 
+from researchlens.modules.auth.infrastructure import SqlAlchemyAuthRuntime
 from researchlens.modules.projects.infrastructure import SqlAlchemyProjectsRuntime
 from researchlens.shared.config import ResearchLensSettings, get_settings
 from researchlens.shared.db import DatabaseRuntime, build_database_runtime
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 class ApiBootstrapState:
     settings: ResearchLensSettings
     database: DatabaseRuntime
+    auth_runtime: SqlAlchemyAuthRuntime
     projects_runtime: SqlAlchemyProjectsRuntime
 
 
@@ -28,5 +30,9 @@ def build_api_bootstrap_state() -> ApiBootstrapState:
     return ApiBootstrapState(
         settings=settings,
         database=database,
+        auth_runtime=SqlAlchemyAuthRuntime(
+            session_factory=database.session_factory,
+            settings=settings,
+        ),
         projects_runtime=SqlAlchemyProjectsRuntime(database.session_factory),
     )

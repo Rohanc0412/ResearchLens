@@ -5,11 +5,11 @@ import pytest
 
 from researchlens.modules.projects.domain import Project
 from researchlens.modules.projects.infrastructure import SqlAlchemyProjectRepository
-from researchlens.shared.db import session_scope
+from researchlens.shared.db import DatabaseRuntime, session_scope
 
 
 @pytest.mark.asyncio
-async def test_repository_create_list_rename_delete(database_runtime) -> None:
+async def test_repository_create_list_rename_delete(database_runtime: DatabaseRuntime) -> None:
     tenant_id = uuid4()
     async with session_scope(database_runtime.session_factory) as session:
         repository = SqlAlchemyProjectRepository(session)
@@ -58,7 +58,7 @@ async def test_repository_create_list_rename_delete(database_runtime) -> None:
 
 
 @pytest.mark.asyncio
-async def test_repository_scopes_by_tenant(database_runtime) -> None:
+async def test_repository_scopes_by_tenant(database_runtime: DatabaseRuntime) -> None:
     tenant_id = uuid4()
     other_tenant_id = uuid4()
     project = Project.create(

@@ -15,11 +15,19 @@ def validate_settings(settings: ResearchLensSettings) -> None:
         if settings.auth.allow_insecure_dev_tokens:
             errors.append("AUTH_ALLOW_INSECURE_DEV_TOKENS must be false in production.")
 
-        if settings.auth.access_token_secret == "dev-access-secret-change-me":
+        if settings.auth.access_token_secret == "dev-access-secret-change-me-32-bytes":
             errors.append("AUTH_ACCESS_TOKEN_SECRET must not use the dev default in production.")
 
         if settings.auth.refresh_token_secret == "dev-refresh-secret-change-me":
             errors.append("AUTH_REFRESH_TOKEN_SECRET must not use the dev default in production.")
+
+        if settings.auth.password_reset_token_secret == "dev-password-reset-secret-change-me":
+            errors.append(
+                "AUTH_PASSWORD_RESET_TOKEN_SECRET must not use the dev default in production."
+            )
+
+        if settings.auth.dev_bypass_auth:
+            errors.append("AUTH_DEV_BYPASS_AUTH must be false in production.")
 
         if settings.queue.backend == "memory":
             errors.append("QUEUE_BACKEND=memory is not allowed in production.")
@@ -42,10 +50,12 @@ def validate_settings(settings: ResearchLensSettings) -> None:
     if settings.smtp.enabled and not settings.smtp.host:
         errors.append("SMTP_HOST is required when SMTP_ENABLED=true.")
 
+    if settings.auth.refresh_cookie_samesite not in {"lax", "strict", "none"}:
+        errors.append("AUTH_REFRESH_COOKIE_SAMESITE must be lax, strict, or none.")
+
     database_url = make_url(settings.database.url)
     if environment == "production" and database_url.get_backend_name() == "sqlite":
         errors.append("SQLite is not allowed as the production database backend.")
 
     if errors:
         raise InvalidSettingsError(" ".join(errors))
-

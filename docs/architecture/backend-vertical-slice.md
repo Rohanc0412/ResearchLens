@@ -53,10 +53,10 @@ Composition stays at the edges:
 
 Auth is still out of scope in Phase 2, but the API routes still need tenant and actor identity to prove tenant-scoped behavior.
 
-That temporary behavior lives in typed settings under `bootstrap_actor`:
+In Phase 2, that temporary behavior lived in typed settings under `bootstrap_actor`:
 
 - `BOOTSTRAP_ACTOR_ENABLED`
 - `BOOTSTRAP_ACTOR_TENANT_ID`
 - `BOOTSTRAP_ACTOR_USER_ID`
 
-The projects presentation layer reads those settings through an explicit dependency and binds `tenant_id` into the logging context for the request. This is temporary bootstrap wiring, not the future auth design.
+Phase 3 supersedes this for protected project routes. The projects presentation layer now resolves an authenticated actor through the API composition auth runtime protocol and binds that actor tenant id into the logging context.

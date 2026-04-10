@@ -1,2 +1,1 @@
 """ResearchLens API application package."""
-

@@ -1,2 +1,1 @@
 """Drafting module placeholder."""
-

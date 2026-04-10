@@ -13,4 +13,3 @@ class LlmSettings(BaseSettings):
         env_prefix="LLM_",
         extra="ignore",
     )
-

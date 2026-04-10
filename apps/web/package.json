@@ -10,7 +10,7 @@
     "test": "vitest run",
     "build": "vite build",
     "format": "prettier --write .",
-    "clean": "powershell -NoProfile -Command \"Remove-Item -Recurse -Force dist,coverage,test-results,playwright-report -ErrorAction SilentlyContinue\""
+    "clean": "node -e \"const fs=require('fs'); for (const p of ['dist','coverage','test-results','playwright-report']) fs.rmSync(p,{recursive:true,force:true});\""
   },
   "dependencies": {
     "@researchlens/ui": "workspace:*",

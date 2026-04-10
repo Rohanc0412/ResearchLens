@@ -13,4 +13,3 @@ class QueueSettings(BaseSettings):
         env_prefix="QUEUE_",
         extra="ignore",
     )
-
