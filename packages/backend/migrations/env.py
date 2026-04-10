@@ -6,6 +6,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 import researchlens.modules.auth.infrastructure.rows  # noqa: F401
+import researchlens.modules.conversations.infrastructure.rows  # noqa: F401
 import researchlens.modules.projects.infrastructure.project_row  # noqa: F401
 from researchlens.shared.config import get_settings
 from researchlens.shared.db import (

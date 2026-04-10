@@ -8,30 +8,37 @@ from researchlens.modules.projects.application import (
     CreateProjectUseCase,
     DeleteProjectCommand,
     DeleteProjectUseCase,
+    GetProjectQuery,
+    GetProjectUseCase,
     ListProjectsQuery,
     ListProjectsUseCase,
-    RenameProjectCommand,
-    RenameProjectUseCase,
+    UpdateProjectMetadataCommand,
+    UpdateProjectMetadataUseCase,
 )
 from researchlens.modules.projects.presentation.dependencies import (
     RequestActor,
     get_create_project_use_case,
     get_delete_project_use_case,
+    get_get_project_use_case,
     get_list_projects_use_case,
-    get_rename_project_use_case,
     get_request_actor,
+    get_update_project_metadata_use_case,
 )
 from researchlens.modules.projects.presentation.schemas import (
     CreateProjectRequest,
     ProjectResponse,
-    RenameProjectRequest,
+    UpdateProjectRequest,
 )
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 RequestActorDep = Annotated[RequestActor, Depends(get_request_actor)]
 CreateProjectUseCaseDep = Annotated[CreateProjectUseCase, Depends(get_create_project_use_case)]
 ListProjectsUseCaseDep = Annotated[ListProjectsUseCase, Depends(get_list_projects_use_case)]
-RenameProjectUseCaseDep = Annotated[RenameProjectUseCase, Depends(get_rename_project_use_case)]
+GetProjectUseCaseDep = Annotated[GetProjectUseCase, Depends(get_get_project_use_case)]
+UpdateProjectUseCaseDep = Annotated[
+    UpdateProjectMetadataUseCase,
+    Depends(get_update_project_metadata_use_case),
+]
 DeleteProjectUseCaseDep = Annotated[DeleteProjectUseCase, Depends(get_delete_project_use_case)]
 
 
@@ -61,19 +68,33 @@ async def list_projects(
     return [ProjectResponse.model_validate(project) for project in projects]
 
 
-@router.patch("/{project_id}", response_model=ProjectResponse)
-async def rename_project(
+@router.get("/{project_id}", response_model=ProjectResponse)
+async def get_project(
     project_id: UUID,
-    payload: RenameProjectRequest,
     actor: RequestActorDep,
-    use_case: RenameProjectUseCaseDep,
+    use_case: GetProjectUseCaseDep,
 ) -> ProjectResponse:
     project = await use_case.execute(
-        RenameProjectCommand(
+        GetProjectQuery(tenant_id=actor.tenant_id, project_id=project_id)
+    )
+    return ProjectResponse.model_validate(project)
+
+
+@router.patch("/{project_id}", response_model=ProjectResponse)
+async def update_project(
+    project_id: UUID,
+    payload: UpdateProjectRequest,
+    actor: RequestActorDep,
+    use_case: UpdateProjectUseCaseDep,
+) -> ProjectResponse:
+    project = await use_case.execute(
+        UpdateProjectMetadataCommand(
             tenant_id=actor.tenant_id,
             actor_user_id=actor.user_id,
             project_id=project_id,
             new_name=payload.name,
+            description=payload.description,
+            description_provided="description" in payload.model_fields_set,
         )
     )
     return ProjectResponse.model_validate(project)

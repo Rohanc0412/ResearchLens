@@ -4,6 +4,11 @@ from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
 
 from researchlens.modules.auth.presentation import router as auth_router
+from researchlens.modules.conversations.presentation import (
+    conversation_router,
+    message_router,
+    run_trigger_router,
+)
 from researchlens.modules.projects.presentation import router as projects_router
 from researchlens.shared.errors import InfrastructureError
 from researchlens.shared.logging import RequestLoggingMiddleware
@@ -53,6 +58,9 @@ def create_app() -> FastAPI:
     app.include_router(base_router)
     app.include_router(auth_router)
     app.include_router(projects_router)
+    app.include_router(conversation_router)
+    app.include_router(message_router)
+    app.include_router(run_trigger_router)
     return app
 
 
@@ -65,6 +73,9 @@ def _schema_is_ready(connection: Connection) -> bool:
         "auth_refresh_tokens",
         "auth_sessions",
         "auth_users",
+        "conversation_run_triggers",
+        "conversations",
+        "messages",
         "projects",
     }
     return all(inspector.has_table(table_name) for table_name in required_tables)

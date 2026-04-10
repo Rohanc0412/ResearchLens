@@ -1,6 +1,6 @@
 # System Overview
 
-ResearchLens is a phased monorepo rebuild. Phase 3 extends the Phase 2 package, runtime, and `projects` slice with a strict auth module and real auth-backed request identity.
+ResearchLens is a phased monorepo rebuild. Phase 4 extends the Phase 3 foundation with project detail/update flows and a dedicated `conversations` slice for conversation, message, and run-trigger intent persistence.
 
 ## Monorepo structure
 
@@ -23,17 +23,18 @@ This separation keeps runtime entrypoints thin and dependency direction explicit
 - reusable code remains installable and testable
 - Docker, CI, pytest, and Alembic use the same installed-package boundaries as local development
 
-## Phase 3 status
+## Phase 4 status
 
 The backend currently includes:
 
 - shared logging with request ID and tenant context
 - async DB engine, session, and transaction primitives
 - lazy runtime health checks for DB connectivity and schema readiness
-- one migration-backed `projects` module with create, list, rename, and delete
+- one migration-backed `projects` module with create, list, get, update, and delete
 - one migration-backed `auth` module with register, login, refresh, logout, `/auth/me`, password reset request/confirm, and TOTP MFA enrollment/challenge/disable
+- one migration-backed `conversations` module with project-scoped conversation CRUD, message persistence and reads, cursor-based conversation listing, and a minimal run-trigger recording shell
 - worker bootstrap that reuses the same shared foundation
 
-Phase 3 replaces the Phase 2 `bootstrap_actor` protected-route identity path with auth-backed bearer token resolution. Health routes remain public.
+Phase 3 replaced the Phase 2 `bootstrap_actor` protected-route identity path with auth-backed bearer token resolution. Phase 4 keeps that bearer-token identity path for project, conversation, message, and run-trigger routes. Health routes remain public.
 
-Runs, retrieval, LLM stages, conversations, frontend auth flows, recovery-code MFA UX, and worker job processing remain out of scope.
+Full run execution internals, queueing, SSE, retrieval, drafting, evaluation, repair, richer tenant authorization, frontend auth UX, recovery-code MFA UX, and worker job processing remain out of scope.

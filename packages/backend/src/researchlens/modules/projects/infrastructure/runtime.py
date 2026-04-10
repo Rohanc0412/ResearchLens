@@ -6,8 +6,10 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from researchlens.modules.projects.application import (
     CreateProjectUseCase,
     DeleteProjectUseCase,
+    GetProjectUseCase,
     ListProjectsUseCase,
     RenameProjectUseCase,
+    UpdateProjectMetadataUseCase,
 )
 from researchlens.modules.projects.infrastructure.project_repository_sql import (
     SqlAlchemyProjectRepository,
@@ -20,8 +22,13 @@ class ProjectsRequestContext:
         repository = SqlAlchemyProjectRepository(session)
         transaction_manager = SqlAlchemyTransactionManager(session)
         self.create_project = CreateProjectUseCase(repository, transaction_manager)
+        self.get_project = GetProjectUseCase(repository)
         self.list_projects = ListProjectsUseCase(repository)
         self.rename_project = RenameProjectUseCase(repository, transaction_manager)
+        self.update_project_metadata = UpdateProjectMetadataUseCase(
+            repository,
+            transaction_manager,
+        )
         self.delete_project = DeleteProjectUseCase(repository, transaction_manager)
 
 

@@ -16,9 +16,10 @@ def test_api_projects_crud_flow(migrated_database_url: str) -> None:
         )
         list_response = client.get("/projects", headers=headers)
         project_id = create_response.json()["id"]
+        get_response = client.get(f"/projects/{project_id}", headers=headers)
         rename_response = client.patch(
             f"/projects/{project_id}",
-            json={"name": "Beta"},
+            json={"name": "Beta", "description": "renamed"},
             headers=headers,
         )
         delete_response = client.delete(f"/projects/{project_id}", headers=headers)
@@ -29,8 +30,11 @@ def test_api_projects_crud_flow(migrated_database_url: str) -> None:
     assert create_response.json()["created_by"] == user_id
     assert list_response.status_code == 200
     assert [item["name"] for item in list_response.json()] == ["Alpha"]
+    assert get_response.status_code == 200
+    assert get_response.json()["id"] == project_id
     assert rename_response.status_code == 200
     assert rename_response.json()["name"] == "Beta"
+    assert rename_response.json()["description"] == "renamed"
     assert delete_response.status_code == 204
 
 
@@ -59,6 +63,22 @@ def test_api_projects_require_real_auth_identity(migrated_database_url: str) -> 
         response = client.get("/projects")
 
     assert response.status_code == 401
+
+
+def test_api_project_update_rejects_empty_patch(migrated_database_url: str) -> None:
+    with TestClient(create_app()) as client:
+        token, _ = _register_and_get_identity(client)
+        headers = {"Authorization": f"Bearer {token}"}
+        create_response = client.post(
+            "/projects",
+            json={"name": "Alpha", "description": None},
+            headers=headers,
+        )
+        project_id = create_response.json()["id"]
+        response = client.patch(f"/projects/{project_id}", json={}, headers=headers)
+
+    assert response.status_code == 422
+    assert response.json()["code"] == "validation_error"
 
 
 def _register_and_get_identity(client: TestClient) -> tuple[str, str]:

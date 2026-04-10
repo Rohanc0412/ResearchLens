@@ -9,8 +9,10 @@ from fastapi import Depends, Request
 from researchlens.modules.projects.application import (
     CreateProjectUseCase,
     DeleteProjectUseCase,
+    GetProjectUseCase,
     ListProjectsUseCase,
     RenameProjectUseCase,
+    UpdateProjectMetadataUseCase,
 )
 from researchlens.shared.errors import AuthenticationError
 from researchlens.shared.logging import bind_tenant_id, reset_tenant_id
@@ -24,8 +26,10 @@ class RequestActor:
 
 class ProjectsRequestContext(Protocol):
     create_project: CreateProjectUseCase
+    get_project: GetProjectUseCase
     list_projects: ListProjectsUseCase
     rename_project: RenameProjectUseCase
+    update_project_metadata: UpdateProjectMetadataUseCase
     delete_project: DeleteProjectUseCase
 
 
@@ -86,8 +90,18 @@ def get_list_projects_use_case(context: ProjectsContext) -> ListProjectsUseCase:
     return context.list_projects
 
 
+def get_get_project_use_case(context: ProjectsContext) -> GetProjectUseCase:
+    return context.get_project
+
+
 def get_rename_project_use_case(context: ProjectsContext) -> RenameProjectUseCase:
     return context.rename_project
+
+
+def get_update_project_metadata_use_case(
+    context: ProjectsContext,
+) -> UpdateProjectMetadataUseCase:
+    return context.update_project_metadata
 
 
 def get_delete_project_use_case(context: ProjectsContext) -> DeleteProjectUseCase:

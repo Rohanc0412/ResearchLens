@@ -1,43 +1,31 @@
 # AGENTS.md
 
-## Read first
+This file contains repo-wide engineering rules only.
+Phase-specific scope, deliverables, and handoff requirements should come from the active prompt.
 
-Before making changes, read these in order:
+## Source of truth
 
-1. `README.md`
-2. `docs/codex/phase_workflow.md`
-3. `docs/coding_rules.md`
-4. `docs/architecture/module-boundaries.md`
-5. `docs/architecture/system-overview.md`
-6. The latest file in `docs/phase_reports/`
+- Follow the repository docs and the current task prompt.
+- If prompt instructions conflict with repo docs, resolve the conflict explicitly in the same change instead of inventing parallel rules.
+- Do not create new rule systems in code comments, ad hoc notes, or local conventions.
 
-If a task conflicts with these docs, stop and resolve the conflict explicitly in the same change instead of inventing parallel rules.
+## Repository rules
 
----
-
-## Hard rules
-
-1. Work only within the active phase.
-   - Restate scope, deliverables, out-of-scope items, and dependencies before changing files.
-   - Do not implement later-phase work unless it is strictly required to complete the current phase safely.
-
-2. The cloned repository root is the project root.
+1. The cloned repository root is the project root.
    - Never create a nested `ResearchLens/` directory.
-   - Create all files and folders directly under the existing repo root.
+   - Create files and folders directly under the existing repo root.
 
-3. Treat the old repository as a requirements reference only.
+2. Treat the old repository as a requirements reference only.
    - Do not use it as a code template.
    - Do not port large files or old structure by default.
 
-4. Follow current coding standards from the docs.
-   - Do not duplicate or invent parallel rules inside code changes.
-   - Keep architecture, naming, and testing aligned with `docs/coding_rules.md` and `docs/architecture/module-boundaries.md`.
-
-5. Keep backend packaging installable.
+3. Keep the backend installable.
    - Use `src/` layout and installed-package imports.
    - Never use `PYTHONPATH`, `sys.path.insert`, or cwd-dependent import tricks.
 
-6. Preserve modular boundaries.
+## Architecture rules
+
+4. Preserve modular boundaries.
    - Backend modules use `domain`, `application`, `infrastructure`, and `presentation`.
    - Use `orchestration` only when a module truly owns staged execution, and keep it thin.
    - Route handlers stay thin.
@@ -45,11 +33,11 @@ If a task conflicts with these docs, stop and resolve the conflict explicitly in
    - Domain code must not depend on web frameworks, ORM models, or provider SDKs.
    - Infrastructure must not contain business policy.
 
-7. Keep shared code generic.
+5. Keep shared code generic.
    - Do not place business-specific logic in shared code.
    - If code clearly belongs to a module, keep it in that module.
 
-8. Keep frontend structure disciplined.
+6. Keep frontend structure disciplined.
    - Pages compose widgets.
    - Widgets compose features and entities.
    - Features own user actions.
@@ -57,26 +45,47 @@ If a task conflicts with these docs, stop and resolve the conflict explicitly in
    - Shared frontend code stays generic.
    - Prefer typed or generated API integration over ad hoc transport code.
 
-9. Keep names and files clear.
-   - Use purpose-specific names.
+## Code quality rules
+
+7. Keep names clear and specific.
+   - Use purpose-first names.
    - Avoid vague names like `utils`, `helpers`, `manager`, `common`, or unclear `service`.
-   - Split files before they become mixed-responsibility or oversized.
 
-10. Make behavior explicit.
-    - Do not add silent fallbacks.
-    - Do not hide important logic inside routes, repositories, or shared helpers.
+8. Keep files focused.
+   - Split files before they become oversized or mixed-responsibility.
+   - Do not let one file become the hidden center of a module.
 
-11. Update tests and docs with the change.
-    - If behavior changes, add or update the right level of tests.
-    - If structure, contracts, or rules change, update the relevant docs in the same work.
+9. Make behavior explicit.
+   - Do not add silent fallbacks.
+   - Do not hide important logic inside routes, repositories, or shared helpers.
 
-12. End every phase with a handoff.
-    - Summarize what changed.
-    - List tests added or updated.
-    - List docs added or updated.
-    - Create or update `docs/phase_reports/phase_[X]_completion.md`.
+10. Keep public contracts explicit.
+    - Request and response models must be strict and intentional.
+    - Do not introduce inconsistent field names for the same concept across endpoints.
 
----
+11. Keep changes aligned with existing standards.
+    - Follow current coding, naming, testing, and architecture patterns already established in the repo.
+    - Extend existing patterns cleanly instead of introducing competing ones.
+
+## Security rules
+
+12. Do not log secrets or sensitive values.
+    - Never log passwords, raw tokens, reset tokens, secrets, or full credential material.
+    - Prefer safe, human-readable operational logs.
+
+## Data rules
+
+13. Keep schema changes explicit.
+    - Database changes must go through migrations.
+    - Do not rely on implicit schema drift or manual local-only fixes.
+
+## Validation rules
+
+14. Update tests with behavior changes.
+    - Add or update the appropriate level of tests when behavior changes.
+
+15. Update docs with contract or structure changes.
+    - Update relevant docs in the same work when structure, contracts, configuration, or developer-facing behavior changes.
 
 ## Decision rule
 

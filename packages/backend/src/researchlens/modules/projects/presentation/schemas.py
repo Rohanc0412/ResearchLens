@@ -17,6 +17,13 @@ class RenameProjectRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
 
+class UpdateProjectRequest(BaseModel):
+    name: str | None = None
+    description: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class ProjectResponse(BaseModel):
     id: UUID
     tenant_id: UUID
