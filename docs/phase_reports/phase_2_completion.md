@@ -72,6 +72,11 @@ Verified behavior covered by tests includes:
 - `docs/configuration/settings.md`
 - `docs/phase_reports/phase_2_completion.md`
 
+## Post-completion maintenance
+
+- Updated the CI workflow action pins to current Node 24-backed action majors.
+- Removed the duplicate pnpm version input from CI so pnpm resolves from the root `packageManager` field.
+
 ## Lessons learned
 
 - The cleanest place for business assembly is still the composition root, but shared packages must stay generic. Model registration for Alembic must not pull business modules into shared DB helpers.
