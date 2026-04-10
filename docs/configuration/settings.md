@@ -14,7 +14,7 @@ Phase 3 centralizes backend configuration under `researchlens.shared.config` usi
 - `app`: environment, debug flag, phase identifier, API host and port, worker name
 - `database`: URL, echo flag, pooling defaults, startup migration toggle
 - `bootstrap_actor`: retained typed settings group for older bootstrap context, no longer the normal protected-route identity path
-- `auth`: auth enablement flags, JWT issuer/secret, access-token lifetime, refresh-cookie behavior, refresh/reset token secrets, password reset lifetime, MFA scaffold settings, registration toggle, dev-mode secret safety
+- `auth`: auth enablement flags, JWT issuer/secret, access-token lifetime, refresh-cookie behavior, refresh/reset token secrets, password reset lifetime, TOTP MFA settings, registration toggle, dev-mode secret safety
 - `smtp`: enablement, host, port, credentials, sender identity
 - `retrieval`: feature toggles and safety limits
 - `llm`: provider selection and credentials

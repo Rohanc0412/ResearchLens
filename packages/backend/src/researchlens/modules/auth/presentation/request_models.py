@@ -27,3 +27,22 @@ class PasswordResetConfirmRequestDto(BaseModel):
     password: str
 
     model_config = ConfigDict(extra="forbid")
+
+
+class MfaEnrollVerifyRequestDto(BaseModel):
+    code: str
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class MfaChallengeVerifyRequestDto(BaseModel):
+    mfa_token: str
+    code: str
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class MfaDisableRequestDto(BaseModel):
+    code: str
+
+    model_config = ConfigDict(extra="forbid")

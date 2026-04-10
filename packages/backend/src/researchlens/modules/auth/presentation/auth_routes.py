@@ -7,6 +7,8 @@ from researchlens.modules.auth.application import (
     AuthTokenResult,
     ConfirmPasswordResetCommand,
     ConfirmPasswordResetUseCase,
+    DisableMfaCommand,
+    DisableMfaUseCase,
     GetCurrentUserUseCase,
     GetMfaStatusUseCase,
     LoginUserCommand,
@@ -17,21 +19,38 @@ from researchlens.modules.auth.application import (
     RegisterUserUseCase,
     RequestPasswordResetCommand,
     RequestPasswordResetUseCase,
+    StartMfaEnrollmentCommand,
+    StartMfaEnrollmentUseCase,
+    VerifyMfaChallengeCommand,
+    VerifyMfaChallengeUseCase,
+    VerifyMfaEnrollmentCommand,
+    VerifyMfaEnrollmentUseCase,
 )
 from researchlens.modules.auth.presentation.dependencies import (
     BearerToken,
     get_authenticated_actor,
     get_confirm_password_reset_use_case,
     get_current_user_use_case,
+    get_disable_mfa_use_case,
     get_login_user_use_case,
     get_logout_auth_session_use_case,
     get_mfa_status_use_case,
     get_refresh_auth_session_use_case,
     get_register_user_use_case,
     get_request_password_reset_use_case,
+    get_start_mfa_enrollment_use_case,
+    get_verify_mfa_challenge_use_case,
+    get_verify_mfa_enrollment_use_case,
+)
+from researchlens.modules.auth.presentation.refresh_cookie import (
+    clear_refresh_cookie,
+    set_refresh_cookie,
 )
 from researchlens.modules.auth.presentation.request_models import (
     LoginRequestDto,
+    MfaChallengeVerifyRequestDto,
+    MfaDisableRequestDto,
+    MfaEnrollVerifyRequestDto,
     PasswordResetConfirmRequestDto,
     PasswordResetRequestDto,
     RegisterRequestDto,
@@ -41,6 +60,8 @@ from researchlens.modules.auth.presentation.response_models import (
     AuthMfaChallengeResponseDto,
     AuthTokenResponseDto,
     LogoutResponseDto,
+    MfaEnabledResponseDto,
+    MfaEnrollStartResponseDto,
     MfaStatusResponseDto,
     PasswordResetConfirmResponseDto,
     PasswordResetRequestResponseDto,
@@ -65,6 +86,19 @@ ConfirmPasswordResetUseCaseDep = Annotated[
     Depends(get_confirm_password_reset_use_case),
 ]
 MfaStatusUseCaseDep = Annotated[GetMfaStatusUseCase, Depends(get_mfa_status_use_case)]
+StartMfaEnrollmentUseCaseDep = Annotated[
+    StartMfaEnrollmentUseCase,
+    Depends(get_start_mfa_enrollment_use_case),
+]
+VerifyMfaEnrollmentUseCaseDep = Annotated[
+    VerifyMfaEnrollmentUseCase,
+    Depends(get_verify_mfa_enrollment_use_case),
+]
+VerifyMfaChallengeUseCaseDep = Annotated[
+    VerifyMfaChallengeUseCase,
+    Depends(get_verify_mfa_challenge_use_case),
+]
+DisableMfaUseCaseDep = Annotated[DisableMfaUseCase, Depends(get_disable_mfa_use_case)]
 
 
 @router.post(
@@ -85,7 +119,7 @@ async def register(
             password=payload.password,
         )
     )
-    _set_refresh_cookie(request=request, response=response, result=result)
+    set_refresh_cookie(request=request, response=response, result=result)
     return result.response
 
 
@@ -103,7 +137,7 @@ async def login(
         LoginUserCommand(identifier=payload.identifier, password=payload.password)
     )
     if isinstance(result, AuthTokenResult):
-        _set_refresh_cookie(request=request, response=response, result=result)
+        set_refresh_cookie(request=request, response=response, result=result)
     return result.response
 
 
@@ -115,7 +149,7 @@ async def refresh(
 ) -> AuthTokenResponseDto:
     cookie_name = request.app.state.bootstrap.settings.auth.refresh_cookie_name
     result = await use_case.execute(refresh_token=request.cookies.get(cookie_name, ""))
-    _set_refresh_cookie(request=request, response=response, result=result)
+    set_refresh_cookie(request=request, response=response, result=result)
     return result.response
 
 
@@ -127,7 +161,7 @@ async def logout(
 ) -> LogoutResponseDto:
     cookie_name = request.app.state.bootstrap.settings.auth.refresh_cookie_name
     result = await use_case.execute(refresh_token=request.cookies.get(cookie_name))
-    _clear_refresh_cookie(request=request, response=response)
+    clear_refresh_cookie(request=request, response=response)
     return result
 
 
@@ -165,23 +199,43 @@ async def mfa_status(
     return await use_case.execute(user_id=actor.user_id)
 
 
-def _set_refresh_cookie(*, request: Request, response: Response, result: AuthTokenResult) -> None:
-    settings = request.app.state.bootstrap.settings.auth
-    response.set_cookie(
-        key=settings.refresh_cookie_name,
-        value=result.refresh_token,
-        httponly=True,
-        secure=settings.refresh_cookie_secure,
-        samesite=settings.refresh_cookie_samesite,
-        expires=result.refresh_expires_at,
+@router.post("/mfa/enroll/start", response_model=MfaEnrollStartResponseDto)
+async def start_mfa_enrollment(
+    actor: Annotated[AuthenticatedActor, Depends(get_authenticated_actor)],
+    use_case: StartMfaEnrollmentUseCaseDep,
+) -> MfaEnrollStartResponseDto:
+    return await use_case.execute(StartMfaEnrollmentCommand(user_id=actor.user_id))
+
+
+@router.post("/mfa/enroll/verify", response_model=MfaEnabledResponseDto)
+async def verify_mfa_enrollment(
+    payload: MfaEnrollVerifyRequestDto,
+    actor: Annotated[AuthenticatedActor, Depends(get_authenticated_actor)],
+    use_case: VerifyMfaEnrollmentUseCaseDep,
+) -> MfaEnabledResponseDto:
+    return await use_case.execute(
+        VerifyMfaEnrollmentCommand(user_id=actor.user_id, code=payload.code)
     )
 
 
-def _clear_refresh_cookie(*, request: Request, response: Response) -> None:
-    settings = request.app.state.bootstrap.settings.auth
-    response.delete_cookie(
-        key=settings.refresh_cookie_name,
-        httponly=True,
-        secure=settings.refresh_cookie_secure,
-        samesite=settings.refresh_cookie_samesite,
+@router.post("/mfa/verify", response_model=AuthTokenResponseDto)
+async def verify_mfa_challenge(
+    payload: MfaChallengeVerifyRequestDto,
+    request: Request,
+    response: Response,
+    use_case: VerifyMfaChallengeUseCaseDep,
+) -> AuthTokenResponseDto:
+    result = await use_case.execute(
+        VerifyMfaChallengeCommand(mfa_token=payload.mfa_token, code=payload.code)
     )
+    set_refresh_cookie(request=request, response=response, result=result)
+    return result.response
+
+
+@router.post("/mfa/disable", response_model=MfaEnabledResponseDto)
+async def disable_mfa(
+    payload: MfaDisableRequestDto,
+    actor: Annotated[AuthenticatedActor, Depends(get_authenticated_actor)],
+    use_case: DisableMfaUseCaseDep,
+) -> MfaEnabledResponseDto:
+    return await use_case.execute(DisableMfaCommand(user_id=actor.user_id, code=payload.code))

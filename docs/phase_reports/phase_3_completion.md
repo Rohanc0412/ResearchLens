@@ -6,13 +6,14 @@ Auth module with strict contracts
 
 ## Scope restatement
 
-Phase 3 implemented backend auth only: register, login, refresh, logout, `/auth/me`, password reset request/confirm, strict auth DTOs, centralized password policy enforcement, auth schema/lifecycle tests, and replacement of the Phase 2 protected-route `bootstrap_actor` identity path. Frontend auth flows, conversations, runs, retrieval, drafting, evaluation, repair, advanced org/tenant logic, and broad RBAC expansion stayed out of scope.
+Phase 3 implemented backend auth only: register, login, refresh, logout, `/auth/me`, password reset request/confirm, TOTP MFA, strict auth DTOs, centralized password policy enforcement, auth schema/lifecycle tests, and replacement of the Phase 2 protected-route `bootstrap_actor` identity path. Frontend auth flows, conversations, runs, retrieval, drafting, evaluation, repair, advanced org/tenant logic, recovery codes, and broad RBAC expansion stayed out of scope.
 
 ## Auth contract summary
 
 - `AuthenticatedUserDto` is centralized and reused for `/auth/me` and token responses.
 - `AuthTokenResponseDto` is reused for register, login success, and refresh success.
 - Login can return `AuthMfaChallengeResponseDto` if an enabled MFA factor exists.
+- TOTP enrollment, challenge verification, and disable endpoints use strict dedicated request and response DTOs.
 - Logout and password reset endpoints return strict status DTOs.
 - Public request DTOs use `extra="forbid"` and public response DTOs do not use permissive extras.
 - `/auth/me` resolves by access-token `sub=user_id` and persisted user/tenant state; `username` is returned from the user record, not from `user_id`.
@@ -44,10 +45,14 @@ Protected project routes no longer read `bootstrap_actor` settings as the normal
 - `POST /auth/password-reset/request`
 - `POST /auth/password-reset/confirm`
 - `GET /auth/mfa/status`
+- `POST /auth/mfa/enroll/start`
+- `POST /auth/mfa/enroll/verify`
+- `POST /auth/mfa/verify`
+- `POST /auth/mfa/disable`
 
 ## MFA status
 
-MFA is scaffolded, not fully implemented. The schema and status endpoint exist. TOTP enrollment, challenge verification, and disable flows are deferred to avoid weakening the core auth contract and session lifecycle work.
+MFA is fully implemented for TOTP. Enrollment start creates or replaces a pending TOTP factor and returns the secret plus provisioning URI. Enrollment verify enables the factor after a valid code. Login returns an MFA challenge instead of session tokens when an enabled factor exists. MFA challenge verification creates the session and refresh cookie only after a valid challenge token and TOTP code. Disable verifies a current TOTP code and removes the factor. Recovery codes and frontend MFA UX remain deferred.
 
 ## Migrations added
 
@@ -56,8 +61,8 @@ MFA is scaffolded, not fully implemented. The schema and status endpoint exist. 
 
 ## Tests added or updated
 
-- Unit tests for username/email normalization, password policy validation, auth DTO strictness, bcrypt password hashing, HMAC token hashing, JWT issue/verify behavior, and auth domain invariants.
-- Integration tests for register, duplicate username/email, weak password rejection, login by username/email, invalid credentials, refresh rotation, revoked/expired refresh behavior, logout revocation, `/auth/me` contract correctness, password reset request/confirm, invalid/expired/used reset tokens, weak reset password rejection, reset-driven session revocation, MFA status, project route auth replacement, health, and migrations.
+- Unit tests for username/email normalization, password policy validation, auth DTO strictness, bcrypt password hashing, HMAC token hashing, JWT issue/verify behavior, MFA challenge verification, TOTP helpers, and auth domain invariants.
+- Integration tests for register, duplicate username/email, weak password rejection, login by username/email, invalid credentials, refresh rotation, revoked/expired refresh behavior, logout revocation, `/auth/me` contract correctness, password reset request/confirm, invalid/expired/used reset tokens, weak reset password rejection, reset-driven session revocation, TOTP MFA lifecycle, MFA response contracts, project route auth replacement, health, and migrations.
 - Existing project API tests now register a real user and send bearer auth.
 
 ## Docs added or updated
@@ -74,7 +79,8 @@ MFA is scaffolded, not fully implemented. The schema and status endpoint exist. 
 - Exact client handling for refresh-cookie rotation and logout retry behavior.
 - Whether registration should remain public and single-user-per-new-tenant with default `owner` role.
 - UI timing and copy for password reset email delivery once a real SMTP adapter replaces the capture mailer.
-- Full TOTP enrollment and challenge UX for a later MFA phase.
+- Frontend UX for TOTP enrollment, challenge verification, and disable.
+- Whether to add recovery codes or a support-assisted fallback for lost MFA devices.
 
 ## Post-completion stabilization
 

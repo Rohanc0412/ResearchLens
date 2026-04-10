@@ -6,10 +6,12 @@ from researchlens.modules.auth.infrastructure.security.opaque_token_generator im
 from researchlens.modules.auth.infrastructure.security.password_hasher_bcrypt import (
     BcryptPasswordHasher,
 )
+from researchlens.modules.auth.infrastructure.security.totp_service import PyotpTotpService
 
 __all__ = [
     "BcryptPasswordHasher",
     "HmacTokenHasher",
     "JwtTokenService",
     "OpaqueTokenGenerator",
+    "PyotpTotpService",
 ]

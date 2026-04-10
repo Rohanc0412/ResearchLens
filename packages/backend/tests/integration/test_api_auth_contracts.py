@@ -1,5 +1,6 @@
 from uuid import UUID
 
+import pyotp
 from fastapi.testclient import TestClient
 
 from researchlens_api.create_app import create_app
@@ -117,6 +118,61 @@ def test_status_endpoint_contracts(migrated_database_url: str) -> None:
     assert confirm_response.status_code == 422
     assert mfa_response.status_code == 200
     assert mfa_response.json() == {"enabled": False, "pending": False}
+
+
+def test_mfa_response_contracts(migrated_database_url: str) -> None:
+    with TestClient(create_app()) as client:
+        register_response = client.post(
+            "/auth/register",
+            json={"username": "casey", "email": "casey@example.com", "password": VALID_PASSWORD},
+        )
+        token = register_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        start_response = client.post("/auth/mfa/enroll/start", headers=headers)
+        start_body = start_response.json()
+        verify_response = client.post(
+            "/auth/mfa/enroll/verify",
+            json={"code": pyotp.TOTP(start_body["secret"]).now()},
+            headers=headers,
+        )
+        login_response = client.post(
+            "/auth/login",
+            json={"identifier": "casey", "password": VALID_PASSWORD},
+        )
+        challenge_body = login_response.json()
+        challenge_verify_response = client.post(
+            "/auth/mfa/verify",
+            json={
+                "mfa_token": challenge_body["mfa_token"],
+                "code": pyotp.TOTP(start_body["secret"]).now(),
+            },
+        )
+
+    assert start_response.status_code == 200
+    assert set(start_body) == {
+        "secret",
+        "otpauth_uri",
+        "issuer",
+        "account_name",
+        "period",
+        "digits",
+    }
+    assert start_body["issuer"] == "ResearchLens"
+    assert start_body["account_name"] == "casey@example.com"
+    assert start_body["period"] == 30
+    assert start_body["digits"] == 6
+    assert isinstance(start_body["secret"], str)
+    assert isinstance(start_body["otpauth_uri"], str)
+    assert verify_response.status_code == 200
+    assert verify_response.json() == {"enabled": True}
+    assert login_response.status_code == 200
+    assert set(challenge_body) == {"mfa_required", "mfa_token", "user"}
+    assert challenge_body["mfa_required"] is True
+    assert isinstance(challenge_body["mfa_token"], str)
+    assert set(challenge_body["user"]) == {"user_id", "username", "email", "tenant_id", "roles"}
+    assert challenge_body["user"]["username"] == "casey"
+    assert challenge_verify_response.status_code == 200
+    _assert_token_response_shape(challenge_verify_response.json())
 
 
 def _assert_token_response_shape(body: dict[str, object]) -> None:

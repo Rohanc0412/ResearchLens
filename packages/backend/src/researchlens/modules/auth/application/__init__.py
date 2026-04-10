@@ -4,6 +4,7 @@ from researchlens.modules.auth.application.confirm_password_reset import (
     ConfirmPasswordResetCommand,
     ConfirmPasswordResetUseCase,
 )
+from researchlens.modules.auth.application.disable_mfa import DisableMfaCommand, DisableMfaUseCase
 from researchlens.modules.auth.application.dto import (
     AuthenticatedActor,
     AuthenticatedUserDto,
@@ -30,6 +31,18 @@ from researchlens.modules.auth.application.request_password_reset import (
     RequestPasswordResetCommand,
     RequestPasswordResetUseCase,
 )
+from researchlens.modules.auth.application.start_mfa_enrollment import (
+    StartMfaEnrollmentCommand,
+    StartMfaEnrollmentUseCase,
+)
+from researchlens.modules.auth.application.verify_mfa_challenge import (
+    VerifyMfaChallengeCommand,
+    VerifyMfaChallengeUseCase,
+)
+from researchlens.modules.auth.application.verify_mfa_enrollment import (
+    VerifyMfaEnrollmentCommand,
+    VerifyMfaEnrollmentUseCase,
+)
 
 __all__ = [
     "AuthMfaChallengeResponseDto",
@@ -39,6 +52,8 @@ __all__ = [
     "AuthenticatedUserDto",
     "ConfirmPasswordResetCommand",
     "ConfirmPasswordResetUseCase",
+    "DisableMfaCommand",
+    "DisableMfaUseCase",
     "GetCurrentUserUseCase",
     "GetMfaStatusUseCase",
     "LoginUserCommand",
@@ -55,4 +70,10 @@ __all__ = [
     "RegisterUserUseCase",
     "RequestPasswordResetCommand",
     "RequestPasswordResetUseCase",
+    "StartMfaEnrollmentCommand",
+    "StartMfaEnrollmentUseCase",
+    "VerifyMfaChallengeCommand",
+    "VerifyMfaChallengeUseCase",
+    "VerifyMfaEnrollmentCommand",
+    "VerifyMfaEnrollmentUseCase",
 ]

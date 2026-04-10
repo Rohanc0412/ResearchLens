@@ -2,7 +2,7 @@
 
 ResearchLens is being rebuilt as a quality-first monorepo for research workflow orchestration, evidence handling, drafting, evaluation, and artifact production. This repository is the phased reconstruction, not a direct continuation of the previous code layout.
 
-Phase 3 adds the first real auth-backed protected flows on top of the installed-package execution, typed settings, DB/Alembic wiring, shared runtime foundation, and Phase 2 `projects` vertical slice. Conversations, runs, retrieval, drafting, evaluation, repair, and frontend auth flows remain deferred.
+Phase 3 adds the first real auth-backed protected flows, including TOTP MFA, on top of the installed-package execution, typed settings, DB/Alembic wiring, shared runtime foundation, and Phase 2 `projects` vertical slice. Conversations, runs, retrieval, drafting, evaluation, repair, and frontend auth flows remain deferred.
 
 The cloned `ResearchLens` directory is the project root. Do not create a nested `ResearchLens/ResearchLens/` folder. All repo paths are relative to the current root.
 

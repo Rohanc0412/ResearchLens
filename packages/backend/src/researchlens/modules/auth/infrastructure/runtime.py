@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from researchlens.modules.auth.application import (
     ConfirmPasswordResetUseCase,
+    DisableMfaUseCase,
     GetCurrentUserUseCase,
     GetMfaStatusUseCase,
     LoginUserUseCase,
@@ -13,6 +14,9 @@ from researchlens.modules.auth.application import (
     RefreshAuthSessionUseCase,
     RegisterUserUseCase,
     RequestPasswordResetUseCase,
+    StartMfaEnrollmentUseCase,
+    VerifyMfaChallengeUseCase,
+    VerifyMfaEnrollmentUseCase,
 )
 from researchlens.modules.auth.application.dto import AuthenticatedActor
 from researchlens.modules.auth.application.token_lifecycle import TokenLifecycle
@@ -25,6 +29,7 @@ from researchlens.modules.auth.infrastructure.security import (
     HmacTokenHasher,
     JwtTokenService,
     OpaqueTokenGenerator,
+    PyotpTotpService,
 )
 from researchlens.shared.config import ResearchLensSettings
 from researchlens.shared.db import SqlAlchemyTransactionManager
@@ -40,6 +45,10 @@ class AuthRequestContext:
     request_password_reset: RequestPasswordResetUseCase
     confirm_password_reset: ConfirmPasswordResetUseCase
     get_mfa_status: GetMfaStatusUseCase
+    start_mfa_enrollment: StartMfaEnrollmentUseCase
+    verify_mfa_enrollment: VerifyMfaEnrollmentUseCase
+    verify_mfa_challenge: VerifyMfaChallengeUseCase
+    disable_mfa: DisableMfaUseCase
 
 
 class SqlAlchemyAuthRuntime:
@@ -59,6 +68,12 @@ class SqlAlchemyAuthRuntime:
         self._reset_token_generator = OpaqueTokenGenerator()
         self._refresh_token_hasher = HmacTokenHasher(secret=settings.auth.refresh_token_secret)
         self._reset_token_hasher = HmacTokenHasher(secret=settings.auth.password_reset_token_secret)
+        self._totp_service = PyotpTotpService(
+            issuer=settings.auth.mfa_totp_issuer,
+            period_seconds=settings.auth.mfa_totp_period_seconds,
+            digits=settings.auth.mfa_totp_digits,
+            window=settings.auth.mfa_totp_window,
+        )
         self._token_issuer = JwtTokenService(
             secret=settings.auth.access_token_secret,
             issuer=settings.auth.jwt_issuer,
@@ -117,6 +132,35 @@ class SqlAlchemyAuthRuntime:
                 transaction_manager,
             ),
             get_mfa_status=GetMfaStatusUseCase(repository=repository),
+            start_mfa_enrollment=StartMfaEnrollmentUseCase(
+                repository=repository,
+                transaction_manager=transaction_manager,
+                totp_service=self._totp_service,
+                clock=self._clock,
+                issuer=self._settings.auth.mfa_totp_issuer,
+                period_seconds=self._settings.auth.mfa_totp_period_seconds,
+                digits=self._settings.auth.mfa_totp_digits,
+            ),
+            verify_mfa_enrollment=VerifyMfaEnrollmentUseCase(
+                repository=repository,
+                transaction_manager=transaction_manager,
+                totp_service=self._totp_service,
+                clock=self._clock,
+            ),
+            verify_mfa_challenge=VerifyMfaChallengeUseCase(
+                repository=repository,
+                transaction_manager=transaction_manager,
+                token_issuer=self._token_issuer,
+                totp_service=self._totp_service,
+                token_lifecycle=token_lifecycle,
+                clock=self._clock,
+            ),
+            disable_mfa=DisableMfaUseCase(
+                repository=repository,
+                transaction_manager=transaction_manager,
+                totp_service=self._totp_service,
+                clock=self._clock,
+            ),
         )
 
     def _build_token_lifecycle(

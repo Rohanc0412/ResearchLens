@@ -10,15 +10,15 @@ Public auth responses use centralized DTOs from the auth application/presentatio
 - `AuthTokenResponseDto`: bearer access token, expiry, and `AuthenticatedUserDto`
 - `AuthMfaChallengeResponseDto`: explicit MFA challenge response when an enabled factor exists
 - status DTOs for logout and password reset responses
-- `MfaStatusResponseDto` for the scaffolded MFA status endpoint
+- `MfaStatusResponseDto`, `MfaEnrollStartResponseDto`, and simple enabled status DTOs for the TOTP MFA flow
 
 `/auth/me` returns `AuthenticatedUserDto` exactly. `user_id` is the UUID subject, `username` is the normalized username, and `tenant_id` is the tenant UUID. The access token uses `sub=user_id`; the username claim is only a convenience snapshot.
 
 ## Layering
 
 - `domain`: user normalization, password policy, session/refresh/password reset invariants, MFA factor state
-- `application`: use cases, strict DTOs, and ports for persistence, crypto, token issuing, mail, clock, and transactions
-- `infrastructure`: SQLAlchemy rows/repository, bcrypt hashing, JWT, HMAC token hashing, random token generation, password reset mail capture, runtime assembly
+- `application`: use cases, strict DTOs, and ports for persistence, crypto, token issuing, TOTP, mail, clock, and transactions
+- `infrastructure`: SQLAlchemy rows/repository, bcrypt hashing, JWT, HMAC token hashing, random token generation, TOTP, password reset mail capture, runtime assembly
 - `presentation`: FastAPI request parsing, bearer/cookie handling, response shaping, and thin route delegation
 
 Shared code remains generic. Auth-specific business policy does not live under `shared/`.
@@ -44,6 +44,15 @@ The centralized password policy enforces:
 
 Registration and password reset confirmation both use the same policy before hashing.
 
-## MFA Status
+## MFA
 
-Phase 3 includes the MFA table and a truthful `GET /auth/mfa/status` endpoint. Full TOTP enrollment, challenge verification, and disable flows are intentionally deferred rather than exposing incomplete public endpoints.
+Phase 3 includes a complete TOTP MFA flow:
+
+- `GET /auth/mfa/status` reports enabled and pending state.
+- `POST /auth/mfa/enroll/start` creates or replaces a pending TOTP factor and returns the secret plus provisioning URI.
+- `POST /auth/mfa/enroll/verify` verifies the current TOTP code and enables the factor.
+- Login returns `AuthMfaChallengeResponseDto` instead of tokens when an enabled TOTP factor exists.
+- `POST /auth/mfa/verify` verifies the short-lived MFA challenge token plus TOTP code, then creates the auth session and refresh cookie.
+- `POST /auth/mfa/disable` verifies a current TOTP code and removes the factor.
+
+TOTP generation and verification live in `auth.infrastructure.security`; route files do not implement TOTP or token logic.

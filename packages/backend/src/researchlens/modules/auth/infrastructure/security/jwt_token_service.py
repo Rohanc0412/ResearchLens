@@ -53,23 +53,11 @@ class JwtTokenService:
         )
 
     def verify_access_token(self, token: str) -> AccessTokenClaims:
-        claims = self._decode(token)
+        claims = self._decode(token, error_message="Invalid access token.")
         if claims.get("typ") != "access":
             raise AuthenticationError("Invalid access token.")
 
-        try:
-            roles = claims["roles"]
-            if not isinstance(roles, list) or not all(isinstance(role, str) for role in roles):
-                raise ValueError
-            session_id = claims.get("session_id")
-            return AccessTokenClaims(
-                user_id=UUID(str(claims["sub"])),
-                tenant_id=UUID(str(claims["tenant_id"])),
-                roles=roles,
-                session_id=UUID(str(session_id)) if session_id else None,
-            )
-        except (KeyError, TypeError, ValueError) as exc:
-            raise AuthenticationError("Invalid access token.") from exc
+        return _claims_from_payload(claims, error_message="Invalid access token.")
 
     def issue_mfa_challenge(self, *, user: User, issued_at: datetime) -> str:
         expires_at = issued_at + timedelta(minutes=self._mfa_challenge_minutes)
@@ -87,7 +75,13 @@ class JwtTokenService:
             algorithm=_ALGORITHM,
         )
 
-    def _decode(self, token: str) -> dict[str, object]:
+    def verify_mfa_challenge(self, token: str) -> AccessTokenClaims:
+        claims = self._decode(token, error_message="Invalid MFA challenge token.")
+        if claims.get("typ") != "mfa":
+            raise AuthenticationError("Invalid MFA challenge token.")
+        return _claims_from_payload(claims, error_message="Invalid MFA challenge token.")
+
+    def _decode(self, token: str, *, error_message: str) -> dict[str, object]:
         try:
             return cast(
                 dict[str, object],
@@ -100,8 +94,28 @@ class JwtTokenService:
                 ),
             )
         except jwt.InvalidTokenError as exc:
-            raise AuthenticationError("Invalid access token.") from exc
+            raise AuthenticationError(error_message) from exc
 
 
 def utc_now() -> datetime:
     return datetime.now(UTC)
+
+
+def _claims_from_payload(
+    claims: dict[str, object],
+    *,
+    error_message: str,
+) -> AccessTokenClaims:
+    try:
+        roles = claims["roles"]
+        if not isinstance(roles, list) or not all(isinstance(role, str) for role in roles):
+            raise ValueError
+        session_id = claims.get("session_id")
+        return AccessTokenClaims(
+            user_id=UUID(str(claims["sub"])),
+            tenant_id=UUID(str(claims["tenant_id"])),
+            roles=roles,
+            session_id=UUID(str(session_id)) if session_id else None,
+        )
+    except (KeyError, TypeError, ValueError) as exc:
+        raise AuthenticationError(error_message) from exc

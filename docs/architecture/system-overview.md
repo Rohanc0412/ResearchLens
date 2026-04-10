@@ -31,9 +31,9 @@ The backend currently includes:
 - async DB engine, session, and transaction primitives
 - lazy runtime health checks for DB connectivity and schema readiness
 - one migration-backed `projects` module with create, list, rename, and delete
-- one migration-backed `auth` module with register, login, refresh, logout, `/auth/me`, password reset request/confirm, and MFA status scaffold
+- one migration-backed `auth` module with register, login, refresh, logout, `/auth/me`, password reset request/confirm, and TOTP MFA enrollment/challenge/disable
 - worker bootstrap that reuses the same shared foundation
 
 Phase 3 replaces the Phase 2 `bootstrap_actor` protected-route identity path with auth-backed bearer token resolution. Health routes remain public.
 
-Runs, retrieval, LLM stages, conversations, frontend auth flows, full MFA enrollment/challenge verification, and worker job processing remain out of scope.
+Runs, retrieval, LLM stages, conversations, frontend auth flows, recovery-code MFA UX, and worker job processing remain out of scope.

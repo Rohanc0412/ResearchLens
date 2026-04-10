@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 from uuid import UUID
 
 from sqlalchemy import or_, select, update
@@ -6,14 +6,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from researchlens.modules.auth.application.ports import AuthRepository, UserCredentials
 from researchlens.modules.auth.domain import (
-    MfaFactor,
     PasswordResetToken,
     RefreshToken,
     Session,
     User,
 )
+from researchlens.modules.auth.infrastructure.repositories.auth_mfa_repository_sql import (
+    SqlAlchemyMfaRepositoryMixin,
+)
+from researchlens.modules.auth.infrastructure.repositories.auth_row_mappers import (
+    password_reset_from_row,
+    refresh_token_from_row,
+    session_from_row,
+    user_from_row,
+)
 from researchlens.modules.auth.infrastructure.rows import (
-    AuthMfaFactorRow,
     AuthPasswordResetRow,
     AuthRefreshTokenRow,
     AuthSessionRow,
@@ -21,7 +28,7 @@ from researchlens.modules.auth.infrastructure.rows import (
 )
 
 
-class SqlAlchemyAuthRepository(AuthRepository):
+class SqlAlchemyAuthRepository(SqlAlchemyMfaRepositoryMixin, AuthRepository):
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
@@ -39,21 +46,21 @@ class SqlAlchemyAuthRepository(AuthRepository):
         )
         self._session.add(row)
         await self._session.flush()
-        return _user_from_row(row)
+        return user_from_row(row)
 
     async def get_user_by_id(self, *, user_id: UUID) -> User | None:
         row = await self._session.get(AuthUserRow, user_id)
-        return _user_from_row(row) if row else None
+        return user_from_row(row) if row else None
 
     async def get_user_by_username(self, *, username: str) -> User | None:
         row = await self._session.scalar(
             select(AuthUserRow).where(AuthUserRow.username == username)
         )
-        return _user_from_row(row) if row else None
+        return user_from_row(row) if row else None
 
     async def get_user_by_email(self, *, email: str) -> User | None:
         row = await self._session.scalar(select(AuthUserRow).where(AuthUserRow.email == email))
-        return _user_from_row(row) if row else None
+        return user_from_row(row) if row else None
 
     async def get_user_credentials_by_identifier(
         self,
@@ -67,7 +74,13 @@ class SqlAlchemyAuthRepository(AuthRepository):
         )
         if row is None:
             return None
-        return UserCredentials(user=_user_from_row(row), password_hash=row.password_hash)
+        return UserCredentials(user=user_from_row(row), password_hash=row.password_hash)
+
+    async def get_user_credentials_by_id(self, *, user_id: UUID) -> UserCredentials | None:
+        row = await self._session.get(AuthUserRow, user_id)
+        if row is None:
+            return None
+        return UserCredentials(user=user_from_row(row), password_hash=row.password_hash)
 
     async def update_user_password_hash(
         self,
@@ -94,11 +107,11 @@ class SqlAlchemyAuthRepository(AuthRepository):
         )
         self._session.add(row)
         await self._session.flush()
-        return _session_from_row(row)
+        return session_from_row(row)
 
     async def get_session(self, *, session_id: UUID) -> Session | None:
         row = await self._session.get(AuthSessionRow, session_id)
-        return _session_from_row(row) if row else None
+        return session_from_row(row) if row else None
 
     async def save_session(self, *, session: Session) -> None:
         row = await self._session.get(AuthSessionRow, session.id)
@@ -130,13 +143,13 @@ class SqlAlchemyAuthRepository(AuthRepository):
         )
         self._session.add(row)
         await self._session.flush()
-        return _refresh_token_from_row(row)
+        return refresh_token_from_row(row)
 
     async def get_refresh_token_by_hash(self, *, token_hash: str) -> RefreshToken | None:
         row = await self._session.scalar(
             select(AuthRefreshTokenRow).where(AuthRefreshTokenRow.token_hash == token_hash)
         )
-        return _refresh_token_from_row(row) if row else None
+        return refresh_token_from_row(row) if row else None
 
     async def save_refresh_token(self, *, refresh_token: RefreshToken) -> None:
         row = await self._session.get(AuthRefreshTokenRow, refresh_token.id)
@@ -173,7 +186,7 @@ class SqlAlchemyAuthRepository(AuthRepository):
         )
         self._session.add(row)
         await self._session.flush()
-        return _password_reset_from_row(row)
+        return password_reset_from_row(row)
 
     async def get_password_reset_token_by_hash(
         self,
@@ -183,7 +196,7 @@ class SqlAlchemyAuthRepository(AuthRepository):
         row = await self._session.scalar(
             select(AuthPasswordResetRow).where(AuthPasswordResetRow.token_hash == token_hash)
         )
-        return _password_reset_from_row(row) if row else None
+        return password_reset_from_row(row) if row else None
 
     async def save_password_reset_token(
         self,
@@ -194,86 +207,3 @@ class SqlAlchemyAuthRepository(AuthRepository):
         if row is None:
             return
         row.used_at = password_reset_token.used_at
-
-    async def get_mfa_factors_for_user(self, *, user_id: UUID) -> list[MfaFactor]:
-        rows = await self._session.scalars(
-            select(AuthMfaFactorRow).where(AuthMfaFactorRow.user_id == user_id)
-        )
-        return [_mfa_factor_from_row(row) for row in rows]
-
-
-def _user_from_row(row: AuthUserRow) -> User:
-    return User(
-        id=row.id,
-        tenant_id=row.tenant_id,
-        username=row.username,
-        email=row.email,
-        roles=list(row.roles),
-        is_active=row.is_active,
-        created_at=_ensure_aware(row.created_at),
-        updated_at=_ensure_aware(row.updated_at),
-    )
-
-
-def _session_from_row(row: AuthSessionRow) -> Session:
-    return Session(
-        id=row.id,
-        user_id=row.user_id,
-        tenant_id=row.tenant_id,
-        created_at=_ensure_aware(row.created_at),
-        expires_at=_ensure_aware(row.expires_at),
-        last_used_at=_ensure_aware_or_none(row.last_used_at),
-        revoked_at=_ensure_aware_or_none(row.revoked_at),
-    )
-
-
-def _refresh_token_from_row(row: AuthRefreshTokenRow) -> RefreshToken:
-    return RefreshToken(
-        id=row.id,
-        session_id=row.session_id,
-        user_id=row.user_id,
-        tenant_id=row.tenant_id,
-        token_hash=row.token_hash,
-        created_at=_ensure_aware(row.created_at),
-        expires_at=_ensure_aware(row.expires_at),
-        rotated_from_id=row.rotated_from_id,
-        last_used_at=_ensure_aware_or_none(row.last_used_at),
-        revoked_at=_ensure_aware_or_none(row.revoked_at),
-    )
-
-
-def _password_reset_from_row(row: AuthPasswordResetRow) -> PasswordResetToken:
-    return PasswordResetToken(
-        id=row.id,
-        user_id=row.user_id,
-        tenant_id=row.tenant_id,
-        token_hash=row.token_hash,
-        created_at=_ensure_aware(row.created_at),
-        expires_at=_ensure_aware(row.expires_at),
-        used_at=_ensure_aware_or_none(row.used_at),
-    )
-
-
-def _mfa_factor_from_row(row: AuthMfaFactorRow) -> MfaFactor:
-    return MfaFactor(
-        id=row.id,
-        user_id=row.user_id,
-        tenant_id=row.tenant_id,
-        factor_type=row.factor_type,
-        secret=row.secret,
-        created_at=_ensure_aware(row.created_at),
-        enabled_at=_ensure_aware_or_none(row.enabled_at),
-        last_used_at=_ensure_aware_or_none(row.last_used_at),
-    )
-
-
-def _ensure_aware(value: datetime) -> datetime:
-    if value.tzinfo is None:
-        return value.replace(tzinfo=UTC)
-    return value
-
-
-def _ensure_aware_or_none(value: datetime | None) -> datetime | None:
-    if value is None:
-        return None
-    return _ensure_aware(value)

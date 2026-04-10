@@ -7,6 +7,7 @@ from fastapi import Depends, Request
 from researchlens.modules.auth.application import (
     AuthenticatedActor,
     ConfirmPasswordResetUseCase,
+    DisableMfaUseCase,
     GetCurrentUserUseCase,
     GetMfaStatusUseCase,
     LoginUserUseCase,
@@ -14,6 +15,9 @@ from researchlens.modules.auth.application import (
     RefreshAuthSessionUseCase,
     RegisterUserUseCase,
     RequestPasswordResetUseCase,
+    StartMfaEnrollmentUseCase,
+    VerifyMfaChallengeUseCase,
+    VerifyMfaEnrollmentUseCase,
 )
 from researchlens.shared.errors import AuthenticationError
 
@@ -27,6 +31,10 @@ class AuthRequestContext(Protocol):
     request_password_reset: RequestPasswordResetUseCase
     confirm_password_reset: ConfirmPasswordResetUseCase
     get_mfa_status: GetMfaStatusUseCase
+    start_mfa_enrollment: StartMfaEnrollmentUseCase
+    verify_mfa_enrollment: VerifyMfaEnrollmentUseCase
+    verify_mfa_challenge: VerifyMfaChallengeUseCase
+    disable_mfa: DisableMfaUseCase
 
 
 class AuthRuntime(Protocol):
@@ -83,6 +91,22 @@ def get_confirm_password_reset_use_case(context: AuthContext) -> ConfirmPassword
 
 def get_mfa_status_use_case(context: AuthContext) -> GetMfaStatusUseCase:
     return context.get_mfa_status
+
+
+def get_start_mfa_enrollment_use_case(context: AuthContext) -> StartMfaEnrollmentUseCase:
+    return context.start_mfa_enrollment
+
+
+def get_verify_mfa_enrollment_use_case(context: AuthContext) -> VerifyMfaEnrollmentUseCase:
+    return context.verify_mfa_enrollment
+
+
+def get_verify_mfa_challenge_use_case(context: AuthContext) -> VerifyMfaChallengeUseCase:
+    return context.verify_mfa_challenge
+
+
+def get_disable_mfa_use_case(context: AuthContext) -> DisableMfaUseCase:
+    return context.disable_mfa
 
 
 async def get_authenticated_actor(
