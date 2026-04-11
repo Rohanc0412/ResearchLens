@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  phase-1-checks:
+  ci-checks:
     runs-on: ubuntu-latest
 
     steps:
