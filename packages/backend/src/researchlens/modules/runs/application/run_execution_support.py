@@ -1,7 +1,5 @@
-import asyncio
 from dataclasses import dataclass
-from datetime import UTC, datetime
-from typing import Protocol
+from datetime import datetime
 from uuid import uuid4
 
 from researchlens.modules.runs.application.dto import ResumeState
@@ -10,6 +8,11 @@ from researchlens.modules.runs.application.ports import (
     RunEventStore,
     RunRepository,
     TransactionManager,
+)
+from researchlens.modules.runs.application.stage_execution_controller import RunClock
+from researchlens.modules.runs.application.stage_messages import (
+    stage_completed_message,
+    stage_started_message,
 )
 from researchlens.modules.runs.domain import (
     RUN_STAGE_SEQUENCE,
@@ -22,27 +25,6 @@ from researchlens.modules.runs.domain import (
     RunTransitionRecord,
     ensure_run_transition_allowed,
 )
-
-
-class RunClock(Protocol):
-    def now(self) -> datetime: ...
-
-
-class UtcRunClock:
-    def now(self) -> datetime:
-        return datetime.now(tz=UTC)
-
-
-class SleepStageExecutionController:
-    def __init__(self, delay_ms: int) -> None:
-        self._delay_ms = delay_ms
-
-    async def before_stage(self, *, run: Run, stage: RunStage) -> None:
-        if self._delay_ms > 0:
-            await asyncio.sleep(self._delay_ms / 1000)
-
-    async def after_stage(self, *, run: Run, stage: RunStage) -> None:
-        return None
 
 
 @dataclass(slots=True)
@@ -261,21 +243,3 @@ def next_stage_after(stage: RunStage) -> RunStage | None:
     return RUN_STAGE_SEQUENCE[current_index + 1]
 
 
-def stage_started_message(stage: RunStage) -> str:
-    if stage == RunStage.RETRIEVE:
-        return "Searching for relevant sources"
-    if stage == RunStage.DRAFT:
-        return "Drafting report"
-    if stage == RunStage.EVALUATE:
-        return "Checking quality"
-    return "Exporting result"
-
-
-def stage_completed_message(stage: RunStage) -> str:
-    if stage == RunStage.RETRIEVE:
-        return "Source search complete"
-    if stage == RunStage.DRAFT:
-        return "Drafting complete"
-    if stage == RunStage.EVALUATE:
-        return "Quality check complete"
-    return "Export complete"

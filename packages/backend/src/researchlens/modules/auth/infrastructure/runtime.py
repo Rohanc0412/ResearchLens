@@ -1,6 +1,6 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from typing import Any
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
@@ -21,6 +21,7 @@ from researchlens.modules.auth.application import (
 from researchlens.modules.auth.application.dto import AuthenticatedActor
 from researchlens.modules.auth.application.token_lifecycle import TokenLifecycle
 from researchlens.modules.auth.domain import PasswordPolicy
+from researchlens.modules.auth.infrastructure.auth_request_context import AuthRequestContext
 from researchlens.modules.auth.infrastructure.clock import SystemClock
 from researchlens.modules.auth.infrastructure.email import CapturingPasswordResetMailer
 from researchlens.modules.auth.infrastructure.repositories import SqlAlchemyAuthRepository
@@ -33,22 +34,6 @@ from researchlens.modules.auth.infrastructure.security import (
 )
 from researchlens.shared.config import ResearchLensSettings
 from researchlens.shared.db import SqlAlchemyTransactionManager
-
-
-@dataclass(slots=True)
-class AuthRequestContext:
-    register_user: RegisterUserUseCase
-    login_user: LoginUserUseCase
-    refresh_auth_session: RefreshAuthSessionUseCase
-    logout_auth_session: LogoutAuthSessionUseCase
-    get_current_user: GetCurrentUserUseCase
-    request_password_reset: RequestPasswordResetUseCase
-    confirm_password_reset: ConfirmPasswordResetUseCase
-    get_mfa_status: GetMfaStatusUseCase
-    start_mfa_enrollment: StartMfaEnrollmentUseCase
-    verify_mfa_enrollment: VerifyMfaEnrollmentUseCase
-    verify_mfa_challenge: VerifyMfaChallengeUseCase
-    disable_mfa: DisableMfaUseCase
 
 
 class SqlAlchemyAuthRuntime:
@@ -96,12 +81,36 @@ class SqlAlchemyAuthRuntime:
         transaction_manager = SqlAlchemyTransactionManager(session)
         token_lifecycle = self._build_token_lifecycle(repository)
         return AuthRequestContext(
-            register_user=self._build_register_user_use_case(
+            **self._session_use_cases(
+                repository=repository,
+                transaction_manager=transaction_manager,
+                token_lifecycle=token_lifecycle,
+            ),
+            **self._reset_use_cases(
+                repository=repository,
+                transaction_manager=transaction_manager,
+            ),
+            **self._mfa_use_cases(
+                repository=repository,
+                transaction_manager=transaction_manager,
+                token_lifecycle=token_lifecycle,
+            ),
+        )
+
+    def _session_use_cases(
+        self,
+        *,
+        repository: SqlAlchemyAuthRepository,
+        transaction_manager: SqlAlchemyTransactionManager,
+        token_lifecycle: TokenLifecycle,
+    ) -> dict[str, Any]:
+        return {
+            "register_user": self._build_register_user_use_case(
                 repository,
                 transaction_manager,
                 token_lifecycle,
             ),
-            login_user=LoginUserUseCase(
+            "login_user": LoginUserUseCase(
                 repository=repository,
                 transaction_manager=transaction_manager,
                 password_hasher=self._password_hasher,
@@ -109,30 +118,49 @@ class SqlAlchemyAuthRuntime:
                 token_issuer=self._token_issuer,
                 clock=self._clock,
             ),
-            refresh_auth_session=RefreshAuthSessionUseCase(
+            "refresh_auth_session": RefreshAuthSessionUseCase(
                 repository=repository,
                 transaction_manager=transaction_manager,
                 refresh_token_hasher=self._refresh_token_hasher,
                 token_lifecycle=token_lifecycle,
                 clock=self._clock,
             ),
-            logout_auth_session=LogoutAuthSessionUseCase(
+            "logout_auth_session": LogoutAuthSessionUseCase(
                 repository=repository,
                 transaction_manager=transaction_manager,
                 refresh_token_hasher=self._refresh_token_hasher,
                 clock=self._clock,
             ),
-            get_current_user=self._build_get_current_user_use_case(repository),
-            request_password_reset=self._build_request_password_reset_use_case(
+            "get_current_user": self._build_get_current_user_use_case(repository),
+        }
+
+    def _reset_use_cases(
+        self,
+        *,
+        repository: SqlAlchemyAuthRepository,
+        transaction_manager: SqlAlchemyTransactionManager,
+    ) -> dict[str, Any]:
+        return {
+            "request_password_reset": self._build_request_password_reset_use_case(
                 repository,
                 transaction_manager,
             ),
-            confirm_password_reset=self._build_confirm_password_reset_use_case(
+            "confirm_password_reset": self._build_confirm_password_reset_use_case(
                 repository,
                 transaction_manager,
             ),
-            get_mfa_status=GetMfaStatusUseCase(repository=repository),
-            start_mfa_enrollment=StartMfaEnrollmentUseCase(
+        }
+
+    def _mfa_use_cases(
+        self,
+        *,
+        repository: SqlAlchemyAuthRepository,
+        transaction_manager: SqlAlchemyTransactionManager,
+        token_lifecycle: TokenLifecycle,
+    ) -> dict[str, Any]:
+        return {
+            "get_mfa_status": GetMfaStatusUseCase(repository=repository),
+            "start_mfa_enrollment": StartMfaEnrollmentUseCase(
                 repository=repository,
                 transaction_manager=transaction_manager,
                 totp_service=self._totp_service,
@@ -141,13 +169,13 @@ class SqlAlchemyAuthRuntime:
                 period_seconds=self._settings.auth.mfa_totp_period_seconds,
                 digits=self._settings.auth.mfa_totp_digits,
             ),
-            verify_mfa_enrollment=VerifyMfaEnrollmentUseCase(
+            "verify_mfa_enrollment": VerifyMfaEnrollmentUseCase(
                 repository=repository,
                 transaction_manager=transaction_manager,
                 totp_service=self._totp_service,
                 clock=self._clock,
             ),
-            verify_mfa_challenge=VerifyMfaChallengeUseCase(
+            "verify_mfa_challenge": VerifyMfaChallengeUseCase(
                 repository=repository,
                 transaction_manager=transaction_manager,
                 token_issuer=self._token_issuer,
@@ -155,13 +183,13 @@ class SqlAlchemyAuthRuntime:
                 token_lifecycle=token_lifecycle,
                 clock=self._clock,
             ),
-            disable_mfa=DisableMfaUseCase(
+            "disable_mfa": DisableMfaUseCase(
                 repository=repository,
                 transaction_manager=transaction_manager,
                 totp_service=self._totp_service,
                 clock=self._clock,
             ),
-        )
+        }
 
     def _build_token_lifecycle(
         self,

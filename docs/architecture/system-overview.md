@@ -1,6 +1,6 @@
 # System Overview
 
-ResearchLens is a phased monorepo rebuild. Phase 5 extends the Phase 4 foundation with a dedicated `runs` slice for lifecycle state, queueing, events, checkpoints, retry/cancel flows, worker polling, and streaming.
+ResearchLens is a phased monorepo rebuild. Phase 6 builds on the Phase 5 run lifecycle with a retrieval foundation: outline-first planning, provider contracts, candidate normalization/ranking/diversification, source ingestion persistence, and worker lifecycle integration.
 
 ## Monorepo structure
 
@@ -23,7 +23,7 @@ This separation keeps runtime entrypoints thin and dependency direction explicit
 - reusable code remains installable and testable
 - Docker, CI, pytest, and Alembic use the same installed-package boundaries as local development
 
-## Phase 5 status
+## Phase 6 status
 
 The backend currently includes:
 
@@ -34,8 +34,10 @@ The backend currently includes:
 - one migration-backed `auth` module with register, login, refresh, logout, `/auth/me`, password reset request/confirm, and TOTP MFA enrollment/challenge/disable
 - one migration-backed `conversations` module with project-scoped conversation CRUD and message persistence
 - one migration-backed `runs` module with canonical create/get/cancel/retry/event routes, DB-backed queue leasing, append-only events and checkpoints, and retry/cancel lifecycle rules
-- worker polling that reuses the same shared foundation and executes the placeholder run stage pipeline
+- one migration-backed `retrieval` module with provider-agnostic search contracts, Paper Search MCP as primary provider, PubMed/Europe PMC/OpenAlex/arXiv fallback providers, pure ranking/diversification policies, source/snapshot/chunk/embedding-cache tables, and thin retrieval orchestration
+- provider-agnostic shared LLM and embedding ports with OpenAI adapters isolated under `shared/llm/providers` and `shared/embeddings/providers`
+- worker polling that reuses the same shared foundation and executes the real retrieval stage through the Phase 5 stage controller boundary
 
 Phase 3 replaced the Phase 2 `bootstrap_actor` protected-route identity path with auth-backed bearer token resolution. Phase 5 keeps that bearer-token identity path for project, conversation, message, and run lifecycle routes. Health routes remain public.
 
-Retrieval, drafting, evaluation, repair, export business logic, richer tenant authorization, frontend auth UX, and recovery-code MFA UX remain out of scope. Phase 5 proves the lifecycle shell only; later phases plug real pipeline work into the existing run backbone.
+Drafting, evaluation, repair, export business logic, richer tenant authorization, frontend auth UX, and recovery-code MFA UX remain out of scope. Phase 6 does not add a public retrieval API or evidence inspection UI; it prepares the internal retrieval substrate for later phases.

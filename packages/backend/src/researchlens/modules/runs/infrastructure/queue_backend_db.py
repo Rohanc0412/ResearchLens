@@ -1,9 +1,7 @@
 from datetime import datetime, timedelta
-from typing import Any, cast
 from uuid import UUID, uuid4
 
 from sqlalchemy import and_, or_, select, update
-from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql.elements import ColumnElement
 
@@ -90,7 +88,7 @@ class DbRunQueueBackend(RunQueueBackend):
             )
             .values(lease_expires_at=lease_expires_at, updated_at=lease_expires_at)
         )
-        result = cast(CursorResult[Any], await self._session.execute(statement))
+        result = await self._session.execute(statement)
         return (result.rowcount or 0) > 0
 
     async def complete(
@@ -115,7 +113,7 @@ class DbRunQueueBackend(RunQueueBackend):
                 updated_at=completed_at,
             )
         )
-        result = cast(CursorResult[Any], await self._session.execute(statement))
+        result = await self._session.execute(statement)
         return (result.rowcount or 0) > 0
 
     async def release(
@@ -143,7 +141,7 @@ class DbRunQueueBackend(RunQueueBackend):
                 updated_at=available_at,
             )
         )
-        result = cast(CursorResult[Any], await self._session.execute(statement))
+        result = await self._session.execute(statement)
         return (result.rowcount or 0) > 0
 
     async def cancel_active_for_run(self, *, run_id: UUID, canceled_at: datetime) -> None:
@@ -220,7 +218,7 @@ class DbRunQueueBackend(RunQueueBackend):
                     updated_at=now,
                 )
             )
-            result = cast(CursorResult[Any], await self._session.execute(update_statement))
+            result = await self._session.execute(update_statement)
             if (result.rowcount or 0) == 0:
                 continue
             row = await self._session.get(RunQueueItemRow, candidate_id)

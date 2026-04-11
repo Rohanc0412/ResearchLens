@@ -23,7 +23,7 @@ from researchlens.modules.runs.application.process_run_queue_item import (
     ProcessRunQueueItemUseCase,
 )
 from researchlens.modules.runs.application.retry_run import RetryRunCommand, RetryRunUseCase
-from researchlens.modules.runs.application.run_execution_support import (
+from researchlens.modules.runs.application.stage_execution_controller import (
     SleepStageExecutionController,
 )
 

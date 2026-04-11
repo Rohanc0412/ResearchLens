@@ -13,7 +13,12 @@ from researchlens.modules.conversations.application.ports import (
     MessageRepository,
     TransactionManager,
 )
-from researchlens.modules.conversations.domain import Message, MessageRole, MessageType
+from researchlens.modules.conversations.domain import (
+    Conversation,
+    Message,
+    MessageRole,
+    MessageType,
+)
 from researchlens.shared.errors import NotFoundError
 
 logger = logging.getLogger(__name__)
@@ -46,47 +51,11 @@ class PostMessageUseCase:
 
     async def execute(self, command: PostMessageCommand) -> MessageWriteResult:
         async with self._transaction_manager.boundary():
-            conversation = await self._conversation_repository.get_by_id_for_tenant(
-                tenant_id=command.tenant_id,
-                conversation_id=command.conversation_id,
-            )
-            if conversation is None:
-                raise NotFoundError("Conversation was not found.")
-
-            if command.client_message_id is not None:
-                existing_message = await self._message_repository.get_by_client_message_id(
-                    tenant_id=command.tenant_id,
-                    conversation_id=command.conversation_id,
-                    client_message_id=command.client_message_id,
-                )
-                if existing_message is not None:
-                    logger.info(
-                        "message.create tenant_id=%s user_id=%s conversation_id=%s "
-                        "message_id=%s client_message_id=%s replay=true",
-                        command.tenant_id,
-                        command.user_id,
-                        command.conversation_id,
-                        existing_message.id,
-                        existing_message.client_message_id,
-                    )
-                    return MessageWriteResult(
-                        message=to_message_view(existing_message),
-                        idempotent_replay=True,
-                    )
-
-            timestamp = datetime.now(tz=UTC)
-            message = Message.create(
-                id=uuid4(),
-                tenant_id=command.tenant_id,
-                conversation_id=command.conversation_id,
-                role=command.role,
-                type=command.type,
-                content_text=command.content_text,
-                content_json=command.content_json,
-                metadata_json=command.metadata_json,
-                created_at=timestamp,
-                client_message_id=command.client_message_id,
-            )
+            conversation = await self._require_conversation(command)
+            replay = await self._idempotent_replay(command)
+            if replay is not None:
+                return replay
+            message = _message_from_command(command)
             created_message = await self._message_repository.add(message)
             updated_conversation = conversation.record_message(
                 message_created_at=created_message.created_at
@@ -106,3 +75,51 @@ class PostMessageUseCase:
             message=to_message_view(created_message),
             idempotent_replay=False,
         )
+
+    async def _require_conversation(self, command: PostMessageCommand) -> Conversation:
+        conversation = await self._conversation_repository.get_by_id_for_tenant(
+            tenant_id=command.tenant_id,
+            conversation_id=command.conversation_id,
+        )
+        if conversation is None:
+            raise NotFoundError("Conversation was not found.")
+        return conversation
+
+    async def _idempotent_replay(
+        self,
+        command: PostMessageCommand,
+    ) -> MessageWriteResult | None:
+        if command.client_message_id is None:
+            return None
+        existing_message = await self._message_repository.get_by_client_message_id(
+            tenant_id=command.tenant_id,
+            conversation_id=command.conversation_id,
+            client_message_id=command.client_message_id,
+        )
+        if existing_message is None:
+            return None
+        logger.info(
+            "message.create tenant_id=%s user_id=%s conversation_id=%s "
+            "message_id=%s client_message_id=%s replay=true",
+            command.tenant_id,
+            command.user_id,
+            command.conversation_id,
+            existing_message.id,
+            existing_message.client_message_id,
+        )
+        return MessageWriteResult(message=to_message_view(existing_message), idempotent_replay=True)
+
+
+def _message_from_command(command: PostMessageCommand) -> Message:
+    return Message.create(
+        id=uuid4(),
+        tenant_id=command.tenant_id,
+        conversation_id=command.conversation_id,
+        role=command.role,
+        type=command.type,
+        content_text=command.content_text,
+        content_json=command.content_json,
+        metadata_json=command.metadata_json,
+        created_at=datetime.now(tz=UTC),
+        client_message_id=command.client_message_id,
+    )

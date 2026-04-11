@@ -80,3 +80,31 @@ def test_projects_application_does_not_import_sqlalchemy() -> None:
     for file_path in root.rglob("*.py"):
         for target in _iter_import_targets(file_path):
             assert not target.startswith("sqlalchemy")
+
+
+def test_application_layers_do_not_import_module_infrastructure() -> None:
+    root = Path("packages/backend/src/researchlens/modules")
+    for file_path in root.rglob("application/*.py"):
+        owner = _owner_module_name(file_path)
+        forbidden = f"researchlens.modules.{owner}.infrastructure"
+        for target in _iter_import_targets(file_path):
+            assert not target.startswith(forbidden)
+
+
+def test_python_production_files_stay_under_hard_size_caps() -> None:
+    root = Path("packages/backend/src")
+    for file_path in root.rglob("*.py"):
+        line_count = len(file_path.read_text(encoding="utf-8").splitlines())
+        assert line_count <= 300, f"{file_path} has {line_count} lines"
+
+
+def test_python_production_functions_stay_under_hard_size_caps() -> None:
+    root = Path("packages/backend/src")
+    for file_path in root.rglob("*.py"):
+        tree = ast.parse(file_path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.FunctionDef | ast.AsyncFunctionDef):
+                start_line = node.lineno
+                end_line = getattr(node, "end_lineno", start_line)
+                line_count = end_line - start_line + 1
+                assert line_count <= 60, f"{file_path}:{node.name} has {line_count} lines"

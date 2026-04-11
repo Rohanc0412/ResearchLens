@@ -8,7 +8,7 @@ from researchlens.modules.runs.application.ports import (
     RunRepository,
     TransactionManager,
 )
-from researchlens.modules.runs.application.run_execution_support import RunClock
+from researchlens.modules.runs.application.stage_execution_controller import RunClock
 from researchlens.modules.runs.domain import (
     Run,
     RunEventAudience,
