@@ -1,6 +1,6 @@
 # Module Boundaries
 
-ResearchLens backend code uses explicit layers inside each module. Phase 2 validated those boundaries with the `projects` slice, Phase 3 added `auth`, and Phase 4 adds `conversations` without turning routes or repositories into mixed workflow files.
+ResearchLens backend code uses explicit layers inside each module. Phase 2 validated those boundaries with the `projects` slice, Phase 3 added `auth`, Phase 4 added `conversations`, and Phase 5 adds `runs` without turning routes, repositories, or worker entrypoints into mixed workflow files.
 
 ## Required layers
 
@@ -17,7 +17,7 @@ ResearchLens backend code uses explicit layers inside each module. Phase 2 valid
 - Transaction ownership must stay explicit. Repositories and routes do not commit or roll back.
 - ORM or storage models must not leak into domain or presentation layers.
 - Provider SDKs stay inside infrastructure adapters.
-- Conversation, message, and run-trigger responsibilities stay split across distinct use cases, routes, and repositories. Do not recreate a mixed `chat.py` flow.
+- Conversation, message, and run lifecycle responsibilities stay split across distinct use cases, routes, repositories, and queue/event stores. Do not recreate a mixed `chat.py` or `runner.py` flow.
 - Auth crypto, JWT issuance, refresh token hashing, password reset token hashing, and mail delivery stay inside `auth.infrastructure`.
 - Auth password policy and token/session invariants stay in `auth.domain` or `auth.application`, not in routes or shared helpers.
 - Shared code must remain generic and cross-cutting only.
@@ -50,4 +50,6 @@ Phase 2 enforces this structure through `import-linter` plus backend-owned regre
 
 Protected project routes now resolve request identity through a composition-owned auth runtime protocol instead of importing the auth module directly or reading `bootstrap_actor` settings.
 
-Conversation, message, and run-trigger presentation code follows the same pattern: presentation depends on a composition-owned auth runtime protocol plus a request-scoped module runtime rather than reaching into auth infrastructure or shared DB helpers directly.
+Conversation, message, and run presentation code follows the same pattern: presentation depends on a composition-owned auth runtime protocol plus a request-scoped module runtime rather than reaching into auth infrastructure or shared DB helpers directly.
+
+Phase 5 applies the same rule to `runs`: route handlers only authenticate, validate, call use cases, and host SSE transport; queue/event/checkpoint persistence stays in `runs.infrastructure`; retry floor rules, cancel semantics, and status transitions stay in `runs.application` and `runs.domain`.

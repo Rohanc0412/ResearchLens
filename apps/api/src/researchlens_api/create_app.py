@@ -7,9 +7,9 @@ from researchlens.modules.auth.presentation import router as auth_router
 from researchlens.modules.conversations.presentation import (
     conversation_router,
     message_router,
-    run_trigger_router,
 )
 from researchlens.modules.projects.presentation import router as projects_router
+from researchlens.modules.runs.presentation import router as runs_router
 from researchlens.shared.errors import InfrastructureError
 from researchlens.shared.logging import RequestLoggingMiddleware
 from researchlens_api.bootstrap import build_api_bootstrap_state
@@ -60,7 +60,7 @@ def create_app() -> FastAPI:
     app.include_router(projects_router)
     app.include_router(conversation_router)
     app.include_router(message_router)
-    app.include_router(run_trigger_router)
+    app.include_router(runs_router)
     return app
 
 
@@ -77,5 +77,10 @@ def _schema_is_ready(connection: Connection) -> bool:
         "conversations",
         "messages",
         "projects",
+        "run_checkpoints",
+        "run_events",
+        "run_queue_items",
+        "run_status_transitions",
+        "runs",
     }
     return all(inspector.has_table(table_name) for table_name in required_tables)

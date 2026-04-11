@@ -8,7 +8,7 @@ from sqlalchemy import create_engine, inspect
 from researchlens.shared.db import normalize_migration_database_url
 
 
-def test_alembic_upgrade_creates_phase_4_tables(
+def test_alembic_upgrade_creates_phase_5_tables(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -31,4 +31,9 @@ def test_alembic_upgrade_creates_phase_4_tables(
     assert inspector.has_table("conversations")
     assert inspector.has_table("messages")
     assert inspector.has_table("conversation_run_triggers")
+    assert inspector.has_table("runs")
+    assert inspector.has_table("run_events")
+    assert inspector.has_table("run_status_transitions")
+    assert inspector.has_table("run_checkpoints")
+    assert inspector.has_table("run_queue_items")
     assert inspector.has_table("alembic_version")

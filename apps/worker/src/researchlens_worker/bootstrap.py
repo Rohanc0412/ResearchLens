@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from researchlens.shared.config import ResearchLensSettings, get_settings
 from researchlens.shared.db import DatabaseRuntime, build_database_runtime
 from researchlens.shared.logging import configure_logging
+from researchlens.worker_composition import WorkerRunsRuntime, build_worker_runs_runtime
 
 logger = logging.getLogger(__name__)
 
@@ -12,6 +13,7 @@ logger = logging.getLogger(__name__)
 class WorkerBootstrapState:
     settings: ResearchLensSettings
     database: DatabaseRuntime
+    runs_runtime: WorkerRunsRuntime
 
 
 def build_worker_bootstrap_state() -> WorkerBootstrapState:
@@ -22,4 +24,9 @@ def build_worker_bootstrap_state() -> WorkerBootstrapState:
         json_logs=settings.observability.json_logs,
     )
     logger.info("worker bootstrap ready environment=%s", settings.app.environment)
-    return WorkerBootstrapState(settings=settings, database=build_database_runtime(settings))
+    database = build_database_runtime(settings)
+    return WorkerBootstrapState(
+        settings=settings,
+        database=database,
+        runs_runtime=build_worker_runs_runtime(database=database, settings=settings),
+    )

@@ -1,6 +1,6 @@
 # Settings
 
-Phase 3 centralizes backend configuration under `researchlens.shared.config` using `pydantic-settings`.
+Phase 5 centralizes backend configuration under `researchlens.shared.config` using `pydantic-settings`.
 
 ## Principles
 
@@ -20,7 +20,7 @@ Phase 3 centralizes backend configuration under `researchlens.shared.config` usi
 - `llm`: provider selection and credentials
 - `embeddings`: provider selection, model, credentials, cache behavior
 - `observability`: service name, log level, JSON logs, tracing toggle
-- `queue`: backend mode, URL, polling interval
+- `queue`: backend mode, URL, polling interval, lease timing, claim batch size, SSE keepalive/grace windows, and placeholder stage delay
 - `storage`: local or S3 mode, local artifact root, bucket, endpoint
 
 ## Validation
@@ -68,3 +68,22 @@ Important auth settings include:
 - `AUTH_MFA_TOTP_WINDOW`
 
 Tests set `AUTH_REFRESH_COOKIE_SECURE=false` for local TestClient cookie flows. Production must not use the dev token secrets or dev bypass.
+
+Phase 5 queue settings include:
+
+- `QUEUE_BACKEND`: `db`, `memory`, or `redis`; Phase 5 defaults to `db`
+- `QUEUE_POLL_INTERVAL_SECONDS`: worker poll cadence
+- `QUEUE_LEASE_SECONDS`: queue lease duration before reclaim is allowed
+- `QUEUE_MAX_ATTEMPTS`: reserved upper bound for future retry/backoff handling
+- `QUEUE_MAX_ATTEMPTS`: hard ceiling on queue claim attempts for the same queue item
+- `QUEUE_BATCH_SIZE`: max claimed queue items per poll
+- `QUEUE_SSE_KEEPALIVE_SECONDS`: idle SSE keepalive cadence
+- `QUEUE_SSE_TERMINAL_GRACE_SECONDS`: terminal stream grace window
+- `QUEUE_RUN_STUB_STAGE_DELAY_MS`: placeholder stage delay for the Phase 5 worker shell
+
+Phase 5 queue note:
+
+- The canonical queue backend for this phase is `db`.
+- `redis` remains a validated settings option only; no external broker implementation is used in Phase 5.
+- SSE and worker timing settings stay safe for local startup and installed-package test execution.
+- The worker now has an explicit stop path and exits its poll loop cleanly on shutdown signals instead of relying on abrupt process termination.

@@ -153,9 +153,11 @@ def test_delete_conversation_cascades_messages(migrated_database_url: str) -> No
     assert get_message_response.status_code == 404
 
 
-def test_run_trigger_records_intent_without_execution(migrated_database_url: str) -> None:
+def test_run_trigger_route_is_a_compatibility_alias_for_run_creation(
+    migrated_database_url: str,
+) -> None:
     with TestClient(create_app()) as client:
-        token, user_id = _register_user(client, "casey", "casey@example.com")
+        token, _ = _register_user(client, "casey", "casey@example.com")
         headers = {"Authorization": f"Bearer {token}"}
         project_id = _create_project(client, headers, name="Alpha")
         conversation_id = _create_conversation(client, headers, project_id)
@@ -176,11 +178,10 @@ def test_run_trigger_records_intent_without_execution(migrated_database_url: str
         )
 
     assert trigger_response.status_code == 201
-    assert trigger_response.json()["conversation_id"] == conversation_id
-    assert trigger_response.json()["project_id"] == project_id
-    assert trigger_response.json()["source_message_id"] == message_id
-    assert trigger_response.json()["created_by_user_id"] == user_id
-    assert trigger_response.json()["status"] == "recorded"
+    assert trigger_response.json()["idempotent_replay"] is False
+    assert trigger_response.json()["run"]["conversation_id"] == conversation_id
+    assert trigger_response.json()["run"]["project_id"] == project_id
+    assert trigger_response.json()["run"]["status"] == "queued"
 
 
 def _register_user(client: TestClient, username: str, email: str) -> tuple[str, str]:
