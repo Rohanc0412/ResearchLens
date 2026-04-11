@@ -24,7 +24,7 @@ Every status-changing write persists the updated `runs` row, a `run_status_trans
 - `POST /conversations/{conversation_id}/run-triggers` remains as a compatibility alias only.
 - The conversations module is no longer the lifecycle source of truth.
 - Runs belong primarily to `project_id`; `conversation_id` is nullable and uses `ON DELETE SET NULL`.
-- Project deletion behavior is unchanged in Phase 5, so run history retention across project deletes remains a later-phase risk.
+- Project deletion still cascades through the current schema, so run history retention across project deletes remains a later-phase risk.
 
 ## Queue and lease semantics
 
@@ -33,7 +33,7 @@ Every status-changing write persists the updated `runs` row, a `run_status_trans
 - Claim order is oldest available item first.
 - Claimed work receives a lease token plus `lease_expires_at`.
 - If a worker dies before completion, another worker may reclaim the item after lease expiry.
-- Queue claims stop once `QUEUE_MAX_ATTEMPTS` is reached; exhausted items are no longer reclaimed for additional processing attempts in Phase 5.
+- Queue claims stop once `QUEUE_MAX_ATTEMPTS` is reached; exhausted items are no longer reclaimed for additional processing attempts.
 - PostgreSQL uses row-locking claim semantics; SQLite tests use a conditional-update fallback that preserves correctness.
 
 ## Checkpoints

@@ -2,15 +2,6 @@ from datetime import UTC, datetime
 from uuid import uuid4
 
 import pytest
-from packages.backend.tests.unit.conversations.fakes import (
-    FakeTransactionManager,
-    InMemoryConversationRepository,
-    InMemoryMessageRepository,
-    InMemoryProjectScopeReader,
-    InMemoryRunTriggerRepository,
-    build_conversation,
-    with_created_at,
-)
 
 from researchlens.modules.conversations.application import (
     CreateConversationCommand,
@@ -33,6 +24,16 @@ from researchlens.modules.conversations.domain import (
     MessageType,
 )
 from researchlens.shared.errors import NotFoundError
+
+from .fakes import (
+    FakeTransactionManager,
+    InMemoryConversationRepository,
+    InMemoryMessageRepository,
+    InMemoryProjectScopeReader,
+    InMemoryRunTriggerRepository,
+    build_conversation,
+    with_created_at,
+)
 
 
 @pytest.mark.asyncio

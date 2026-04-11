@@ -30,7 +30,7 @@ Use async when I/O dominates, such as database access, HTTP provider calls, SSE,
 
 ## Testing
 
-Every phase should add or update tests when behavior changes. The repository must support unit, integration, contract, end-to-end, and targeted property-style tests over time. Phase 0 adds smoke-level tests only.
+Every phase should add or update tests when behavior changes. The repository supports smoke, unit, integration, contract, end-to-end, architecture, regression, and targeted property-style tests where they fit the changed behavior.
 
 ## Documentation
 

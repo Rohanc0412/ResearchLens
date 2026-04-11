@@ -2,25 +2,25 @@
 
 ResearchLens is being rebuilt as a quality-first monorepo for research workflow orchestration, evidence handling, drafting, evaluation, and artifact production. This repository is the phased reconstruction, not a direct continuation of the previous code layout.
 
-Phase 5 adds a dedicated `runs` slice for run lifecycle state, DB-backed queueing, events, checkpoints, retry/cancel flows, worker polling, and SSE progress streaming on top of the Phase 4 projects/conversations foundation. Retrieval, drafting, evaluation, repair, export business logic, and the broader frontend rebuild still remain deferred.
+The current backend includes auth, projects, conversations, run lifecycle, DB-backed queueing, SSE progress streaming, and an internal Phase 6 retrieval stage. Retrieval now performs outline-first planning, provider search, candidate normalization/ranking/diversification, source ingestion, and run-source persistence through the worker. Drafting, evaluation, repair, export business logic, recovery-code MFA UX, richer tenant authorization, and the broader frontend rebuild remain deferred.
 
 The cloned `ResearchLens` directory is the project root. Do not create a nested `ResearchLens/ResearchLens/` folder. All repo paths are relative to the current root.
 
 ## Repository layout
 
-- `apps/api`: bootstrap-only ASGI entrypoint for the future API service.
-- `apps/worker`: thin worker process that polls the DB-backed run queue and executes the placeholder run lifecycle pipeline.
-- `apps/web`: minimal frontend scaffold with disciplined feature/entity/widget structure.
-- `packages/backend`: installable backend package with shared primitives and module placeholders.
-- `packages/api_client`: placeholder for generated API client artifacts.
-- `packages/ui`: placeholder UI package for shared frontend components.
+- `apps/api`: thin ASGI entrypoint that wires logging, middleware, health, auth, projects, conversations, and runs routes from the backend package.
+- `apps/worker`: thin worker process that polls the DB-backed run queue and executes the retrieval-aware run lifecycle pipeline.
+- `apps/web`: frontend scaffold with disciplined page/widget/feature/entity/shared structure and a placeholder shell.
+- `packages/backend`: installable backend package with shared primitives, migrations, tests, and modular business slices.
+- `packages/api_client`: TypeScript workspace package reserved for generated API client artifacts.
+- `packages/ui`: shared React UI workspace package with generic reusable components.
 - `docs`: architecture, phase workflow, ADR guidance, and phase reports.
 - `infra`: development-only Docker, compose, and GitHub automation support docs.
 - `scripts`: focused repository scripts only.
 
 ## Install
 
-Python 3.12, the `uv` Python module or CLI, Node.js, and Corepack-provided `pnpm` are the expected tools.
+Python 3.12, `uv` as either a Python module or CLI, Node.js, and Corepack-provided `pnpm` are the expected tools.
 
 ```bash
 make install
@@ -45,11 +45,11 @@ make build
 make format
 ```
 
-The root `package.json` uses recursive pnpm workspace scripts for JavaScript and TypeScript tasks. Python commands run from installed-package context through `python -m uv`.
+The root `package.json` uses recursive pnpm workspace scripts for JavaScript and TypeScript tasks. Local Make/Just commands run Python from installed-package context through `python -m uv`; CI uses the `uv` CLI after `astral-sh/setup-uv`.
 
-## Placeholder services
+## Local services
 
-Start the API scaffold:
+Start the API:
 
 ```bash
 make dev-api
@@ -61,7 +61,7 @@ Start the worker:
 make dev-worker
 ```
 
-Start the web scaffold:
+Start the web shell:
 
 ```bash
 make dev-web
@@ -76,4 +76,4 @@ python -m uv run --package researchlens-backend pytest packages/backend/tests
 python -m uv run --package researchlens-backend alembic -c packages/backend/alembic.ini upgrade head
 ```
 
-The API entrypoint stays composition-only and wires health, auth, projects, conversations, and runs routers from the backend package. The worker entrypoint stays composition-only and delegates queue polling and run processing to backend composition helpers and the installed runs module.
+The API entrypoint stays composition-only and wires health, auth, projects, conversations, and runs routers from the backend package. The worker entrypoint stays composition-only and delegates queue polling and retrieval-aware run processing to backend composition helpers and installed backend modules.

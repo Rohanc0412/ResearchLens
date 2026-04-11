@@ -1,6 +1,6 @@
 # Settings
 
-Phase 5 centralizes backend configuration under `researchlens.shared.config` using `pydantic-settings`.
+Backend configuration is centralized under `researchlens.shared.config` using `pydantic-settings`.
 
 ## Principles
 
@@ -20,7 +20,7 @@ Phase 5 centralizes backend configuration under `researchlens.shared.config` usi
 - `llm`: provider selection, GPT-5 nano model default, timeouts, structured output limits, and credentials
 - `embeddings`: provider selection, text-embedding-3-small model default, batching/concurrency limits, credentials, and cache behavior
 - `observability`: service name, log level, JSON logs, tracing toggle
-- `queue`: backend mode, URL, polling interval, lease timing, claim batch size, SSE keepalive/grace windows, and placeholder stage delay
+- `queue`: backend mode, URL, polling interval, lease timing, claim batch size, SSE keepalive/grace windows, and fallback stage delay
 - `storage`: local or S3 mode, local artifact root, bucket, endpoint
 
 ## Validation
@@ -69,34 +69,35 @@ Important auth settings include:
 
 Tests set `AUTH_REFRESH_COOKIE_SECURE=false` for local TestClient cookie flows. Production must not use the dev token secrets or dev bypass.
 
-Phase 5 queue settings include:
+Queue settings include:
 
-- `QUEUE_BACKEND`: `db`, `memory`, or `redis`; Phase 5 defaults to `db`
+- `QUEUE_BACKEND`: `db`, `memory`, or `redis`; defaults to `db`
 - `QUEUE_POLL_INTERVAL_SECONDS`: worker poll cadence
 - `QUEUE_LEASE_SECONDS`: queue lease duration before reclaim is allowed
-- `QUEUE_MAX_ATTEMPTS`: reserved upper bound for future retry/backoff handling
 - `QUEUE_MAX_ATTEMPTS`: hard ceiling on queue claim attempts for the same queue item
 - `QUEUE_BATCH_SIZE`: max claimed queue items per poll
 - `QUEUE_SSE_KEEPALIVE_SECONDS`: idle SSE keepalive cadence
 - `QUEUE_SSE_TERMINAL_GRACE_SECONDS`: terminal stream grace window
-- `QUEUE_RUN_STUB_STAGE_DELAY_MS`: placeholder stage delay for the Phase 5 worker shell
+- `QUEUE_RUN_STUB_STAGE_DELAY_MS`: delay used by the fallback sleep controller for non-retrieval stages that are not implemented yet
 
-Phase 5 queue note:
+Queue note:
 
-- The canonical queue backend for this phase is `db`.
-- `redis` remains a validated settings option only; no external broker implementation is used in Phase 5.
+- The canonical queue backend is `db`.
+- `redis` remains a validated settings option only; no external broker implementation is currently wired.
 - SSE and worker timing settings stay safe for local startup and installed-package test execution.
 - The worker now has an explicit stop path and exits its poll loop cleanly on shutdown signals instead of relying on abrupt process termination.
 
 Phase 6 retrieval settings include:
 
-- `RETRIEVAL_ENABLED_PROVIDERS`: comma-separated provider list; defaults to Paper Search MCP, PubMed, Europe PMC, OpenAlex, and arXiv
+- `RETRIEVAL_ENABLED_PROVIDERS`: JSON array provider list; defaults to Paper Search MCP, PubMed, Europe PMC, OpenAlex, and arXiv
 - `RETRIEVAL_PRIMARY_PROVIDER`: defaults to `paper_search_mcp`
-- `RETRIEVAL_FALLBACK_PROVIDERS`: defaults to `pubmed,europe_pmc,openalex,arxiv`
+- `RETRIEVAL_FALLBACK_PROVIDERS`: JSON array provider list; defaults to PubMed, Europe PMC, OpenAlex, and arXiv
 - `RETRIEVAL_FALLBACK_THRESHOLD`: fallback trigger threshold; defaults to 5 normalized candidates
+- `RETRIEVAL_MAX_SOURCES_PER_RUN`
 - `RETRIEVAL_MAX_OUTLINE_SECTIONS`
 - `RETRIEVAL_MAX_GLOBAL_QUERIES`
 - `RETRIEVAL_MAX_QUERIES_PER_SECTION`
+- `RETRIEVAL_MAX_GLOBAL_QUERIES_TOTAL`
 - `RETRIEVAL_MAX_RESULTS_PER_PROVIDER_QUERY`
 - `RETRIEVAL_MAX_CANDIDATES_AFTER_NORMALIZATION`
 - `RETRIEVAL_MAX_CANDIDATES_SENT_TO_RERANK`
@@ -107,6 +108,9 @@ Phase 6 retrieval settings include:
 - `RETRIEVAL_PROVIDER_TIMEOUT_SECONDS`
 - `RETRIEVAL_STAGE_SOFT_TIME_BUDGET_SECONDS`
 - ranking weights: `RETRIEVAL_RANKING_LEXICAL_WEIGHT`, `RETRIEVAL_RANKING_EMBEDDING_WEIGHT`, `RETRIEVAL_RANKING_RECENCY_WEIGHT`, and `RETRIEVAL_RANKING_CITATION_WEIGHT`
+- `RETRIEVAL_DIVERSITY_PER_BUCKET_LIMIT`
+- `RETRIEVAL_INGESTION_CHUNK_SIZE`
+- `RETRIEVAL_INGESTION_CHUNK_OVERLAP`
 
 Phase 6 LLM settings keep GPT-5 nano separate from embeddings:
 

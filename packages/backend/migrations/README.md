@@ -1,3 +1,3 @@
 # Migrations
 
-Alembic lives here and imports the installed `researchlens` package directly. Phase 1 wires migration execution and metadata loading without introducing business models yet.
+Alembic lives here and imports the installed `researchlens` package directly. Migrations load metadata from backend module infrastructure rows and must run from installed-package context without `PYTHONPATH` or cwd-dependent import tricks.

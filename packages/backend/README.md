@@ -1,3 +1,3 @@
 # researchlens-backend
 
-Canonical backend package for ResearchLens. Phase 1 centralizes runtime dependencies, typed settings, shared DB bootstrapping, Alembic wiring, tests, and architecture enforcement here.
+Canonical backend package for ResearchLens. It contains typed settings, shared DB/logging/error primitives, Alembic migrations, backend tests, and the modular backend slices for auth, projects, conversations, runs, and internal retrieval.

@@ -33,18 +33,20 @@ def test_canonical_identifier_normalization_is_stable_for_generated_inputs() -> 
 
     for _ in range(200):
         raw_doi = f"  10.{generator.randint(1000, 9999)}/ABC-{generator.randint(1, 999)}  "
+        raw_pmid = f" {generator.randint(1, 999999)} "
+        raw_pmcid = f" pmc{generator.randint(1, 999999)} "
         identifiers = CanonicalIdentifiers(
             doi=raw_doi,
-            pmid=f" {generator.randint(1, 999999)} ",
-            pmcid=f" pmc{generator.randint(1, 999999)} ",
+            pmid=raw_pmid,
+            pmcid=raw_pmcid,
         )
 
         normalized = identifiers.normalized()
 
         assert normalized == normalized.normalized()
         assert normalized.doi == raw_doi.strip().casefold()
-        assert normalized.pmid == identifiers.pmid.strip()
-        assert normalized.pmcid == identifiers.pmcid.strip().upper()
+        assert normalized.pmid == raw_pmid.strip()
+        assert normalized.pmcid == raw_pmcid.strip().upper()
 
 
 def test_title_hash_fallback_is_stable_across_whitespace_and_case_variants() -> None:

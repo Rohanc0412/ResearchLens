@@ -8,7 +8,7 @@ The repository is split into `apps/` and `packages/` so deployment-facing entryp
 
 - `apps/api` is the HTTP/API surface. It remains thin and owns only composition: logging bootstrap, exception handlers, middleware, health routes, auth/projects router wiring, and request-scoped runtime assembly.
 - `apps/worker` is the background execution process. It stays thin and owns only composition plus queue polling cadence; run lifecycle policy remains in the installed backend package.
-- `apps/web` is the future browser client. In Phase 0 it provides only a placeholder shell and disciplined folder structure.
+- `apps/web` is the browser client workspace. It currently renders a placeholder shell while preserving the disciplined frontend folder structure.
 
 - `packages/backend` is the canonical installable Python package for backend modules, typed config, shared DB runtime, migrations, and backend tests.
 - `packages/api_client` is reserved for generated TypeScript client artifacts.

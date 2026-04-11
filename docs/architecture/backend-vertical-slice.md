@@ -24,11 +24,13 @@ The goal is not feature breadth. The goal is to validate that the shared foundat
 - `infrastructure`: SQLAlchemy row, repository implementation, row-to-domain mapping, request runtime assembly
 - `presentation`: FastAPI schemas, actor dependency, routes
 
-The module currently exposes exactly four use cases:
+The module currently exposes these use cases:
 
 - `create_project`
+- `get_project`
 - `list_projects`
 - `rename_project`
+- `update_project_metadata`
 - `delete_project`
 
 No later-phase runs, conversations, retrieval, or orchestration logic is mixed into this slice.

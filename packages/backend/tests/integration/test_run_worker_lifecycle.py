@@ -1,7 +1,15 @@
 from datetime import UTC, datetime, timedelta
 
 import pytest
-from packages.backend.tests.integration.run_worker_lifecycle_support import (
+from sqlalchemy import func, select
+
+from researchlens.modules.retrieval.infrastructure.persistence.rows import RunRetrievalSourceRow
+from researchlens.modules.runs.domain import RunStage
+from researchlens.shared.config import get_settings
+from researchlens.shared.db import DatabaseRuntime
+from researchlens.worker_composition import build_worker_runs_runtime, poll_worker_once
+
+from .run_worker_lifecycle_support import (
     ControlledStageExecution,
     WorkerCrash,
     cancel_run,
@@ -14,13 +22,6 @@ from packages.backend.tests.integration.run_worker_lifecycle_support import (
     retry_run,
     seed_project_conversation,
 )
-from sqlalchemy import func, select
-
-from researchlens.modules.retrieval.infrastructure.persistence.rows import RunRetrievalSourceRow
-from researchlens.modules.runs.domain import RunStage
-from researchlens.shared.config import get_settings
-from researchlens.shared.db import DatabaseRuntime
-from researchlens.worker_composition import build_worker_runs_runtime, poll_worker_once
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,6 @@
 # Streaming Protocol
 
-Phase 5 exposes run progress through `GET /runs/{run_id}/events`.
+Run progress is exposed through `GET /runs/{run_id}/events`.
 
 ## Modes
 
@@ -44,7 +44,7 @@ The envelope is frontend-ready. UI consumers should display `message`, `display_
 
 ## Human-readable messages
 
-Phase 5 events are written for users, not backend operators. Examples include:
+Run events are written for users, not backend operators. Examples include:
 
 - `Run created`
 - `Waiting for an available worker`

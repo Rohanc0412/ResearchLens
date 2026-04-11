@@ -83,7 +83,11 @@ def upgrade() -> None:
             ondelete="CASCADE",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_retrieval_source_chunks")),
-        sa.UniqueConstraint("snapshot_id", "chunk_index", name=op.f("uq_retrieval_source_chunks_snapshot_id")),
+        sa.UniqueConstraint(
+            "snapshot_id",
+            "chunk_index",
+            name=op.f("uq_retrieval_source_chunks_snapshot_id"),
+        ),
     )
     op.create_index(
         op.f("ix_retrieval_source_chunks_snapshot_id"),
@@ -113,7 +117,11 @@ def upgrade() -> None:
             ondelete="SET NULL",
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_retrieval_chunk_embeddings")),
-        sa.UniqueConstraint("text_hash", "model", name=op.f("uq_retrieval_chunk_embeddings_text_hash")),
+        sa.UniqueConstraint(
+            "text_hash",
+            "model",
+            name=op.f("uq_retrieval_chunk_embeddings_text_hash"),
+        ),
     )
     op.create_index(
         op.f("ix_retrieval_chunk_embeddings_chunk_id"),
@@ -171,14 +179,32 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_run_retrieval_sources_source_id"), table_name="run_retrieval_sources")
     op.drop_index(op.f("ix_run_retrieval_sources_run_id"), table_name="run_retrieval_sources")
     op.drop_table("run_retrieval_sources")
-    op.drop_index(op.f("ix_retrieval_chunk_embeddings_text_hash"), table_name="retrieval_chunk_embeddings")
-    op.drop_index(op.f("ix_retrieval_chunk_embeddings_chunk_id"), table_name="retrieval_chunk_embeddings")
+    op.drop_index(
+        op.f("ix_retrieval_chunk_embeddings_text_hash"),
+        table_name="retrieval_chunk_embeddings",
+    )
+    op.drop_index(
+        op.f("ix_retrieval_chunk_embeddings_chunk_id"),
+        table_name="retrieval_chunk_embeddings",
+    )
     op.drop_table("retrieval_chunk_embeddings")
-    op.drop_index(op.f("ix_retrieval_source_chunks_text_hash"), table_name="retrieval_source_chunks")
-    op.drop_index(op.f("ix_retrieval_source_chunks_snapshot_id"), table_name="retrieval_source_chunks")
+    op.drop_index(
+        op.f("ix_retrieval_source_chunks_text_hash"),
+        table_name="retrieval_source_chunks",
+    )
+    op.drop_index(
+        op.f("ix_retrieval_source_chunks_snapshot_id"),
+        table_name="retrieval_source_chunks",
+    )
     op.drop_table("retrieval_source_chunks")
-    op.drop_index(op.f("ix_retrieval_source_snapshots_content_hash"), table_name="retrieval_source_snapshots")
-    op.drop_index(op.f("ix_retrieval_source_snapshots_source_id"), table_name="retrieval_source_snapshots")
+    op.drop_index(
+        op.f("ix_retrieval_source_snapshots_content_hash"),
+        table_name="retrieval_source_snapshots",
+    )
+    op.drop_index(
+        op.f("ix_retrieval_source_snapshots_source_id"),
+        table_name="retrieval_source_snapshots",
+    )
     op.drop_table("retrieval_source_snapshots")
     op.drop_index("ix_retrieval_sources_provider_record", table_name="retrieval_sources")
     op.drop_table("retrieval_sources")

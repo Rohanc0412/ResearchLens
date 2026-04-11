@@ -1,6 +1,6 @@
 # ADRs
 
-Future Architecture Decision Records should be stored in this folder as one file per decision.
+Architecture Decision Records are stored in this folder as one file per decision.
 
 Use filenames in the form:
 
