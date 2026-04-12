@@ -26,7 +26,7 @@ from researchlens.modules.runs.orchestration.checkpoint_bridge import (
     RunGraphCheckpointBridge,
 )
 from researchlens.modules.runs.orchestration.event_bridge import RunGraphEventBridge
-from researchlens.modules.runs.orchestration.state import checkpoint_stage_values
+from researchlens.modules.runs.orchestration.state import RunGraphState, checkpoint_stage_values
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,7 +101,7 @@ class RunGraphRuntimeBridge:
     async def stage_entered(
         self,
         *,
-        state: dict[str, object],
+        state: RunGraphState,
         stage: RunStage,
     ) -> bool:
         run = await self._run_repository.get_by_id_for_update(run_id=UUID(str(state["run_id"])))
@@ -122,7 +122,7 @@ class RunGraphRuntimeBridge:
     async def stage_completed(
         self,
         *,
-        state: dict[str, object],
+        state: RunGraphState,
         stage: RunStage,
     ) -> None:
         run = await self._run_repository.get_by_id_for_update(run_id=UUID(str(state["run_id"])))
@@ -146,7 +146,7 @@ class RunGraphRuntimeBridge:
         state["latest_checkpoint_key"] = latest.checkpoint_key if latest else None
         state["latest_checkpoint_stage"] = latest.stage.value if latest else None
 
-    async def finalize(self, *, state: dict[str, object]) -> None:
+    async def finalize(self, *, state: RunGraphState) -> None:
         run = await self._run_repository.get_by_id_for_update(run_id=UUID(str(state["run_id"])))
         if run is None:
             return
@@ -155,13 +155,13 @@ class RunGraphRuntimeBridge:
             return
         await self._terminal_mutations.finalize_success(run=run)
 
-    def stage_event_sink(self, *, state: dict[str, object], stage: RunStage) -> "_StageEventSink":
+    def stage_event_sink(self, *, state: RunGraphState, stage: RunStage) -> "_StageEventSink":
         return _StageEventSink(bridge=self._events, state=state, stage=stage)
 
     def stage_checkpoint_sink(
         self,
         *,
-        state: dict[str, object],
+        state: RunGraphState,
         stage: RunStage,
     ) -> "_StageCheckpointSink":
         return _StageCheckpointSink(bridge=self._checkpoints, state=state, stage=stage)
@@ -181,7 +181,7 @@ class _StageEventSink:
         self,
         *,
         bridge: RunGraphEventBridge,
-        state: dict[str, object],
+        state: RunGraphState,
         stage: RunStage,
     ) -> None:
         self._bridge = bridge
@@ -216,7 +216,7 @@ class _StageCheckpointSink:
         self,
         *,
         bridge: RunGraphCheckpointBridge,
-        state: dict[str, object],
+        state: RunGraphState,
         stage: RunStage,
     ) -> None:
         self._bridge = bridge

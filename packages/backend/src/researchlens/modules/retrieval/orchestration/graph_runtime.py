@@ -1,16 +1,16 @@
 from dataclasses import asdict
 from uuid import UUID
 
-from researchlens.modules.retrieval.application.ports import RetrievalIngestionRepository
+from researchlens.modules.retrieval.application.ports import (
+    RetrievalIngestionRepository,
+    SearchProvider,
+)
 from researchlens.modules.retrieval.application.retrieval_stage_steps import (
     RetrievalPlanningResult,
     RetrievalSelectionResult,
     RetrievalStageSteps,
 )
 from researchlens.modules.retrieval.domain.summary import RetrievalSummary
-from researchlens.modules.retrieval.infrastructure.providers.provider_registry import (
-    build_provider_registry,
-)
 from researchlens.modules.retrieval.orchestration.progress import (
     RetrievalGraphCheckpointSink,
     RetrievalGraphEventSink,
@@ -29,24 +29,19 @@ class RetrievalGraphRuntime:
         settings: ResearchLensSettings,
         events: RetrievalGraphEventSink,
         checkpoints: RetrievalGraphCheckpointSink,
+        primary_provider: SearchProvider,
+        fallback_providers: tuple[SearchProvider, ...],
         ingestion_repository: RetrievalIngestionRepository | None = None,
         llm_client: StructuredGenerationClient | None = None,
         embedding_client: EmbeddingClient | None = None,
     ) -> None:
         retrieval_settings = settings.retrieval
-        providers = build_provider_registry(retrieval_settings)
-        primary = providers[retrieval_settings.primary_provider]
-        fallback = tuple(
-            provider
-            for name, provider in providers.items()
-            if name in retrieval_settings.fallback_providers
-        )
         self._events = events
         self._checkpoints = checkpoints
         self._steps = RetrievalStageSteps(
             settings=retrieval_settings,
-            primary_provider=primary,
-            fallback_providers=fallback,
+            primary_provider=primary_provider,
+            fallback_providers=fallback_providers,
             ingestion_repository=ingestion_repository,
             llm_client=llm_client or _configured_llm(settings),
             embedding_client=embedding_client or _configured_embedding(settings),

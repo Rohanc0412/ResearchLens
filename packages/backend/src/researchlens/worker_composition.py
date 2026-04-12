@@ -16,6 +16,9 @@ from researchlens.modules.drafting.orchestration import (
 from researchlens.modules.retrieval.infrastructure.persistence.source_repository_sql import (
     SqlAlchemyRetrievalIngestionRepository,
 )
+from researchlens.modules.retrieval.infrastructure.providers.provider_registry import (
+    build_provider_registry,
+)
 from researchlens.modules.retrieval.orchestration import (
     RetrievalGraphRuntime,
     build_retrieval_subgraph,
@@ -80,6 +83,13 @@ def _build_run_orchestrator(
         clock=UtcRunClock(),
         queue_lease_seconds=settings.queue.lease_seconds,
     )
+    retrieval_providers = build_provider_registry(settings.retrieval)
+    primary_retrieval_provider = retrieval_providers[settings.retrieval.primary_provider]
+    fallback_retrieval_providers = tuple(
+        provider
+        for name, provider in retrieval_providers.items()
+        if name in settings.retrieval.fallback_providers
+    )
     return LangGraphRunOrchestrator(
         bridge=bridge,
         retrieval_subgraph_factory=lambda state: build_retrieval_subgraph(
@@ -87,6 +97,8 @@ def _build_run_orchestrator(
                 settings=settings,
                 events=bridge.stage_event_sink(state=state, stage=RunStage.RETRIEVE),
                 checkpoints=bridge.stage_checkpoint_sink(state=state, stage=RunStage.RETRIEVE),
+                primary_provider=primary_retrieval_provider,
+                fallback_providers=fallback_retrieval_providers,
                 ingestion_repository=SqlAlchemyRetrievalIngestionRepository(
                     session,
                     embedding_model=settings.embeddings.model,

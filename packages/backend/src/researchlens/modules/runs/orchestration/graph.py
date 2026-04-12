@@ -1,3 +1,6 @@
+from collections.abc import Awaitable, Callable
+from typing import Any, Protocol, cast
+
 from langgraph.graph import END, START, StateGraph
 
 from researchlens.modules.runs.domain import RunStage
@@ -5,25 +8,36 @@ from researchlens.modules.runs.orchestration.runtime_bridge import RunGraphRunti
 from researchlens.modules.runs.orchestration.state import RunGraphState, restore_graph_state
 
 
+class StageSubgraph(Protocol):
+    async def ainvoke(self, state: RunGraphState) -> RunGraphState: ...
+
+
+StageSubgraphFactory = Callable[[RunGraphState], StageSubgraph]
+RunNode = Callable[[RunGraphState], Awaitable[dict[str, object]]]
+
+
 def build_run_graph(
     *,
     bridge: RunGraphRuntimeBridge,
-    retrieval_subgraph_factory: object,
-    drafting_subgraph_factory: object,
-) -> object:
+    retrieval_subgraph_factory: StageSubgraphFactory,
+    drafting_subgraph_factory: StageSubgraphFactory,
+) -> Any:
     graph = StateGraph(RunGraphState)
-    graph.add_node("load_run_context", _load_run_context(bridge))
-    graph.add_node("restore_or_initialize_graph_state", _restore_graph_state())
-    graph.add_node("maybe_resume_from_checkpoint", _maybe_resume_from_checkpoint(bridge))
+    graph.add_node("load_run_context", cast(Any, _load_run_context(bridge)))
+    graph.add_node("restore_or_initialize_graph_state", cast(Any, _restore_graph_state()))
+    graph.add_node(
+        "maybe_resume_from_checkpoint",
+        cast(Any, _maybe_resume_from_checkpoint(bridge)),
+    )
     graph.add_node(
         "retrieval_subgraph",
-        _run_stage_subgraph(bridge, RunStage.RETRIEVE, retrieval_subgraph_factory),
+        cast(Any, _run_stage_subgraph(bridge, RunStage.RETRIEVE, retrieval_subgraph_factory)),
     )
     graph.add_node(
         "drafting_subgraph",
-        _run_stage_subgraph(bridge, RunStage.DRAFT, drafting_subgraph_factory),
+        cast(Any, _run_stage_subgraph(bridge, RunStage.DRAFT, drafting_subgraph_factory)),
     )
-    graph.add_node("finalize_run", _finalize_run(bridge))
+    graph.add_node("finalize_run", cast(Any, _finalize_run(bridge)))
     graph.add_edge(START, "load_run_context")
     graph.add_edge("load_run_context", "restore_or_initialize_graph_state")
     graph.add_edge("restore_or_initialize_graph_state", "maybe_resume_from_checkpoint")
@@ -42,7 +56,7 @@ def build_run_graph(
     return graph.compile()
 
 
-def _load_run_context(bridge: RunGraphRuntimeBridge):
+def _load_run_context(bridge: RunGraphRuntimeBridge) -> RunNode:
     async def node(state: RunGraphState) -> dict[str, object]:
         context = await bridge.load_context(run_id=state["run_id"])
         return {
@@ -54,7 +68,7 @@ def _load_run_context(bridge: RunGraphRuntimeBridge):
     return node
 
 
-def _restore_graph_state():
+def _restore_graph_state() -> RunNode:
     async def node(state: RunGraphState) -> dict[str, object]:
         restored = restore_graph_state(
             run=state["loaded_run"],
@@ -63,12 +77,12 @@ def _restore_graph_state():
         )
         restored["queue_item_id"] = state["queue_item_id"]
         restored["lease_token"] = state["lease_token"]
-        return restored
+        return dict(restored)
 
     return node
 
 
-def _maybe_resume_from_checkpoint(bridge: RunGraphRuntimeBridge):
+def _maybe_resume_from_checkpoint(bridge: RunGraphRuntimeBridge) -> RunNode:
     async def node(state: RunGraphState) -> dict[str, object]:
         run = await bridge.mark_running(
             run=state["loaded_run"],
@@ -82,7 +96,11 @@ def _maybe_resume_from_checkpoint(bridge: RunGraphRuntimeBridge):
     return node
 
 
-def _run_stage_subgraph(bridge: RunGraphRuntimeBridge, stage: RunStage, subgraph_factory: object):
+def _run_stage_subgraph(
+    bridge: RunGraphRuntimeBridge,
+    stage: RunStage,
+    subgraph_factory: StageSubgraphFactory,
+) -> RunNode:
     async def node(state: RunGraphState) -> dict[str, object]:
         if state.get("terminal_status") == "canceled":
             return {}
@@ -103,12 +121,12 @@ def _run_stage_subgraph(bridge: RunGraphRuntimeBridge, stage: RunStage, subgraph
         if state.get("terminal_status") == "canceled":
             return {"terminal_status": "canceled"}
         await bridge.stage_completed(state=state, stage=stage)
-        return state
+        return dict(state)
 
     return node
 
 
-def _finalize_run(bridge: RunGraphRuntimeBridge):
+def _finalize_run(bridge: RunGraphRuntimeBridge) -> RunNode:
     async def node(state: RunGraphState) -> dict[str, object]:
         await bridge.finalize(state=state)
         return {}

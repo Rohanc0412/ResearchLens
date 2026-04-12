@@ -1,11 +1,10 @@
-from collections.abc import Callable
 from uuid import UUID
 
 from researchlens.modules.runs.application.ports import RunExecutionOrchestrator
 from researchlens.modules.runs.domain import Run
-from researchlens.modules.runs.orchestration.graph import build_run_graph
+from researchlens.modules.runs.orchestration.graph import StageSubgraphFactory, build_run_graph
 from researchlens.modules.runs.orchestration.runtime_bridge import RunGraphRuntimeBridge
-from researchlens.modules.runs.orchestration.state import RunGraphState, initial_run_graph_state
+from researchlens.modules.runs.orchestration.state import initial_run_graph_state
 
 
 class LangGraphRunOrchestrator(RunExecutionOrchestrator):
@@ -13,8 +12,8 @@ class LangGraphRunOrchestrator(RunExecutionOrchestrator):
         self,
         *,
         bridge: RunGraphRuntimeBridge,
-        retrieval_subgraph_factory: Callable[[RunGraphState], object],
-        drafting_subgraph_factory: Callable[[RunGraphState], object],
+        retrieval_subgraph_factory: StageSubgraphFactory,
+        drafting_subgraph_factory: StageSubgraphFactory,
     ) -> None:
         self._bridge = bridge
         self._retrieval_subgraph_factory = retrieval_subgraph_factory

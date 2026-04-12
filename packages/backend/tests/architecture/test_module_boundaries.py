@@ -102,6 +102,15 @@ def test_application_layers_do_not_import_module_infrastructure() -> None:
             assert not target.startswith(forbidden)
 
 
+def test_orchestration_layers_do_not_import_module_infrastructure() -> None:
+    root = Path("packages/backend/src/researchlens/modules")
+    for file_path in root.rglob("orchestration/*.py"):
+        owner = _owner_module_name(file_path)
+        forbidden = f"researchlens.modules.{owner}.infrastructure"
+        for target in _iter_import_targets(file_path):
+            assert not target.startswith(forbidden)
+
+
 def test_python_production_files_stay_under_hard_size_caps() -> None:
     root = Path("packages/backend/src")
     for file_path in root.rglob("*.py"):

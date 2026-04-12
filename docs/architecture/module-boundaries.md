@@ -25,6 +25,7 @@ ResearchLens backend code uses explicit layers inside each module. Phase 7.5 kee
 - Cross-module imports should be explicit and rare; default reach-through between modules is not allowed.
 - The only intentional orchestration cross-module reach-through is `runs.orchestration` importing retrieval and drafting orchestration entrypoints so the top-level research-run graph can compose stage-local graph pieces.
 - Retrieval application code depends on provider and ingestion ports. Provider adapters, persistence rows, and SDK/HTTP concerns stay under retrieval infrastructure.
+- Retrieval orchestration receives provider ports from worker composition; it does not build provider registries or import retrieval infrastructure directly.
 - LLM and embedding provider details stay in shared provider-agnostic ports and isolated OpenAI adapter packages; retrieval orchestration does not import OpenAI SDK/response types.
 - Drafting owns section briefs, allowed evidence packs, citation-token validation, per-section outputs, and report assembly. It consumes retrieval-owned persisted chunks as inputs through a drafting-owned input-reader port, not by importing retrieval or runs modules directly; worker composition remains the integration point.
 

@@ -1,6 +1,8 @@
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from typing import Any
 from uuid import uuid4
 
 import pytest
@@ -16,12 +18,12 @@ from researchlens.modules.runs.domain import (
 from researchlens.modules.runs.orchestration.checkpoint_bridge import RunGraphCheckpointBridge
 from researchlens.modules.runs.orchestration.event_bridge import RunGraphEventBridge
 from researchlens.modules.runs.orchestration.runtime_bridge import RunGraphRuntimeBridge
-from researchlens.modules.runs.orchestration.state import restore_graph_state
+from researchlens.modules.runs.orchestration.state import RunGraphState, restore_graph_state
 
 
 class _NoopTransactionManager:
     @asynccontextmanager
-    async def boundary(self):
+    async def boundary(self) -> AsyncIterator[None]:
         yield
 
 
@@ -130,6 +132,21 @@ class _FakeQueueBackend:
     async def heartbeat(self, **kwargs):  # type: ignore[no-untyped-def]
         return True
 
+    async def enqueue(self, **kwargs: Any) -> Any:
+        raise NotImplementedError
+
+    async def claim_available(self, **kwargs: Any) -> Any:
+        raise NotImplementedError
+
+    async def complete(self, **kwargs: Any) -> bool:
+        raise NotImplementedError
+
+    async def release(self, **kwargs: Any) -> bool:
+        raise NotImplementedError
+
+    async def cancel_active_for_run(self, **kwargs: Any) -> None:
+        raise NotImplementedError
+
 
 def _run(cancel_requested: bool = False) -> Run:
     now = datetime.now(tz=UTC)
@@ -234,15 +251,22 @@ async def test_stage_entered_maps_cancel_request_to_terminal_state() -> None:
         clock=UtcRunClock(),
         queue_lease_seconds=30,
     )
-    state = {
+    state: RunGraphState = {
         "run_id": run.id,
         "queue_item_id": uuid4(),
         "lease_token": uuid4(),
+        "tenant_id": run.tenant_id,
+        "conversation_id": run.conversation_id,
+        "output_type": run.output_type,
         "retry_count": 0,
+        "request_text": "",
         "cancel_requested": False,
         "start_stage": "retrieve",
         "completed_stages": tuple(),
         "current_stage": "retrieve",
+        "latest_checkpoint_key": None,
+        "latest_checkpoint_stage": None,
+        "resuming": False,
     }
 
     entered = await bridge.stage_entered(state=state, stage=RunStage.RETRIEVE)
