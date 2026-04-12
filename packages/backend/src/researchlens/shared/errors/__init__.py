@@ -4,6 +4,7 @@ from researchlens.shared.errors.base import ResearchLensError
 from researchlens.shared.errors.http_mapping import error_response, map_error_to_status_code
 from researchlens.shared.errors.types import (
     AuthenticationError,
+    CancellationRequestedError,
     ConflictError,
     ForbiddenError,
     InfrastructureError,
@@ -13,6 +14,7 @@ from researchlens.shared.errors.types import (
 
 __all__ = [
     "AuthenticationError",
+    "CancellationRequestedError",
     "ConflictError",
     "ForbiddenError",
     "InfrastructureError",

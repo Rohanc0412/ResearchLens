@@ -12,7 +12,7 @@ from researchlens.worker_composition import build_worker_runs_runtime, poll_work
 
 from .drafting_support import FakeDraftingClient
 from .run_worker_lifecycle_support import (
-    ControlledStageExecution,
+    ControlledRunExecutionOrchestrator,
     WorkerCrash,
     cancel_run,
     claim_one,
@@ -65,7 +65,7 @@ async def test_retry_before_drafting_uses_latest_successful_checkpoint(
     await process_claimed(
         database_runtime,
         claimed=claimed,
-        stage_execution=ControlledStageExecution(fail_before_stage=RunStage.DRAFT),
+        stage_execution=ControlledRunExecutionOrchestrator(fail_before_stage=RunStage.DRAFT),
     )
     retried = await retry_run(database_runtime, tenant_id=tenant_id, run_id=run_id)
 
@@ -91,7 +91,7 @@ async def test_retry_after_drafting_restarts_from_draft(
     await process_claimed(
         database_runtime,
         claimed=claimed,
-        stage_execution=ControlledStageExecution(fail_before_stage=RunStage.EVALUATE),
+        stage_execution=ControlledRunExecutionOrchestrator(fail_after_stage=RunStage.DRAFT),
     )
     retried = await retry_run(database_runtime, tenant_id=tenant_id, run_id=run_id)
 
@@ -116,9 +116,9 @@ async def test_worker_restart_resumes_from_checkpoint_without_duplicate_stage_co
 
     with pytest.raises(WorkerCrash):
         await process_claimed(
-            database_runtime,
-            claimed=claimed,
-            stage_execution=ControlledStageExecution(crash_after_stage=RunStage.RETRIEVE),
+        database_runtime,
+        claimed=claimed,
+        stage_execution=ControlledRunExecutionOrchestrator(crash_after_stage=RunStage.RETRIEVE),
         )
 
     reclaimed = await claim_one(database_runtime, now=datetime.now(tz=UTC) + timedelta(seconds=31))
@@ -126,7 +126,7 @@ async def test_worker_restart_resumes_from_checkpoint_without_duplicate_stage_co
     await process_claimed(
         database_runtime,
         claimed=reclaimed,
-        stage_execution=ControlledStageExecution(),
+        stage_execution=ControlledRunExecutionOrchestrator(),
     )
     events = await list_run_events(database_runtime, tenant_id=tenant_id, run_id=run_id)
     run = await get_run(database_runtime, tenant_id=tenant_id, run_id=run_id)
@@ -159,7 +159,7 @@ async def test_running_cancel_requests_stop_and_worker_finishes_cleanly(
     await process_claimed(
         database_runtime,
         claimed=claimed,
-        stage_execution=ControlledStageExecution(),
+        stage_execution=ControlledRunExecutionOrchestrator(),
     )
     run = await get_run(database_runtime, tenant_id=tenant_id, run_id=run_id)
     events = await list_run_events(database_runtime, tenant_id=tenant_id, run_id=run_id)

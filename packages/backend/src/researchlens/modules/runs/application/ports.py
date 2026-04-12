@@ -153,10 +153,14 @@ class RunQueueBackend(Protocol):
     async def cancel_active_for_run(self, *, run_id: UUID, canceled_at: datetime) -> None: ...
 
 
-class StageExecutionController(Protocol):
-    async def before_stage(self, *, run: Run, stage: RunStage) -> None: ...
-
-    async def after_stage(self, *, run: Run, stage: RunStage) -> None: ...
+class RunExecutionOrchestrator(Protocol):
+    async def execute(
+        self,
+        *,
+        run: Run,
+        queue_item_id: UUID,
+        lease_token: UUID,
+    ) -> None: ...
 
 
 class TransactionManager(Protocol):

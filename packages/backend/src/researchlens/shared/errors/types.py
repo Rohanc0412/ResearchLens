@@ -23,3 +23,7 @@ class ForbiddenError(ResearchLensError):
 
 class InfrastructureError(ResearchLensError):
     code = "infrastructure_error"
+
+
+class CancellationRequestedError(ResearchLensError):
+    code = "cancellation_requested"

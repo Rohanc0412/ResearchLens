@@ -15,7 +15,10 @@ from researchlens.modules.drafting.infrastructure.rows import (
     DraftingSectionEvidenceRow,
     DraftingSectionRow,
 )
-from researchlens.modules.drafting.orchestration import DraftingStageOrchestrator
+from researchlens.modules.drafting.orchestration import (
+    DraftingGraphRuntime,
+    build_drafting_subgraph,
+)
 from researchlens.shared.config import get_settings, reset_settings_cache
 from researchlens.shared.db import DatabaseRuntime
 from researchlens.shared.errors import ValidationError
@@ -32,7 +35,14 @@ class _NoopEventWriter:
 
 
 class _NoopCheckpointWriter:
-    async def checkpoint(self, *, key: str, summary: dict[str, object]) -> None:
+    async def checkpoint(
+        self,
+        *,
+        key: str,
+        summary: dict[str, object],
+        completed_stages: tuple[str, ...],
+        next_stage: str | None,
+    ) -> None:
         return None
 
 
@@ -59,17 +69,17 @@ async def test_drafting_stage_persists_sections_evidence_and_report(
         )
 
     async with database_runtime.session_factory() as session:
-        orchestrator = DraftingStageOrchestrator(
+        runtime = DraftingGraphRuntime(
             settings=get_settings(),
             input_reader=SqlAlchemyDraftingRunInputReader(session),
             repository=SqlAlchemyDraftingRepository(session),
             cancellation_probe=_SessionCancellationProbe(session),
-            generation_client=FakeDraftingClient(),
-        )
-        await orchestrator.execute(
-            run_id=run_id,
             events=_NoopEventWriter(),
             checkpoints=_NoopCheckpointWriter(),
+            generation_client=FakeDraftingClient(),
+        )
+        await build_drafting_subgraph(runtime).ainvoke(
+            {"run_id": run_id, "completed_stages": ("retrieve",)}
         )
         await session.commit()
 
@@ -113,16 +123,17 @@ async def test_drafting_stage_fails_when_a_section_has_no_evidence(
 
     async with database_runtime.session_factory() as session:
         with pytest.raises(ValidationError):
-            await DraftingStageOrchestrator(
+            runtime = DraftingGraphRuntime(
                 settings=get_settings(),
                 input_reader=SqlAlchemyDraftingRunInputReader(session),
                 repository=SqlAlchemyDraftingRepository(session),
                 cancellation_probe=_SessionCancellationProbe(session),
-                generation_client=FakeDraftingClient(),
-            ).execute(
-                run_id=run_id,
                 events=_NoopEventWriter(),
                 checkpoints=_NoopCheckpointWriter(),
+                generation_client=FakeDraftingClient(),
+            )
+            await build_drafting_subgraph(runtime).ainvoke(
+                {"run_id": run_id, "completed_stages": ("retrieve",)}
             )
 
 
@@ -141,20 +152,20 @@ async def test_drafting_stage_retries_on_malformed_and_invalid_citations(
         )
 
     async with database_runtime.session_factory() as session:
-        orchestrator = DraftingStageOrchestrator(
+        runtime = DraftingGraphRuntime(
             settings=get_settings(),
             input_reader=SqlAlchemyDraftingRunInputReader(session),
             repository=SqlAlchemyDraftingRepository(session),
             cancellation_probe=_SessionCancellationProbe(session),
+            events=_NoopEventWriter(),
+            checkpoints=_NoopCheckpointWriter(),
             generation_client=FakeDraftingClient(
                 malformed_once_for={"overview"},
                 invalid_once_for={"risks"},
             ),
         )
-        await orchestrator.execute(
-            run_id=run_id,
-            events=_NoopEventWriter(),
-            checkpoints=_NoopCheckpointWriter(),
+        await build_drafting_subgraph(runtime).ainvoke(
+            {"run_id": run_id, "completed_stages": ("retrieve",)}
         )
         await session.commit()
 
@@ -187,18 +198,18 @@ async def test_drafting_stage_drafts_sections_concurrently(
 
     async with database_runtime.session_factory() as session:
         client = FakeDraftingClient(wait_event=wait_event, release_event=release_event)
-        orchestrator = DraftingStageOrchestrator(
+        runtime = DraftingGraphRuntime(
             settings=get_settings(),
             input_reader=SqlAlchemyDraftingRunInputReader(session),
             repository=SqlAlchemyDraftingRepository(session),
             cancellation_probe=_SessionCancellationProbe(session),
+            events=_NoopEventWriter(),
+            checkpoints=_NoopCheckpointWriter(),
             generation_client=client,
         )
         task = asyncio.create_task(
-            orchestrator.execute(
-                run_id=run_id,
-                events=_NoopEventWriter(),
-                checkpoints=_NoopCheckpointWriter(),
+            build_drafting_subgraph(runtime).ainvoke(
+                {"run_id": run_id, "completed_stages": ("retrieve",)}
             )
         )
         await wait_event.wait()

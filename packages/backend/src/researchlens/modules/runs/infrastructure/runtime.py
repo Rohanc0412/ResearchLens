@@ -12,9 +12,9 @@ from researchlens.modules.runs.application import (
     ListRunEventsUseCase,
     ProcessRunQueueItemUseCase,
     RetryRunUseCase,
-    SleepStageExecutionController,
+    UtcRunClock,
 )
-from researchlens.modules.runs.application.ports import StageExecutionController
+from researchlens.modules.runs.application.ports import RunExecutionOrchestrator
 from researchlens.modules.runs.infrastructure.conversation_scope_reader_sql import (
     SqlAlchemyConversationScopeReader,
 )
@@ -31,7 +31,7 @@ from researchlens.shared.config import ResearchLensSettings
 from researchlens.shared.db import SqlAlchemyTransactionManager
 
 
-class StageControllerFactory(Protocol):
+class RunOrchestratorFactory(Protocol):
     def __call__(
         self,
         *,
@@ -39,7 +39,18 @@ class StageControllerFactory(Protocol):
         event_store: SqlAlchemyRunEventStore,
         checkpoint_store: SqlAlchemyRunCheckpointStore,
         transaction_manager: SqlAlchemyTransactionManager,
-    ) -> StageExecutionController: ...
+    ) -> RunExecutionOrchestrator: ...
+
+
+class _UnavailableRunOrchestrator:
+    async def execute(
+        self,
+        *,
+        run: object,
+        queue_item_id: object,
+        lease_token: object,
+    ) -> None:
+        raise RuntimeError("Run execution orchestration is not available in this runtime.")
 
 
 @dataclass(slots=True)
@@ -59,11 +70,11 @@ class SqlAlchemyRunsRuntime:
         self,
         session_factory: async_sessionmaker[AsyncSession],
         settings: ResearchLensSettings,
-        stage_controller_factory: StageControllerFactory | None = None,
+        run_orchestrator_factory: RunOrchestratorFactory | None = None,
     ) -> None:
         self._session_factory = session_factory
         self._settings = settings
-        self._stage_controller_factory = stage_controller_factory
+        self._run_orchestrator_factory = run_orchestrator_factory
 
     @asynccontextmanager
     async def request_context(self) -> AsyncIterator[RunsRequestContext]:
@@ -106,32 +117,31 @@ class SqlAlchemyRunsRuntime:
             process_run_queue_item=ProcessRunQueueItemUseCase(
                 run_repository=run_repository,
                 event_store=event_store,
-                checkpoint_store=checkpoint_store,
                 queue_backend=queue_backend,
                 transaction_manager=transaction_manager,
-                stage_controller=self._build_stage_controller(
+                run_orchestrator=self._build_run_orchestrator(
                     session=session,
                     event_store=event_store,
                     checkpoint_store=checkpoint_store,
                     transaction_manager=transaction_manager,
                 ),
-                queue_lease_seconds=self._settings.queue.lease_seconds,
+                clock=UtcRunClock(),
             ),
             queue_backend=queue_backend,
             transaction_manager=transaction_manager,
         )
 
-    def _build_stage_controller(
+    def _build_run_orchestrator(
         self,
         *,
         session: AsyncSession,
         event_store: SqlAlchemyRunEventStore,
         checkpoint_store: SqlAlchemyRunCheckpointStore,
         transaction_manager: SqlAlchemyTransactionManager,
-    ) -> StageExecutionController:
-        if self._stage_controller_factory is None:
-            return SleepStageExecutionController(self._settings.queue.run_stub_stage_delay_ms)
-        return self._stage_controller_factory(
+    ) -> RunExecutionOrchestrator:
+        if self._run_orchestrator_factory is None:
+            return _UnavailableRunOrchestrator()
+        return self._run_orchestrator_factory(
             session=session,
             event_store=event_store,
             checkpoint_store=checkpoint_store,

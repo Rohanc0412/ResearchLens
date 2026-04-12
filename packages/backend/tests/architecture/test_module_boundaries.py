@@ -39,8 +39,19 @@ def test_backend_modules_do_not_cross_import_each_other() -> None:
 
     for file_path in root.rglob("*.py"):
         owner = _owner_module_name(file_path)
+        allow_runs_orchestration = (
+            owner == "runs"
+            and "orchestration" in file_path.parts
+            and file_path.name != "__init__.py"
+        )
         for target in _iter_import_targets(file_path):
             for candidate in MODULE_NAMES - {owner}:
+                if (
+                    allow_runs_orchestration
+                    and candidate in {"retrieval", "drafting"}
+                    and target.startswith(f"researchlens.modules.{candidate}.orchestration")
+                ):
+                    continue
                 assert not target.startswith(f"researchlens.modules.{candidate}")
 
 

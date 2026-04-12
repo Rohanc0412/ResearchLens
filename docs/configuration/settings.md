@@ -6,6 +6,7 @@ Backend configuration is centralized under `researchlens.shared.config` using `p
 
 - Settings are grouped by subsystem instead of being read ad hoc from scattered `os.getenv` calls.
 - `packages/backend/pyproject.toml` is the canonical backend dependency source.
+- `langgraph` is now a canonical backend dependency because research-run orchestration is graph-driven in production.
 - API, worker, tests, and Alembic all load the same typed settings surface.
 - Validation fails fast for incompatible or unsafe configuration combinations.
 
@@ -21,7 +22,7 @@ Backend configuration is centralized under `researchlens.shared.config` using `p
 - `llm`: provider selection, GPT-5 nano model default, timeouts, structured output limits, and credentials
 - `embeddings`: provider selection, text-embedding-3-small model default, batching/concurrency limits, credentials, and cache behavior
 - `observability`: service name, log level, JSON logs, tracing toggle
-- `queue`: backend mode, URL, polling interval, lease timing, claim batch size, SSE keepalive/grace windows, and fallback stage delay
+- `queue`: backend mode, URL, polling interval, lease timing, claim batch size, and SSE keepalive/grace windows
 - `storage`: local or S3 mode, local artifact root, bucket, endpoint
 
 ## Validation
@@ -82,14 +83,13 @@ Queue settings include:
 - `QUEUE_BATCH_SIZE`: max claimed queue items per poll
 - `QUEUE_SSE_KEEPALIVE_SECONDS`: idle SSE keepalive cadence
 - `QUEUE_SSE_TERMINAL_GRACE_SECONDS`: terminal stream grace window
-- `QUEUE_RUN_STUB_STAGE_DELAY_MS`: delay used by the fallback sleep controller for the still-stubbed `evaluate` and `export` lifecycle stages
-
 Queue note:
 
 - The canonical queue backend is `db`.
 - `redis` remains a validated settings option only; no external broker implementation is currently wired.
 - SSE and worker timing settings stay safe for local startup and installed-package test execution.
 - The worker now has an explicit stop path and exits its poll loop cleanly on shutdown signals instead of relying on abrupt process termination.
+- Phase 7.5 did not add graph-specific environment variables. LangGraph wiring is internal and uses the existing queue, retrieval, drafting, LLM, and embedding settings surface.
 
 Phase 6 retrieval settings include:
 

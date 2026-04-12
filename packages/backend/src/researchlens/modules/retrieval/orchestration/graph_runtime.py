@@ -1,14 +1,19 @@
 from dataclasses import asdict
-from typing import Protocol
 from uuid import UUID
 
 from researchlens.modules.retrieval.application.ports import RetrievalIngestionRepository
-from researchlens.modules.retrieval.application.run_retrieval_stage import (
-    RunRetrievalStageCommand,
-    RunRetrievalStageUseCase,
+from researchlens.modules.retrieval.application.retrieval_stage_steps import (
+    RetrievalPlanningResult,
+    RetrievalSelectionResult,
+    RetrievalStageSteps,
 )
+from researchlens.modules.retrieval.domain.summary import RetrievalSummary
 from researchlens.modules.retrieval.infrastructure.providers.provider_registry import (
     build_provider_registry,
+)
+from researchlens.modules.retrieval.orchestration.progress import (
+    RetrievalGraphCheckpointSink,
+    RetrievalGraphEventSink,
 )
 from researchlens.shared.config import ResearchLensSettings
 from researchlens.shared.embeddings.factory import build_embedding_client
@@ -17,21 +22,13 @@ from researchlens.shared.llm.factory import build_llm_client
 from researchlens.shared.llm.ports import StructuredGenerationClient
 
 
-class RetrievalStageEventWriter(Protocol):
-    async def info(self, *, key: str, message: str, payload: dict[str, object]) -> None: ...
-
-    async def warning(self, *, key: str, message: str, payload: dict[str, object]) -> None: ...
-
-
-class RetrievalStageCheckpointWriter(Protocol):
-    async def checkpoint(self, *, key: str, summary: dict[str, object]) -> None: ...
-
-
-class RetrievalStageOrchestrator:
+class RetrievalGraphRuntime:
     def __init__(
         self,
         *,
         settings: ResearchLensSettings,
+        events: RetrievalGraphEventSink,
+        checkpoints: RetrievalGraphCheckpointSink,
         ingestion_repository: RetrievalIngestionRepository | None = None,
         llm_client: StructuredGenerationClient | None = None,
         embedding_client: EmbeddingClient | None = None,
@@ -44,7 +41,9 @@ class RetrievalStageOrchestrator:
             for name, provider in providers.items()
             if name in retrieval_settings.fallback_providers
         )
-        self._use_case = RunRetrievalStageUseCase(
+        self._events = events
+        self._checkpoints = checkpoints
+        self._steps = RetrievalStageSteps(
             settings=retrieval_settings,
             primary_provider=primary,
             fallback_providers=fallback,
@@ -54,53 +53,83 @@ class RetrievalStageOrchestrator:
             embedding_settings=settings.embeddings,
         )
 
-    async def execute(
-        self,
-        *,
-        run_id: UUID,
-        research_question: str,
-        events: RetrievalStageEventWriter,
-        checkpoints: RetrievalStageCheckpointWriter,
-    ) -> None:
-        await events.info(
+    async def plan(self, *, question: str) -> RetrievalPlanningResult:
+        await self._events.info(
             key="retrieval:outline-started",
             message="Retrieval outline generation started",
             payload={},
         )
-        await events.info(
+        await self._events.info(
             key="retrieval:query-planning-started",
             message="Retrieval query planning started",
             payload={},
         )
-        result = await self._use_case.execute(
-            RunRetrievalStageCommand(run_id=run_id, research_question=research_question)
+        return await self._steps.plan(question=question)
+
+    async def select_sources(
+        self,
+        *,
+        planning: RetrievalPlanningResult,
+        question: str,
+    ) -> RetrievalSelectionResult:
+        await self._events.info(
+            key="retrieval:search-started",
+            message="Retrieval provider search started",
+            payload={"planned_queries": len(planning.query_plan.queries)},
         )
-        payload = asdict(result)
-        payload["run_id"] = str(result.run_id)
-        if result.fallback_used:
-            await events.warning(
-                key="retrieval:provider-fallback-used",
-                message="Direct provider fallback was used",
-                payload={"reason": "primary yielded too few normalized candidates"},
-            )
-        if result.provider_failures:
-            await events.warning(
-                key="retrieval:provider-failures",
-                message="One or more retrieval providers failed",
-                payload={"providers": list(result.provider_failures)},
-            )
-        if result.planning_warnings:
-            await events.warning(
-                key="retrieval:planning-fallbacks",
-                message="Retrieval planning used fallback behavior",
-                payload={"warnings": list(result.planning_warnings)},
-            )
-        await checkpoints.checkpoint(key="retrieval:summary", summary=payload)
-        await events.info(
+        return await self._steps.select_sources(
+            query_plan=planning.query_plan,
+            question=question,
+        )
+
+    async def finalize(
+        self,
+        *,
+        run_id: UUID,
+        planning: RetrievalPlanningResult,
+        selection: RetrievalSelectionResult,
+        completed_stages: tuple[str, ...],
+    ) -> RetrievalSummary:
+        summary = await self._steps.enrich_and_ingest(
+            run_id=run_id,
+            planning=planning,
+            selection=selection,
+        )
+        await self._emit_summary_events(summary)
+        payload = asdict(summary)
+        payload["run_id"] = str(summary.run_id)
+        await self._checkpoints.checkpoint(
+            key="retrieval:summary",
+            summary=payload,
+            completed_stages=completed_stages,
+            next_stage="draft",
+        )
+        await self._events.info(
             key="retrieval:summary-completed",
             message="Retrieval summary completed",
             payload=payload,
         )
+        return summary
+
+    async def _emit_summary_events(self, summary: RetrievalSummary) -> None:
+        if summary.fallback_used:
+            await self._events.warning(
+                key="retrieval:provider-fallback-used",
+                message="Direct provider fallback was used",
+                payload={"reason": "primary yielded too few normalized candidates"},
+            )
+        if summary.provider_failures:
+            await self._events.warning(
+                key="retrieval:provider-failures",
+                message="One or more retrieval providers failed",
+                payload={"providers": list(summary.provider_failures)},
+            )
+        if summary.planning_warnings:
+            await self._events.warning(
+                key="retrieval:planning-fallbacks",
+                message="Retrieval planning used fallback behavior",
+                payload={"warnings": list(summary.planning_warnings)},
+            )
 
 
 def _configured_llm(settings: ResearchLensSettings) -> StructuredGenerationClient | None:

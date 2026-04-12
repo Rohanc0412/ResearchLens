@@ -30,6 +30,8 @@ The envelope is frontend-ready. UI consumers should display `message`, `display_
 
 Most retrieval and drafting progress notifications are delivered with `event_type="checkpoint.written"` and a stage-specific human-readable `message`. Clients should treat `message` and `payload` as the user-facing progress contract rather than expecting a custom `event_type` for every sub-step.
 
+Phase 7.5 keeps the frontend-facing envelope stable while moving production execution behind LangGraph. Graph progress is translated into the same persisted `run_events` rows and therefore follows the same ordering, dedupe, JSON, and SSE replay rules as Phase 5.
+
 ## Ordering and replay guarantees
 
 - Ordering is guaranteed per run, not globally.

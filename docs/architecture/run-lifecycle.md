@@ -1,6 +1,6 @@
 # Run Lifecycle
 
-Phase 5 moved run lifecycle ownership into `researchlens.modules.runs`. Phase 6 plugs the real retrieval stage into that lifecycle without moving retrieval policy into the runs module. Phase 7 plugs the real drafting stage into the same lifecycle boundary.
+Phase 5 moved run lifecycle ownership into `researchlens.modules.runs`. Phase 7.5 keeps that durable ownership but replaces the worker's non-graph execution shell with a top-level LangGraph.
 
 ## Statuses and transitions
 
@@ -18,11 +18,12 @@ Phase 5 moved run lifecycle ownership into `researchlens.modules.runs`. Phase 6 
 
 Every status-changing write persists the updated `runs` row, a `run_status_transitions` history row, and the matching `run_events` record(s) in the same logical transaction.
 
-## Stage sequence
+## Execution shape
 
-- The canonical run-stage sequence is `retrieve -> draft -> evaluate -> export`.
-- The worker executes real stage logic for `retrieve` and `draft`.
-- `evaluate` and `export` remain reserved lifecycle stages and currently flow through the fallback sleep controller.
+- The canonical run-stage sequence remains `retrieve -> draft -> evaluate -> export`.
+- Phase 7.5 executes `retrieve` and `draft` only through LangGraph.
+- `evaluate` and `export` remain reserved lifecycle stages for later phases; they are not graph-implemented yet.
+- The top-level graph shape is `load_run_context -> restore_or_initialize_graph_state -> maybe_resume_from_checkpoint -> retrieval_subgraph -> drafting_subgraph -> finalize_run`.
 - Legacy enum members such as `ingest`, `outline`, `evidence_pack`, `validate`, `repair`, and `factcheck` still exist for display compatibility, but they are not part of the active execution sequence.
 
 ## Ownership and compatibility
@@ -54,10 +55,12 @@ Every status-changing write persists the updated `runs` row, a `run_status_trans
 ## Resume rules
 
 - Resume uses the latest checkpoint together with current run status and the active queue lease state.
+- Graph state is reference-oriented; durable truth remains in `runs`, `run_events`, `run_checkpoints`, and stage-owned persistence tables.
 - Terminal runs no-op safely if reclaimed.
 - If a worker dies after a completed stage checkpoint, replay resumes from the checkpoint's `next_stage`.
+- Stage-local graph checkpoints also carry the same lifecycle resume fields so the latest checkpoint stays sufficient for deterministic restore.
 - Duplicate stage-completed events are prevented with per-run `event_key` dedupe.
-- If `cancel_requested_at` is set before resume, the worker stops at the next safe boundary and finalizes `canceled`.
+- If `cancel_requested_at` is set before or during graph execution, the worker stops at the next safe boundary and finalizes `canceled`.
 
 ## Retry resume-floor rule
 
@@ -70,15 +73,15 @@ Every status-changing write persists the updated `runs` row, a `run_status_trans
 - API create-run transaction: validate conversation, enforce idempotency, create the run, transition `created -> queued`, append initial events, enqueue queue work
 - Worker claim transaction: claim queue item and write lease metadata
 - Worker run-start transaction: transition `queued -> running` and append `run.running`
-- Retrieval stage transactions: write retrieval run events and checkpoints through the existing runs event/checkpoint stores, and persist selected sources through retrieval-owned repositories
-- Drafting stage transactions: load retrieval-linked chunks through a drafting-owned input port, persist drafting-owned section preparation rows, draft sections through the shared LLM boundary, persist section drafts, and upsert the assembled report draft
+- Retrieval graph transactions: write retrieval progress events and checkpoints through runs-owned bridges, and persist selected sources through retrieval-owned repositories
+- Drafting graph transactions: load retrieval-linked chunks through a drafting-owned input port, persist drafting-owned section preparation rows, draft sections through the shared LLM boundary, persist section drafts, and upsert the assembled report draft
 - Stage boundary transaction: update `current_stage`, write checkpoint, append `checkpoint.written` and `stage.completed`
 - Cancel transaction: record `cancel_requested_at`, append `cancel.requested`, and if still queued finalize `canceled`
 - Retry transaction: validate failed status, increment `retry_count`, clear retryable failure fields, choose retry floor, transition `failed -> queued`, re-enqueue, append `retry.requested`
 
 ## Retrieval stage behavior
 
-The retrieve stage now executes outline-first retrieval before the generic stage-completed mutation runs. The worker composition root creates a retrieval stage controller that:
+The retrieve stage now executes through the retrieval subgraph before the generic stage-completed mutation runs. The retrieval graph:
 
 - generates a bounded retrieval outline before query planning
 - plans queries from the outline
@@ -88,11 +91,11 @@ The retrieve stage now executes outline-first retrieval before the generic stage
 - normalizes, deduplicates, ranks, diversifies, and persists selected sources
 - emits concise retrieval progress events and dedupe-safe retrieval checkpoints
 
-The current StageExecutionController hook receives the run and stage. The retrieval controller reads the original request text from the existing `run.created` event payload so retrieval planning can still start from the user research question without changing the Phase 5 run table contract.
+The runs graph bridge still reads the original request text from the existing `run.created` event payload so retrieval planning can start from the user research question without changing the Phase 5 run table contract.
 
 ## Drafting stage behavior
 
-The draft stage now executes after retrieval and before the generic stage-completed mutation runs. The worker composition root assembles a drafting-aware stage controller that:
+The draft stage now executes after retrieval and before the generic stage-completed mutation runs. The drafting graph:
 
 - derives an ordered drafting section plan from persisted retrieval section targeting
 - builds section-level evidence packs from persisted retrieval chunks without widening access to all run evidence
@@ -102,3 +105,5 @@ The draft stage now executes after retrieval and before the generic stage-comple
 - persists section outputs independently and assembles the report from persisted section rows in deterministic order
 
 Evidence-pack preparation and section drafting are concurrent with bounded fan-out. Section-draft persistence remains intentionally sequential inside a single DB session so retry safety and transaction correctness stay deterministic. Continuity summaries are persisted with each section draft, but the current prompt flow does not yet feed prior section summaries into later prompts so the stage can stay fully parallel.
+
+There is no remaining stage-controller fallback or parallel non-graph research-run execution path.

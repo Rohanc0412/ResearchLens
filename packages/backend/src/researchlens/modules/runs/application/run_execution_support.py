@@ -9,7 +9,7 @@ from researchlens.modules.runs.application.ports import (
     RunRepository,
     TransactionManager,
 )
-from researchlens.modules.runs.application.stage_execution_controller import RunClock
+from researchlens.modules.runs.application.run_clock import RunClock
 from researchlens.modules.runs.application.stage_messages import (
     stage_completed_message,
     stage_started_message,
