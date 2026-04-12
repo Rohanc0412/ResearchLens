@@ -38,3 +38,15 @@ dev-worker:
 
 dev-web:
 	corepack pnpm --filter web dev
+
+doppler-dev-api:
+	doppler run -- python -m uv run --package researchlens-api python -m researchlens_api.main
+
+doppler-dev-worker:
+	doppler run -- python -m uv run --package researchlens-worker python -m researchlens_worker.main
+
+doppler-test-backend:
+	doppler run -- python -m uv run --package researchlens-backend pytest packages/backend/tests
+
+doppler-db-upgrade:
+	doppler run -- python -m uv run --package researchlens-backend alembic -c packages/backend/alembic.ini upgrade head

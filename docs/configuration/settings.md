@@ -17,6 +17,7 @@ Backend configuration is centralized under `researchlens.shared.config` using `p
 - `auth`: auth enablement flags, JWT issuer/secret, access-token lifetime, refresh-cookie behavior, refresh/reset token secrets, password reset lifetime, TOTP MFA settings, registration toggle, dev-mode secret safety
 - `smtp`: enablement, host, port, credentials, sender identity
 - `retrieval`: feature toggles and safety limits
+- `drafting`: section evidence-pack limits, section length targets, retry limits, and bounded concurrency
 - `llm`: provider selection, GPT-5 nano model default, timeouts, structured output limits, and credentials
 - `embeddings`: provider selection, text-embedding-3-small model default, batching/concurrency limits, credentials, and cache behavior
 - `observability`: service name, log level, JSON logs, tracing toggle
@@ -32,6 +33,7 @@ Startup validation currently rejects at least these cases:
 - production with local-only storage mode
 - enabled LLM provider without credentials
 - OpenAI embeddings without credentials
+- drafting min/max word ranges that are internally inconsistent
 - redis queue mode without a queue URL
 - S3 storage mode without a bucket
 - SMTP enabled without a host
@@ -43,6 +45,8 @@ Startup validation currently rejects at least these cases:
 ## Usage
 
 Use `researchlens.shared.config.get_settings()` as the single settings entrypoint. Tests should reset the cache between scenarios with `reset_settings_cache()`.
+
+Secrets are expected to be injected by Doppler at runtime. Application code still reads only environment variables; it does not depend on a Doppler SDK. `.env.example` is a reference template only.
 
 ## Phase 3 auth note
 
@@ -78,7 +82,7 @@ Queue settings include:
 - `QUEUE_BATCH_SIZE`: max claimed queue items per poll
 - `QUEUE_SSE_KEEPALIVE_SECONDS`: idle SSE keepalive cadence
 - `QUEUE_SSE_TERMINAL_GRACE_SECONDS`: terminal stream grace window
-- `QUEUE_RUN_STUB_STAGE_DELAY_MS`: delay used by the fallback sleep controller for non-retrieval stages that are not implemented yet
+- `QUEUE_RUN_STUB_STAGE_DELAY_MS`: delay used by the fallback sleep controller for the still-stubbed `evaluate` and `export` lifecycle stages
 
 Queue note:
 
@@ -94,6 +98,7 @@ Phase 6 retrieval settings include:
 - `RETRIEVAL_FALLBACK_PROVIDERS`: JSON array provider list; defaults to PubMed, Europe PMC, OpenAlex, and arXiv
 - `RETRIEVAL_FALLBACK_THRESHOLD`: fallback trigger threshold; defaults to 5 normalized candidates
 - `RETRIEVAL_MAX_SOURCES_PER_RUN`
+- `RETRIEVAL_ALLOW_EXTERNAL_FETCH`: defaults to `false`; when disabled the provider registry stays offline with fake providers for local and test runs
 - `RETRIEVAL_MAX_OUTLINE_SECTIONS`
 - `RETRIEVAL_MAX_GLOBAL_QUERIES`
 - `RETRIEVAL_MAX_QUERIES_PER_SECTION`
@@ -112,9 +117,9 @@ Phase 6 retrieval settings include:
 - `RETRIEVAL_INGESTION_CHUNK_SIZE`
 - `RETRIEVAL_INGESTION_CHUNK_OVERLAP`
 
-Phase 6 LLM settings keep GPT-5 nano separate from embeddings:
+LLM settings keep GPT-5 nano separate from embeddings:
 
-- `LLM_PROVIDER`: `openai` for the active Phase 6 adapter
+- `LLM_PROVIDER`: typed values allow `disabled`, `openai`, or `anthropic`; the current runtime factory only wires the OpenAI adapter
 - `LLM_MODEL`: defaults to `gpt-5-nano`
 - `LLM_API_KEY`
 - `LLM_BASE_URL`
@@ -124,9 +129,32 @@ Phase 6 LLM settings keep GPT-5 nano separate from embeddings:
 - `LLM_ENABLE_OUTLINE_GENERATION`
 - `LLM_ENABLE_QUERY_PLANNING`
 
-Phase 6 embedding settings are separate:
+Drafting settings add:
 
-- `EMBEDDINGS_PROVIDER`: `openai` for the active Phase 6 adapter
+- `DRAFTING_ENABLED`
+- `DRAFTING_MAX_SECTIONS_PER_RUN`
+- `DRAFTING_MAX_EVIDENCE_ITEMS_PER_SECTION`
+- `DRAFTING_MAX_EVIDENCE_CHARS_PER_ITEM`
+- `DRAFTING_SECTION_MIN_WORDS`
+- `DRAFTING_SECTION_MAX_WORDS`
+- `DRAFTING_SECTION_MAX_OUTPUT_TOKENS`
+- `DRAFTING_CORRECTION_RETRY_COUNT`
+- `DRAFTING_MAX_CONCURRENT_SECTION_PREPARATION`
+- `DRAFTING_MAX_CONCURRENT_SECTION_DRAFTS`
+- `DRAFTING_MAX_CONCURRENT_SECTION_PERSISTENCE`
+- `DRAFTING_STAGE_TIMEOUT_SECONDS`
+
+Recommended local usage:
+
+```bash
+doppler run -- python -m uv run --package researchlens-api python -m researchlens_api.main
+doppler run -- python -m uv run --package researchlens-worker python -m researchlens_worker.main
+doppler run -- python -m uv run --package researchlens-backend pytest packages/backend/tests
+```
+
+Embedding settings are separate:
+
+- `EMBEDDINGS_PROVIDER`: typed values allow `disabled`, `openai`, or `local`; the current runtime factory only wires the OpenAI adapter
 - `EMBEDDINGS_MODEL`: defaults to `text-embedding-3-small`
 - `EMBEDDINGS_API_KEY`
 - `EMBEDDINGS_BASE_URL`

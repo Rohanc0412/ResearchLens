@@ -6,6 +6,7 @@ from researchlens.shared.config.app import AppSettings
 from researchlens.shared.config.auth import AuthSettings
 from researchlens.shared.config.bootstrap_actor import BootstrapActorSettings
 from researchlens.shared.config.database import DatabaseSettings
+from researchlens.shared.config.drafting import DraftingSettings
 from researchlens.shared.config.embeddings import EmbeddingsSettings
 from researchlens.shared.config.llm import LlmSettings
 from researchlens.shared.config.observability import ObservabilitySettings
@@ -74,7 +75,20 @@ def test_retrieval_validation_rejects_zero_ranking_weights() -> None:
         validate_settings(settings)
 
 
-def _settings(retrieval: RetrievalSettings) -> ResearchLensSettings:
+def test_drafting_validation_rejects_max_words_below_min_words() -> None:
+    settings = _settings(
+        RetrievalSettings(),
+        DraftingSettings(section_min_words=200, section_max_words=100),
+    )
+
+    with pytest.raises(InvalidSettingsError, match="DRAFTING_SECTION_MAX_WORDS"):
+        validate_settings(settings)
+
+
+def _settings(
+    retrieval: RetrievalSettings,
+    drafting: DraftingSettings | None = None,
+) -> ResearchLensSettings:
     return ResearchLensSettings(
         app=AppSettings(environment="test"),
         database=DatabaseSettings(url="sqlite+aiosqlite:///./.data/test.db"),
@@ -82,6 +96,7 @@ def _settings(retrieval: RetrievalSettings) -> ResearchLensSettings:
         auth=AuthSettings(),
         smtp=SmtpSettings(),
         retrieval=retrieval,
+        drafting=drafting or DraftingSettings(),
         llm=LlmSettings(),
         embeddings=EmbeddingsSettings(),
         observability=ObservabilitySettings(),

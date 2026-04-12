@@ -1,6 +1,6 @@
 # Module Boundaries
 
-ResearchLens backend code uses explicit layers inside each module. Phase 2 validated those boundaries with the `projects` slice, Phase 3 added `auth`, Phase 4 added `conversations`, Phase 5 added `runs`, and Phase 6 adds `retrieval` without turning routes, repositories, or worker entrypoints into mixed workflow files.
+ResearchLens backend code uses explicit layers inside each module. Phase 2 validated those boundaries with the `projects` slice, Phase 3 added `auth`, Phase 4 added `conversations`, Phase 5 added `runs`, Phase 6 added `retrieval`, and Phase 7 adds `drafting` without turning routes, repositories, or worker entrypoints into mixed workflow files.
 
 ## Required layers
 
@@ -25,6 +25,7 @@ ResearchLens backend code uses explicit layers inside each module. Phase 2 valid
 - Cross-module imports should be explicit and rare; default reach-through between modules is not allowed.
 - Retrieval application code depends on provider and ingestion ports. Provider adapters, persistence rows, and SDK/HTTP concerns stay under retrieval infrastructure.
 - LLM and embedding provider details stay in shared provider-agnostic ports and isolated OpenAI adapter packages; retrieval orchestration does not import OpenAI SDK/response types.
+- Drafting owns section briefs, allowed evidence packs, citation-token validation, per-section outputs, and report assembly. It consumes retrieval-owned persisted chunks as inputs through a drafting-owned input-reader port, not by importing retrieval or runs modules directly; worker composition remains the integration point.
 
 ## Shared backend scope
 
@@ -58,4 +59,4 @@ Conversation, message, and run presentation code follows the same pattern: prese
 
 Phase 5 applies the same rule to `runs`: route handlers only authenticate, validate, call use cases, and host SSE transport; queue/event/checkpoint persistence stays in `runs.infrastructure`; retry floor rules, cancel semantics, and status transitions stay in `runs.application` and `runs.domain`.
 
-Phase 6 keeps `runs` independent from `retrieval`. The installed-package worker composition root assembles a retrieval-aware stage controller using the runs event/checkpoint stores and the retrieval orchestrator. This preserves the no cross-module import rule while still plugging real retrieval into the Phase 5 lifecycle.
+Phase 6 keeps `runs` independent from `retrieval`. Phase 7 applies the same pattern to `drafting`: the installed-package worker composition root assembles a stage controller using the runs event/checkpoint stores, runs-owned stage progress writers, the retrieval orchestrator, and the drafting orchestrator. Drafting reads run and retrieval state through a dedicated drafting application port and persists only drafting-owned rows through a separate drafting repository port. This preserves the no cross-module import rule while still plugging real retrieval and drafting into the Phase 5 lifecycle.

@@ -1,6 +1,6 @@
 # Retrieval Module
 
-Phase 6 introduces `researchlens.modules.retrieval` as an internal backend module. It has no public routes in this phase.
+Phase 6 introduces `researchlens.modules.retrieval` as an internal backend module. It currently has no public routes.
 
 ## Flow
 
@@ -24,6 +24,12 @@ Retrieval is outline-first:
 
 The runs module does not import retrieval. Worker composition owns the cross-module assembly.
 
+## Provider modes
+
+- `RETRIEVAL_ALLOW_EXTERNAL_FETCH=false` keeps the provider registry offline with deterministic fake providers for local development and tests.
+- `RETRIEVAL_ALLOW_EXTERNAL_FETCH=true` enables the HTTP-backed provider registry with Paper Search MCP as primary and PubMed, Europe PMC, OpenAlex, and arXiv as direct fallbacks.
+- The retrieval application and orchestration code do not change between those modes; only the infrastructure registry swaps implementations.
+
 ## Provider Contract
 
 Providers implement `SearchProvider`:
@@ -34,7 +40,7 @@ Providers implement `SearchProvider`:
 
 Normalized candidates carry canonical identifiers, title/authors/year/source type, abstract/full text URLs, citation count, keywords, provider metadata, provider provenance, and query provenance. Provider failures are represented as `ProviderFailure` and surfaced through run events when stage orchestration emits provider progress.
 
-The Phase 6 provider classes are HTTP-capable adapters with fixture and `httpx.MockTransport` contract tests so tests remain offline. When `RETRIEVAL_ALLOW_EXTERNAL_FETCH=false`, the provider registry uses explicit offline providers for local/test execution rather than making live calls.
+The provider classes are HTTP-capable adapters with fixture and `httpx.MockTransport` contract tests so tests remain offline. When `RETRIEVAL_ALLOW_EXTERNAL_FETCH=false`, the provider registry uses explicit offline providers for local and test execution rather than making live calls.
 
 ## Persistence
 

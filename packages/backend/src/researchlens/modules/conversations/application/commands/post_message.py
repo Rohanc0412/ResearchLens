@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -55,7 +55,7 @@ class PostMessageUseCase:
             replay = await self._idempotent_replay(command)
             if replay is not None:
                 return replay
-            message = _message_from_command(command)
+            message = _message_from_command(command, conversation=conversation)
             created_message = await self._message_repository.add(message)
             updated_conversation = conversation.record_message(
                 message_created_at=created_message.created_at
@@ -110,7 +110,17 @@ class PostMessageUseCase:
         return MessageWriteResult(message=to_message_view(existing_message), idempotent_replay=True)
 
 
-def _message_from_command(command: PostMessageCommand) -> Message:
+def _message_from_command(
+    command: PostMessageCommand,
+    *,
+    conversation: Conversation,
+) -> Message:
+    created_at = datetime.now(tz=UTC)
+    last_message_at = conversation.last_message_at
+    if last_message_at is not None and last_message_at.tzinfo is None:
+        last_message_at = last_message_at.replace(tzinfo=UTC)
+    if last_message_at is not None and created_at <= last_message_at:
+        created_at = last_message_at + timedelta(microseconds=1)
     return Message.create(
         id=uuid4(),
         tenant_id=command.tenant_id,
@@ -120,6 +130,6 @@ def _message_from_command(command: PostMessageCommand) -> Message:
         content_text=command.content_text,
         content_json=command.content_json,
         metadata_json=command.metadata_json,
-        created_at=datetime.now(tz=UTC),
+        created_at=created_at,
         client_message_id=command.client_message_id,
     )

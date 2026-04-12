@@ -54,6 +54,34 @@ async def test_openai_llm_adapter_maps_responses_request() -> None:
 
 
 @pytest.mark.asyncio
+async def test_openai_llm_adapter_parses_json_from_output_text() -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "output_text": (
+                    '{"section_id":"overview","section_text":"Body [[chunk:'
+                    '00000000-0000-0000-0000-000000000001]]","section_summary":"Bridge","status":"completed"}'
+                )
+            },
+        )
+
+    client = OpenAiStructuredGenerationClient(
+        LlmSettings(provider="openai", api_key="test-key"),
+        client=httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            base_url="https://api.openai.test/v1",
+        ),
+    )
+
+    result = await client.generate_structured(
+        StructuredGenerationRequest(schema_name="schema", prompt="Prompt")
+    )
+
+    assert result.data["section_id"] == "overview"
+
+
+@pytest.mark.asyncio
 async def test_openai_embedding_adapter_maps_batched_request() -> None:
     seen: dict[str, object] = {}
 

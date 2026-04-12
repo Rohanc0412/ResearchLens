@@ -3,12 +3,14 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from sqlalchemy import func, select
 
+from researchlens.modules.drafting.infrastructure.rows import DraftingSectionDraftRow
 from researchlens.modules.retrieval.infrastructure.persistence.rows import RunRetrievalSourceRow
 from researchlens.modules.runs.domain import RunStage
-from researchlens.shared.config import get_settings
+from researchlens.shared.config import get_settings, reset_settings_cache
 from researchlens.shared.db import DatabaseRuntime
 from researchlens.worker_composition import build_worker_runs_runtime, poll_worker_once
 
+from .drafting_support import FakeDraftingClient
 from .run_worker_lifecycle_support import (
     ControlledStageExecution,
     WorkerCrash,
@@ -170,7 +172,11 @@ async def test_running_cancel_requests_stop_and_worker_finishes_cleanly(
 @pytest.mark.asyncio
 async def test_worker_composition_runs_retrieval_stage_and_persists_sources(
     database_runtime: DatabaseRuntime,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("LLM_API_KEY", "test-key")
+    reset_settings_cache()
     tenant_id, user_id, conversation_id = await seed_project_conversation(database_runtime)
     run_id = await create_run(
         database_runtime,
@@ -179,18 +185,30 @@ async def test_worker_composition_runs_retrieval_stage_and_persists_sources(
         conversation_id=conversation_id,
     )
     settings = get_settings()
-    runs_runtime = build_worker_runs_runtime(database=database_runtime, settings=settings)
+    runs_runtime = build_worker_runs_runtime(
+        database=database_runtime,
+        settings=settings,
+        drafting_llm_client=FakeDraftingClient(),
+    )
 
     await poll_worker_once(runs_runtime=runs_runtime, settings=settings)
 
     events = await list_run_events(database_runtime, tenant_id=tenant_id, run_id=run_id)
     async with database_runtime.session_factory() as session:
         linked_count = await session.scalar(
-            select(func.count()).select_from(RunRetrievalSourceRow).where(
-                RunRetrievalSourceRow.run_id == run_id
-            )
+            select(func.count())
+            .select_from(RunRetrievalSourceRow)
+            .where(RunRetrievalSourceRow.run_id == run_id)
+        )
+        drafted_count = await session.scalar(
+            select(func.count())
+            .select_from(DraftingSectionDraftRow)
+            .where(DraftingSectionDraftRow.run_id == run_id)
         )
 
     assert linked_count is not None
     assert 0 < linked_count <= settings.retrieval.max_selected_sources
+    assert drafted_count is not None
+    assert drafted_count >= 1
     assert any(event.message == "Retrieval summary completed" for event in events)
+    assert any(event.message == "Draft report assembled" for event in events)

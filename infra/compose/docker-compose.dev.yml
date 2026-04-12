@@ -18,8 +18,12 @@ services:
       APP_ENVIRONMENT: development
       APP_API_HOST: 0.0.0.0
       APP_API_PORT: 8000
-      DATABASE_URL: postgresql+psycopg://researchlens:researchlens@postgres:5432/researchlens
-      QUEUE_BACKEND: memory
+      DATABASE_URL: ${DATABASE_URL}
+      QUEUE_BACKEND: ${QUEUE_BACKEND:-db}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_API_KEY: ${LLM_API_KEY}
+      EMBEDDINGS_PROVIDER: ${EMBEDDINGS_PROVIDER:-openai}
+      EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY}
     ports:
       - "8000:8000"
 
@@ -31,8 +35,12 @@ services:
       - postgres
     environment:
       APP_ENVIRONMENT: development
-      DATABASE_URL: postgresql+psycopg://researchlens:researchlens@postgres:5432/researchlens
-      QUEUE_BACKEND: memory
+      DATABASE_URL: ${DATABASE_URL}
+      QUEUE_BACKEND: ${QUEUE_BACKEND:-db}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_API_KEY: ${LLM_API_KEY}
+      EMBEDDINGS_PROVIDER: ${EMBEDDINGS_PROVIDER:-openai}
+      EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY}
 
   web:
     build:
@@ -49,6 +57,10 @@ services:
       - postgres
     environment:
       APP_ENVIRONMENT: test
-      DATABASE_URL: sqlite+aiosqlite:///./.data/test.db
-      QUEUE_BACKEND: memory
+      DATABASE_URL: ${DATABASE_URL:-sqlite+aiosqlite:///./.data/test.db}
+      QUEUE_BACKEND: ${QUEUE_BACKEND:-db}
+      LLM_PROVIDER: ${LLM_PROVIDER:-openai}
+      LLM_API_KEY: ${LLM_API_KEY}
+      EMBEDDINGS_PROVIDER: ${EMBEDDINGS_PROVIDER:-openai}
+      EMBEDDINGS_API_KEY: ${EMBEDDINGS_API_KEY}
     command: ["uv", "run", "--package", "researchlens-backend", "pytest", "packages/backend/tests"]

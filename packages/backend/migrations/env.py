@@ -7,6 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 import researchlens.modules.auth.infrastructure.rows  # noqa: F401
 import researchlens.modules.conversations.infrastructure.rows  # noqa: F401
+import researchlens.modules.drafting.infrastructure.rows  # noqa: F401
 import researchlens.modules.projects.infrastructure.project_row  # noqa: F401
 import researchlens.modules.retrieval.infrastructure.persistence.rows  # noqa: F401
 import researchlens.modules.runs.infrastructure.rows  # noqa: F401

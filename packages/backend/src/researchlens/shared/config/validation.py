@@ -12,6 +12,7 @@ def validate_settings(settings: ResearchLensSettings) -> None:
     _validate_production_settings(settings, errors)
     _validate_provider_settings(settings, errors)
     _validate_retrieval_settings(settings, errors)
+    _validate_drafting_settings(settings, errors)
     _validate_shared_runtime_settings(settings, errors)
 
     if errors:
@@ -56,6 +57,14 @@ def _validate_provider_settings(
 
     if settings.embeddings.provider == "openai" and not settings.embeddings.api_key:
         errors.append("EMBEDDINGS_API_KEY is required when EMBEDDINGS_PROVIDER=openai.")
+    if (
+        settings.drafting.enabled
+        and settings.llm.provider != "disabled"
+        and not settings.llm.api_key
+    ):
+        errors.append(
+            "LLM_API_KEY is required when drafting is enabled with an active LLM provider."
+        )
 
 
 def _validate_retrieval_settings(
@@ -80,6 +89,14 @@ def _validate_retrieval_settings(
         )
         if ranking_weight_total <= 0:
             errors.append("At least one retrieval ranking weights value must be greater than zero.")
+
+
+def _validate_drafting_settings(
+    settings: ResearchLensSettings,
+    errors: list[str],
+) -> None:
+    if settings.drafting.section_max_words < settings.drafting.section_min_words:
+        errors.append("DRAFTING_SECTION_MAX_WORDS must be >= DRAFTING_SECTION_MIN_WORDS.")
 
 
 def _validate_shared_runtime_settings(

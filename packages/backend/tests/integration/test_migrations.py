@@ -1,4 +1,5 @@
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from alembic import command
@@ -9,10 +10,11 @@ from researchlens.shared.db import normalize_migration_database_url
 
 
 def test_alembic_upgrade_creates_phase_5_tables(
-    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    database_url = f"sqlite:///{(tmp_path / 'migration-check.db').as_posix()}"
+    database_dir = Path(".data/test-dbs")
+    database_dir.mkdir(parents=True, exist_ok=True)
+    database_url = f"sqlite:///{(database_dir / f'migration-check-{uuid4()}.db').as_posix()}"
     monkeypatch.setenv("APP_ENVIRONMENT", "test")
     monkeypatch.setenv("DATABASE_URL", database_url)
     config = Config("packages/backend/alembic.ini")
@@ -41,4 +43,8 @@ def test_alembic_upgrade_creates_phase_5_tables(
     assert inspector.has_table("retrieval_source_chunks")
     assert inspector.has_table("retrieval_chunk_embeddings")
     assert inspector.has_table("run_retrieval_sources")
+    assert inspector.has_table("drafting_sections")
+    assert inspector.has_table("drafting_section_evidence")
+    assert inspector.has_table("drafting_section_drafts")
+    assert inspector.has_table("drafting_report_drafts")
     assert inspector.has_table("alembic_version")

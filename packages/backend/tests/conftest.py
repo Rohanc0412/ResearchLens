@@ -1,5 +1,6 @@
 from collections.abc import AsyncGenerator, Generator
 from pathlib import Path
+from uuid import uuid4
 
 import pytest
 from alembic import command
@@ -23,8 +24,10 @@ def _alembic_config() -> Config:
 
 
 @pytest.fixture
-def sqlite_database_url(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> str:
-    database_path = tmp_path / "researchlens-test.db"
+def sqlite_database_url(monkeypatch: pytest.MonkeyPatch) -> str:
+    database_dir = Path(".data/test-dbs")
+    database_dir.mkdir(parents=True, exist_ok=True)
+    database_path = database_dir / f"researchlens-test-{uuid4()}.db"
     database_url = f"sqlite+aiosqlite:///{database_path.as_posix()}"
     monkeypatch.setenv("APP_ENVIRONMENT", "test")
     monkeypatch.setenv("DATABASE_URL", database_url)

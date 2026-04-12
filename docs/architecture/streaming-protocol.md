@@ -28,6 +28,8 @@ Every delivered event includes:
 
 The envelope is frontend-ready. UI consumers should display `message`, `display_status`, and `display_stage` directly instead of translating raw backend enums.
 
+Most retrieval and drafting progress notifications are delivered with `event_type="checkpoint.written"` and a stage-specific human-readable `message`. Clients should treat `message` and `payload` as the user-facing progress contract rather than expecting a custom `event_type` for every sub-step.
+
 ## Ordering and replay guarantees
 
 - Ordering is guaranteed per run, not globally.
@@ -50,6 +52,11 @@ Run events are written for users, not backend operators. Examples include:
 - `Waiting for an available worker`
 - `Run started`
 - `Searching for relevant sources`
+- `Draft preparation started`
+- `Draft evidence pack ready`
+- `Draft section started`
+- `Draft section completed`
+- `Draft report assembled`
 - `Progress saved`
 - `Stopping after the current safe step`
 - `Run stopped`

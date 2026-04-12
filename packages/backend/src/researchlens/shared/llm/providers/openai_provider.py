@@ -1,3 +1,4 @@
+import json
 from typing import Any, cast
 
 import httpx
@@ -64,4 +65,23 @@ def _extract_structured_json(data: dict[str, Any]) -> dict[str, Any]:
         return cast(dict[str, Any], data["structured"])
     if isinstance(data.get("output_json"), dict):
         return cast(dict[str, Any], data["output_json"])
+    output_text = data.get("output_text")
+    if isinstance(output_text, str):
+        parsed = _try_parse_json(output_text)
+        if parsed is not None:
+            return parsed
+        return {"raw": output_text}
     return data
+
+
+def _try_parse_json(value: str) -> dict[str, Any] | None:
+    text = value.strip()
+    if text.startswith("```"):
+        lines = text.splitlines()
+        if len(lines) >= 3:
+            text = "\n".join(lines[1:-1]).strip()
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
