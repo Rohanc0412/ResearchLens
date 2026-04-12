@@ -1,6 +1,6 @@
 # Run Lifecycle
 
-Phase 5 moved run lifecycle ownership into `researchlens.modules.runs`. Phase 7.5 keeps that durable ownership but replaces the worker's non-graph execution shell with a top-level LangGraph.
+Phase 5 moved run lifecycle ownership into `researchlens.modules.runs`. Phase 8 keeps that durable ownership and routes retrieval, drafting, and evaluation through the top-level LangGraph.
 
 ## Statuses and transitions
 
@@ -21,9 +21,9 @@ Every status-changing write persists the updated `runs` row, a `run_status_trans
 ## Execution shape
 
 - The canonical run-stage sequence remains `retrieve -> draft -> evaluate -> export`.
-- Phase 7.5 executes `retrieve` and `draft` only through LangGraph.
-- `evaluate` and `export` remain reserved lifecycle stages for later phases; they are not graph-implemented yet.
-- The top-level graph shape is `load_run_context -> restore_or_initialize_graph_state -> maybe_resume_from_checkpoint -> retrieval_subgraph -> drafting_subgraph -> finalize_run`.
+- Phase 8 executes `retrieve`, `draft`, and `evaluate` only through LangGraph.
+- `export` remains a reserved lifecycle stage for later phases; it is not graph-implemented yet.
+- The top-level graph shape is `load_run_context -> restore_or_initialize_graph_state -> maybe_resume_from_checkpoint -> retrieval_subgraph -> drafting_subgraph -> evaluation_subgraph -> finalize_run`.
 - Legacy enum members such as `ingest`, `outline`, `evidence_pack`, `validate`, `repair`, and `factcheck` still exist for display compatibility, but they are not part of the active execution sequence.
 
 ## Ownership and compatibility
@@ -75,6 +75,7 @@ Every status-changing write persists the updated `runs` row, a `run_status_trans
 - Worker run-start transaction: transition `queued -> running` and append `run.running`
 - Retrieval graph transactions: write retrieval progress events and checkpoints through runs-owned bridges, and persist selected sources through retrieval-owned repositories
 - Drafting graph transactions: load retrieval-linked chunks through a drafting-owned input port, persist drafting-owned section preparation rows, draft sections through the shared LLM boundary, persist section drafts, and upsert the assembled report draft
+- Evaluation graph transactions: load drafted sections and section-scoped evidence, create an append-only pass, persist section results, claims, and issues, finalize deterministic metrics, and write a compact evaluation checkpoint through the runs-owned bridge
 - Stage boundary transaction: update `current_stage`, write checkpoint, append `checkpoint.written` and `stage.completed`
 - Cancel transaction: record `cancel_requested_at`, append `cancel.requested`, and if still queued finalize `canceled`
 - Retry transaction: validate failed status, increment `retry_count`, clear retryable failure fields, choose retry floor, transition `failed -> queued`, re-enqueue, append `retry.requested`
@@ -107,3 +108,15 @@ The draft stage now executes after retrieval and before the generic stage-comple
 Evidence-pack preparation and section drafting are concurrent with bounded fan-out. Section-draft persistence remains intentionally sequential inside a single DB session so retry safety and transaction correctness stay deterministic. Continuity summaries are persisted with each section draft, but the current prompt flow does not yet feed prior section summaries into later prompts so the stage can stay fully parallel.
 
 There is no remaining stage-controller fallback or parallel non-graph research-run execution path.
+
+## Evaluation stage behavior
+
+The evaluation stage now executes after drafting and before finalization. It:
+
+- loads drafted section text and only that section's allowed evidence pack
+- creates an append-only `evaluation_passes` record with `scope=pipeline`
+- evaluates sections concurrently with bounded fan-out while keeping claim extraction, verdicting, and scoring ordered inside each section
+- uses RAGAS for per-section faithfulness scoring and maps provider outputs into ResearchLens-owned claim, issue, section-result, and summary contracts
+- persists `ragas_faithfulness_pct`, `section_has_contradicted_claim`, `repair_recommended`, and `repair_attempt_count=0`
+- marks repair only when faithfulness is below 70 percent or any claim is `contradicted`
+- never fails a run solely because product-quality issues were found

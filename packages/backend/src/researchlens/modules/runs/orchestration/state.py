@@ -28,6 +28,11 @@ class RunGraphState(TypedDict):
     retrieval_summary: NotRequired[Any]
     drafting_prepared: NotRequired[Any]
     drafting_result: NotRequired[Any]
+    evaluation_summary: NotRequired[Any]
+    sections_requiring_repair: NotRequired[Any]
+    repair_recommended: NotRequired[bool]
+    evaluation_status: NotRequired[str]
+    evaluation_failure_summary: NotRequired[Any]
 
 
 def initial_run_graph_state(

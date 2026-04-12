@@ -1,1 +1,1 @@
-"""Evaluation module placeholder."""
+"""Evaluation bounded context."""

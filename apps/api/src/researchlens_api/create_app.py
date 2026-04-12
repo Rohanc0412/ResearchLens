@@ -8,6 +8,7 @@ from researchlens.modules.conversations.presentation import (
     conversation_router,
     message_router,
 )
+from researchlens.modules.evaluation.presentation import router as evaluation_router
 from researchlens.modules.projects.presentation import router as projects_router
 from researchlens.modules.runs.presentation import router as runs_router
 from researchlens.shared.errors import InfrastructureError
@@ -61,6 +62,7 @@ def create_app() -> FastAPI:
     app.include_router(conversation_router)
     app.include_router(message_router)
     app.include_router(runs_router)
+    app.include_router(evaluation_router)
     return app
 
 
@@ -75,6 +77,10 @@ def _schema_is_ready(connection: Connection) -> bool:
         "auth_users",
         "conversation_run_triggers",
         "conversations",
+        "evaluation_claims",
+        "evaluation_issues",
+        "evaluation_passes",
+        "evaluation_section_results",
         "messages",
         "projects",
         "run_checkpoints",

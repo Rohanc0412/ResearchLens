@@ -8,6 +8,7 @@ from researchlens.shared.config.bootstrap_actor import BootstrapActorSettings
 from researchlens.shared.config.database import DatabaseSettings
 from researchlens.shared.config.drafting import DraftingSettings
 from researchlens.shared.config.embeddings import EmbeddingsSettings
+from researchlens.shared.config.evaluation import EvaluationSettings
 from researchlens.shared.config.llm import LlmSettings
 from researchlens.shared.config.observability import ObservabilitySettings
 from researchlens.shared.config.queue import QueueSettings
@@ -97,6 +98,7 @@ def _settings(
         smtp=SmtpSettings(),
         retrieval=retrieval,
         drafting=drafting or DraftingSettings(),
+        evaluation=EvaluationSettings(),
         llm=LlmSettings(),
         embeddings=EmbeddingsSettings(),
         observability=ObservabilitySettings(),

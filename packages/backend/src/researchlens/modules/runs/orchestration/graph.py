@@ -21,6 +21,7 @@ def build_run_graph(
     bridge: RunGraphRuntimeBridge,
     retrieval_subgraph_factory: StageSubgraphFactory,
     drafting_subgraph_factory: StageSubgraphFactory,
+    evaluation_subgraph_factory: StageSubgraphFactory,
 ) -> Any:
     graph = StateGraph(RunGraphState)
     graph.add_node("load_run_context", cast(Any, _load_run_context(bridge)))
@@ -37,6 +38,10 @@ def build_run_graph(
         "drafting_subgraph",
         cast(Any, _run_stage_subgraph(bridge, RunStage.DRAFT, drafting_subgraph_factory)),
     )
+    graph.add_node(
+        "evaluation_subgraph",
+        cast(Any, _run_stage_subgraph(bridge, RunStage.EVALUATE, evaluation_subgraph_factory)),
+    )
     graph.add_node("finalize_run", cast(Any, _finalize_run(bridge)))
     graph.add_edge(START, "load_run_context")
     graph.add_edge("load_run_context", "restore_or_initialize_graph_state")
@@ -47,11 +52,13 @@ def build_run_graph(
         {
             "retrieval_subgraph": "retrieval_subgraph",
             "drafting_subgraph": "drafting_subgraph",
+            "evaluation_subgraph": "evaluation_subgraph",
             "finalize_run": "finalize_run",
         },
     )
     graph.add_edge("retrieval_subgraph", "drafting_subgraph")
-    graph.add_edge("drafting_subgraph", "finalize_run")
+    graph.add_edge("drafting_subgraph", "evaluation_subgraph")
+    graph.add_edge("evaluation_subgraph", "finalize_run")
     graph.add_edge("finalize_run", END)
     return graph.compile()
 
@@ -114,6 +121,12 @@ def _run_stage_subgraph(
             and state["start_stage"] != RunStage.DRAFT.value
         ):
             return {}
+        if (
+            stage == RunStage.EVALUATE
+            and state.get("current_stage") != RunStage.EVALUATE.value
+            and state["start_stage"] != RunStage.EVALUATE.value
+        ):
+            return {}
         if not await bridge.stage_entered(state=state, stage=stage):
             return {"terminal_status": "canceled"}
         result = await subgraph_factory(state).ainvoke(state)
@@ -139,6 +152,8 @@ def _route_from_resume(state: RunGraphState) -> str:
         return "finalize_run"
     if state["start_stage"] == RunStage.DRAFT.value:
         return "drafting_subgraph"
+    if state["start_stage"] == RunStage.EVALUATE.value:
+        return "evaluation_subgraph"
     if state["start_stage"] == RunStage.RETRIEVE.value:
         return "retrieval_subgraph"
     return "finalize_run"

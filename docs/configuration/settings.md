@@ -19,6 +19,7 @@ Backend configuration is centralized under `researchlens.shared.config` using `p
 - `smtp`: enablement, host, port, credentials, sender identity
 - `retrieval`: feature toggles and safety limits
 - `drafting`: section evidence-pack limits, section length targets, retry limits, and bounded concurrency
+- `evaluation`: enablement, bounded section concurrency, claim limits, structured output retry count, timeout, repair threshold, and max repairs per section
 - `llm`: provider selection, GPT-5 nano model default, timeouts, structured output limits, and credentials
 - `embeddings`: provider selection, text-embedding-3-small model default, batching/concurrency limits, credentials, and cache behavior
 - `observability`: service name, log level, JSON logs, tracing toggle
@@ -89,7 +90,8 @@ Queue note:
 - `redis` remains a validated settings option only; no external broker implementation is currently wired.
 - SSE and worker timing settings stay safe for local startup and installed-package test execution.
 - The worker now has an explicit stop path and exits its poll loop cleanly on shutdown signals instead of relying on abrupt process termination.
-- Phase 7.5 did not add graph-specific environment variables. LangGraph wiring is internal and uses the existing queue, retrieval, drafting, LLM, and embedding settings surface.
+- LangGraph wiring is internal and uses the existing queue, retrieval, drafting, evaluation, LLM, and embedding settings surface.
+- Phase 8 adds evaluation settings but no separate provider stack. Evaluation uses the shared `LLM_*` OpenAI-backed `gpt-5-nano` path and RAGAS in the evaluation module.
 
 Phase 6 retrieval settings include:
 
@@ -143,6 +145,17 @@ Drafting settings add:
 - `DRAFTING_MAX_CONCURRENT_SECTION_DRAFTS`
 - `DRAFTING_MAX_CONCURRENT_SECTION_PERSISTENCE`
 - `DRAFTING_STAGE_TIMEOUT_SECONDS`
+
+Evaluation settings add:
+
+- `EVALUATION_ENABLED`
+- `EVALUATION_MAX_CONCURRENT_SECTIONS`
+- `EVALUATION_MAX_CLAIMS_PER_SECTION`
+- `EVALUATION_STAGE_TIMEOUT_SECONDS`
+- `EVALUATION_STRUCTURED_OUTPUT_RETRY_COUNT`
+- `EVALUATION_REPAIR_THRESHOLD_PCT`: defaults to `70`
+- `EVALUATION_MAX_REPAIRS_PER_SECTION`: defaults to `1`
+- `EVALUATION_SECTION_MAX_OUTPUT_TOKENS`
 
 Recommended local usage:
 

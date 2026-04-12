@@ -47,4 +47,8 @@ def test_alembic_upgrade_creates_phase_5_tables(
     assert inspector.has_table("drafting_section_evidence")
     assert inspector.has_table("drafting_section_drafts")
     assert inspector.has_table("drafting_report_drafts")
+    assert inspector.has_table("evaluation_passes")
+    assert inspector.has_table("evaluation_section_results")
+    assert inspector.has_table("evaluation_claims")
+    assert inspector.has_table("evaluation_issues")
     assert inspector.has_table("alembic_version")

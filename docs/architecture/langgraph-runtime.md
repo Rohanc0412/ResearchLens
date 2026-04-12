@@ -1,12 +1,12 @@
 # LangGraph Runtime
 
-Phase 7.5 makes LangGraph the only production orchestrator for research runs.
+Phase 8 keeps LangGraph as the only production orchestrator for research runs.
 
 ## Ownership split
 
 - `runs` owns queue pickup, durable state transitions, persisted run events, persisted checkpoints, retry floors, cancel handling, and final status writes.
 - LangGraph owns execution flow between durable boundaries.
-- `retrieval` and `drafting` expose graph-native orchestration pieces, but they do not own top-level lifecycle durability.
+- `retrieval`, `drafting`, and `evaluation` expose graph-native orchestration pieces, but they do not own top-level lifecycle durability.
 
 ## Runtime pieces
 
@@ -21,7 +21,7 @@ Phase 7.5 makes LangGraph the only production orchestrator for research runs.
 - `run_events` remains the source for ordered JSON and SSE delivery.
 - `run_checkpoints` remains the source for resume and retry floor evaluation.
 - Stage-local graph checkpoints also carry `completed_stages` and `next_stage` so the latest checkpoint is always sufficient for restore.
-- Graph state carries references and summaries only; retrieval sources, drafting evidence, section drafts, and reports still persist in their owning modules.
+- Graph state carries references and summaries only; retrieval sources, drafting evidence, section drafts, reports, evaluation passes, claims, section results, and issues still persist in their owning modules.
 
 ## Cancel and resume
 
@@ -29,3 +29,4 @@ Phase 7.5 makes LangGraph the only production orchestrator for research runs.
 - Queued or running cancel requests still finalize as `canceled`, never `failed`.
 - Retry before drafting still resumes from the latest successful checkpoint.
 - Retry at or after drafting still restarts from `draft`.
+- Evaluation runs after drafting, so operational evaluation failures also retry from `draft`.

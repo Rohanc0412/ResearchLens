@@ -1,6 +1,6 @@
 # Module Boundaries
 
-ResearchLens backend code uses explicit layers inside each module. Phase 7.5 keeps that modular-monolith shape while making LangGraph the only research-run orchestrator.
+ResearchLens backend code uses explicit layers inside each module. Phase 8 keeps that modular-monolith shape while making LangGraph the only research-run orchestrator.
 
 ## Required layers
 
@@ -23,11 +23,12 @@ ResearchLens backend code uses explicit layers inside each module. Phase 7.5 kee
 - Shared code must remain generic and cross-cutting only.
 - API and worker entrypoint packages must not become alternate homes for business logic.
 - Cross-module imports should be explicit and rare; default reach-through between modules is not allowed.
-- The only intentional orchestration cross-module reach-through is `runs.orchestration` importing retrieval and drafting orchestration entrypoints so the top-level research-run graph can compose stage-local graph pieces.
+- The only intentional orchestration cross-module reach-through is `runs.orchestration` importing retrieval, drafting, and evaluation orchestration entrypoints so the top-level research-run graph can compose stage-local graph pieces.
 - Retrieval application code depends on provider and ingestion ports. Provider adapters, persistence rows, and SDK/HTTP concerns stay under retrieval infrastructure.
 - Retrieval orchestration receives provider ports from worker composition; it does not build provider registries or import retrieval infrastructure directly.
 - LLM and embedding provider details stay in shared provider-agnostic ports and isolated OpenAI adapter packages; retrieval orchestration does not import OpenAI SDK/response types.
 - Drafting owns section briefs, allowed evidence packs, citation-token validation, per-section outputs, and report assembly. It consumes retrieval-owned persisted chunks as inputs through a drafting-owned input-reader port, not by importing retrieval or runs modules directly; worker composition remains the integration point.
+- Evaluation owns claim verdicts, issue types, repair policy, scoring, RAGAS adapters, evaluation rows, and read/query use cases. It consumes drafted section rows and evidence-pack rows through an evaluation-owned input-reader port without importing drafting or runs modules directly.
 
 ## Shared backend scope
 
@@ -61,10 +62,11 @@ Conversation, message, and run presentation code follows the same pattern: prese
 
 Phase 5 applies the same rule to `runs`: route handlers only authenticate, validate, call use cases, and host SSE transport; queue/event/checkpoint persistence stays in `runs.infrastructure`; retry floor rules, cancel semantics, and status transitions stay in `runs.application` and `runs.domain`.
 
-Phase 7.5 replaces the old stage-controller shell with a runs-owned LangGraph backbone:
+Phase 8 keeps the runs-owned LangGraph backbone:
 
 - `runs.orchestration` owns graph state, routing, checkpoint/event bridges, cancel/resume mapping, and finalization
 - `retrieval.orchestration` exposes graph-native retrieval nodes/subgraph wiring only
 - `drafting.orchestration` exposes graph-native drafting nodes/subgraph wiring only
-- retrieval and drafting business rules stay in their own application/domain/infrastructure layers
+- `evaluation.orchestration` exposes graph-native evaluation nodes/subgraph wiring only
+- retrieval, drafting, and evaluation business rules stay in their own application/domain/infrastructure layers
 - worker composition remains a thin composition root and does not become a second orchestrator

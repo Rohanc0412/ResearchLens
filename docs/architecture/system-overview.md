@@ -1,6 +1,6 @@
 # System Overview
 
-ResearchLens is a phased monorepo rebuild. The current backend builds on the Phase 5 durable run lifecycle, the Phase 6 retrieval foundation, and the Phase 7 drafting module by making LangGraph the only research-run orchestrator.
+ResearchLens is a phased monorepo rebuild. The current backend builds on the Phase 5 durable run lifecycle, the Phase 6 retrieval foundation, the Phase 7 drafting module, and the Phase 8 evaluation module while keeping LangGraph as the only research-run orchestrator.
 
 ## Monorepo structure
 
@@ -36,10 +36,12 @@ The backend currently includes:
 - one migration-backed `runs` module with canonical create/get/cancel/retry/event routes, DB-backed queue leasing, append-only events and checkpoints, and retry/cancel lifecycle rules
 - one migration-backed `retrieval` module with provider-agnostic search contracts, offline fake-provider mode by default, Paper Search MCP plus PubMed/Europe PMC/OpenAlex/arXiv when external fetch is enabled, pure ranking/diversification policies, source/snapshot/chunk/embedding-cache tables, and thin retrieval orchestration
 - one migration-backed `drafting` module with drafting-owned section/evidence/draft/report persistence, strict citation-token validation against retrieval chunks, bounded concurrent section drafting, and deterministic markdown report assembly
+- one migration-backed `evaluation` module with append-only passes, per-section RAGAS faithfulness, persisted claims, repair-ready issue rows, deterministic summary rollups, and auth-protected read routes
 - provider-agnostic shared LLM and embedding ports with OpenAI adapters isolated under `shared/llm/providers` and `shared/embeddings/providers`
 - worker polling that reuses the same shared foundation and executes the research run through a top-level LangGraph owned by `runs`
 - graph-native retrieval orchestration that still delegates business logic to retrieval application/domain/infrastructure code
 - graph-native drafting orchestration that still delegates evidence-pack, citation, and report-assembly policy to drafting-owned code
+- graph-native evaluation orchestration that still delegates claim, scoring, repair-threshold, RAGAS, and persistence work to evaluation-owned code
 - a runs-owned graph bridge that maps graph progress into persisted Phase 5 events, checkpoints, cancel handling, retry floors, and final status transitions
 
 Phase 3 replaced the Phase 2 `bootstrap_actor` protected-route identity path with auth-backed bearer token resolution. Phase 5 keeps that bearer-token identity path for project, conversation, message, and run lifecycle routes. Health routes remain public.
@@ -47,10 +49,11 @@ Phase 3 replaced the Phase 2 `bootstrap_actor` protected-route identity path wit
 Research runs are now split cleanly:
 
 - `runs` owns queue leasing, lifecycle state, run events, checkpoints, cancel/retry/resume rules, and the top-level graph
-- LangGraph owns execution flow between retrieval and drafting
+- LangGraph owns execution flow between retrieval, drafting, and evaluation
 - `retrieval` owns retrieval business logic, providers, ranking, enrichment, ingestion, and persistence
 - `drafting` owns evidence-pack derivation, section drafting, citation validation, and report assembly
+- `evaluation` owns claim extraction, claim verdict normalization, RAGAS faithfulness scoring, issue persistence, summary rollups, and repair recommendation signals
 
 There is no remaining non-graph research-run execution shell in production code.
 
-Evaluation, repair, export polish, richer tenant authorization, frontend auth UX, and recovery-code MFA UX remain out of scope. Retrieval and drafting stay backend-internal; there is no public evidence inspection or drafting API yet.
+Repair execution, export polish, richer tenant authorization, frontend auth UX, and recovery-code MFA UX remain out of scope. Retrieval and drafting stay backend-internal; evaluation exposes summary and issue read APIs only.
