@@ -48,7 +48,7 @@ def test_backend_modules_do_not_cross_import_each_other() -> None:
             for candidate in MODULE_NAMES - {owner}:
                 if (
                     allow_runs_orchestration
-                    and candidate in {"retrieval", "drafting", "evaluation"}
+                    and candidate in {"retrieval", "drafting", "evaluation", "repair"}
                     and target.startswith(f"researchlens.modules.{candidate}.orchestration")
                 ):
                     continue

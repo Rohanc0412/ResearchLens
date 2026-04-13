@@ -12,6 +12,7 @@ from researchlens.shared.config.evaluation import EvaluationSettings
 from researchlens.shared.config.llm import LlmSettings
 from researchlens.shared.config.observability import ObservabilitySettings
 from researchlens.shared.config.queue import QueueSettings
+from researchlens.shared.config.repair import RepairSettings
 from researchlens.shared.config.retrieval import RetrievalSettings
 from researchlens.shared.config.settings_types import ResearchLensSettings
 from researchlens.shared.config.smtp import SmtpSettings
@@ -99,6 +100,7 @@ def _settings(
         retrieval=retrieval,
         drafting=drafting or DraftingSettings(),
         evaluation=EvaluationSettings(),
+        repair=RepairSettings(),
         llm=LlmSettings(),
         embeddings=EmbeddingsSettings(),
         observability=ObservabilitySettings(),

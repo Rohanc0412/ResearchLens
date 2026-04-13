@@ -1,6 +1,6 @@
 # Evaluation Module
 
-Phase 8 adds `researchlens.modules.evaluation` as a bounded context.
+`researchlens.modules.evaluation` owns the pipeline and targeted repair-reevaluation checks.
 
 ## Responsibilities
 
@@ -11,6 +11,7 @@ Phase 8 adds `researchlens.modules.evaluation` as a bounded context.
 - persist per-section results, extracted claims, and structured issues
 - compute report metrics as deterministic rollups from section results
 - expose latest summary, issue listing, and repair-candidate queries
+- support a targeted `scope=repair_reevaluation` pass for repaired sections only
 
 ## RAGAS Runtime
 
@@ -24,17 +25,17 @@ Persisted issue rows include run/pass/section identifiers, section title/order, 
 
 ## Repair Signal
 
-Phase 8 does not execute repair. It persists `repair_recommended` only when:
+The pipeline pass persists `repair_recommended` only when:
 
 - `ragas_faithfulness_pct < 70`
 - or any claim verdict is `contradicted`
 
-Other issue types do not trigger repair when faithfulness is at least 70 and no claim is contradicted. The durable repair hook is `repair_attempt_count=0` on section results plus `max_repairs_per_section=1` in the application policy.
+Other issue types do not trigger repair when faithfulness is at least 70 and no claim is contradicted. The durable repair hook is `repair_attempt_count` on section results plus `max_repairs_per_section=1` in the application policy. Phase 9 increments that count at the durable start of a repair attempt.
 
 ## Graph Integration
 
 The top-level graph is:
 
-`load_run_context -> restore_or_initialize_graph_state -> maybe_resume_from_checkpoint -> retrieval_subgraph -> drafting_subgraph -> evaluation_subgraph -> finalize_run`
+`load_run_context -> restore_or_initialize_graph_state -> maybe_resume_from_checkpoint -> retrieval_subgraph -> drafting_subgraph -> evaluation_subgraph -> repair_subgraph -> maybe_reevaluate_repaired_sections_subgraph -> finalize_run`
 
-Evaluation emits concise progress events and a compact checkpoint through the runs-owned bridges. Content-quality findings do not fail the run; provider/runtime/persistence failures do.
+Evaluation emits concise progress events and compact checkpoints through the runs-owned bridges. The targeted repair-reevaluation pass uses the same evaluator/provider path, filters to changed section ids, persists linked section results with `repair_result_id`, and does not create a second repair loop. Content-quality findings do not fail the run; provider/runtime/persistence failures do.

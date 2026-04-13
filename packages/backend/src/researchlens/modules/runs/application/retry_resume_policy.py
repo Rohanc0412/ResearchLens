@@ -7,7 +7,7 @@ def decide_retry_resume(
     run: Run,
     latest_checkpoint: RunCheckpointRecord | None,
 ) -> RetryDecision:
-    if run.current_stage in {RunStage.EVALUATE, RunStage.EXPORT}:
+    if run.current_stage in {RunStage.EVALUATE, RunStage.REPAIR, RunStage.EXPORT}:
         return RetryDecision(
             resume_from_stage=RunStage.DRAFT,
             message="Retrying from drafting",

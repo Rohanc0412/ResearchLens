@@ -69,6 +69,7 @@ async def evaluate_section(
                 ragas_faithfulness_pct=result.ragas_faithfulness_pct,
                 verdicts=verdicts,
             ),
+            "repair_result_id": section.repair_result_id,
         }
     )
 
@@ -99,4 +100,5 @@ def _section_input_issue_result(
         ragas_faithfulness_pct=0.0,
         section_has_contradicted_claim=False,
         repair_recommended=True,
+        repair_result_id=section.repair_result_id,
     )

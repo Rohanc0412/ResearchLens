@@ -20,6 +20,7 @@ Backend configuration is centralized under `researchlens.shared.config` using `p
 - `retrieval`: feature toggles and safety limits
 - `drafting`: section evidence-pack limits, section length targets, retry limits, and bounded concurrency
 - `evaluation`: enablement, bounded section concurrency, claim limits, structured output retry count, timeout, repair threshold, and max repairs per section
+- `repair`: enablement, bounded repair concurrency, repair timeout, and repair section output token budget
 - `llm`: provider selection, GPT-5 nano model default, timeouts, structured output limits, and credentials
 - `embeddings`: provider selection, text-embedding-3-small model default, batching/concurrency limits, credentials, and cache behavior
 - `observability`: service name, log level, JSON logs, tracing toggle

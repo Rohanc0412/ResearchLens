@@ -20,11 +20,11 @@ Every status-changing write persists the updated `runs` row, a `run_status_trans
 
 ## Execution shape
 
-- The canonical run-stage sequence remains `retrieve -> draft -> evaluate -> export`.
-- Phase 8 executes `retrieve`, `draft`, and `evaluate` only through LangGraph.
+- The canonical run-stage sequence is `retrieve -> draft -> evaluate -> repair -> export`.
+- Phase 9 executes `retrieve`, `draft`, `evaluate`, and `repair` only through LangGraph.
 - `export` remains a reserved lifecycle stage for later phases; it is not graph-implemented yet.
-- The top-level graph shape is `load_run_context -> restore_or_initialize_graph_state -> maybe_resume_from_checkpoint -> retrieval_subgraph -> drafting_subgraph -> evaluation_subgraph -> finalize_run`.
-- Legacy enum members such as `ingest`, `outline`, `evidence_pack`, `validate`, `repair`, and `factcheck` still exist for display compatibility, but they are not part of the active execution sequence.
+- The top-level graph shape is `load_run_context -> restore_or_initialize_graph_state -> maybe_resume_from_checkpoint -> retrieval_subgraph -> drafting_subgraph -> evaluation_subgraph -> repair_subgraph -> maybe_reevaluate_repaired_sections_subgraph -> finalize_run`.
+- Legacy enum members such as `ingest`, `outline`, `evidence_pack`, `validate`, and `factcheck` still exist for display compatibility, but they are not part of the active execution sequence.
 
 ## Ownership and compatibility
 
@@ -65,7 +65,7 @@ Every status-changing write persists the updated `runs` row, a `run_status_trans
 ## Retry resume-floor rule
 
 - If failure happened before drafting started, retry resumes from the latest successful checkpoint.
-- If failure happened at or after drafting, including later `evaluate` or `export` stages, retry restarts from `draft`.
+- If failure happened at or after drafting, including later `evaluate`, `repair`, targeted reevaluation, or `export` stages, retry restarts from `draft`.
 - This rule is intentional and favors downstream coherence over aggressive partial replay.
 
 ## Transaction boundaries
@@ -76,6 +76,7 @@ Every status-changing write persists the updated `runs` row, a `run_status_trans
 - Retrieval graph transactions: write retrieval progress events and checkpoints through runs-owned bridges, and persist selected sources through retrieval-owned repositories
 - Drafting graph transactions: load retrieval-linked chunks through a drafting-owned input port, persist drafting-owned section preparation rows, draft sections through the shared LLM boundary, persist section drafts, and upsert the assembled report draft
 - Evaluation graph transactions: load drafted sections and section-scoped evidence, create an append-only pass, persist section results, claims, and issues, finalize deterministic metrics, and write a compact evaluation checkpoint through the runs-owned bridge
+- Repair graph transactions: create a repair pass, atomically consume the per-section repair attempt at attempt start, persist repair/fallback outcomes, update canonical section drafts and the assembled report, write repair events/checkpoints, then run targeted reevaluation only for changed section ids
 - Stage boundary transaction: update `current_stage`, write checkpoint, append `checkpoint.written` and `stage.completed`
 - Cancel transaction: record `cancel_requested_at`, append `cancel.requested`, and if still queued finalize `canceled`
 - Retry transaction: validate failed status, increment `retry_count`, clear retryable failure fields, choose retry floor, transition `failed -> queued`, re-enqueue, append `retry.requested`
@@ -120,3 +121,9 @@ The evaluation stage now executes after drafting and before finalization. It:
 - persists `ragas_faithfulness_pct`, `section_has_contradicted_claim`, `repair_recommended`, and `repair_attempt_count=0`
 - marks repair only when faithfulness is below 70 percent or any claim is `contradicted`
 - never fails a run solely because product-quality issues were found
+
+## Repair and targeted reevaluation behavior
+
+The repair stage runs after the pipeline evaluation only when the Phase 8 trigger policy selects sections: `repair_attempt_count < 1` and either `ragas_faithfulness_pct < 70` or a contradicted claim. Repair consumes persisted issue rows and section evidence-pack rows, calls the real shared structured LLM path, validates section id, non-empty text, addressed issue ids, and citations against the section's allowed chunk ids, and persists model/fallback/unresolved outcomes.
+
+If model output is invalid or unusable, deterministic fallback edits are allowed only for precise contradicted-claim targets. Ambiguous targets remain unresolved and are persisted as such. Changed sections update `drafting_section_drafts` and the assembled report draft, then a targeted `repair_reevaluation` evaluation pass runs for changed sections only. That pass records unresolved-after-repair quality findings but never routes the section back into a second repair attempt.

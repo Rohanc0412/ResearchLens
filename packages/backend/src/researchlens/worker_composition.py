@@ -1,5 +1,4 @@
 from contextlib import AbstractAsyncContextManager
-from datetime import UTC, datetime, timedelta
 from typing import Protocol
 from uuid import UUID
 
@@ -9,10 +8,7 @@ from researchlens.modules.drafting.infrastructure import (
     SqlAlchemyDraftingRepository,
     SqlAlchemyDraftingRunInputReader,
 )
-from researchlens.modules.drafting.orchestration import (
-    DraftingGraphRuntime,
-    build_drafting_subgraph,
-)
+from researchlens.modules.drafting.orchestration import DraftingGraphRuntime
 from researchlens.modules.evaluation.application.ports import SectionGroundingEvaluator
 from researchlens.modules.evaluation.infrastructure import (
     SqlAlchemyEvaluationInputReader,
@@ -23,37 +19,34 @@ from researchlens.modules.evaluation.infrastructure.ragas import (
     RagasFaithfulnessScorer,
     RagasGroundingEvaluator,
 )
-from researchlens.modules.evaluation.orchestration import (
-    EvaluationGraphRuntime,
-    build_evaluation_subgraph,
-)
+from researchlens.modules.evaluation.orchestration import EvaluationGraphRuntime
+from researchlens.modules.repair.infrastructure import SqlAlchemyRepairRepository
+from researchlens.modules.repair.orchestration import RepairGraphRuntime
 from researchlens.modules.retrieval.infrastructure.persistence.source_repository_sql import (
     SqlAlchemyRetrievalIngestionRepository,
 )
 from researchlens.modules.retrieval.infrastructure.providers.provider_registry import (
     build_provider_registry,
 )
-from researchlens.modules.retrieval.orchestration import (
-    RetrievalGraphRuntime,
-    build_retrieval_subgraph,
-)
-from researchlens.modules.runs.application import ProcessRunQueueItemCommand, UtcRunClock
+from researchlens.modules.retrieval.orchestration import RetrievalGraphRuntime
+from researchlens.modules.runs.application import UtcRunClock
 from researchlens.modules.runs.application.ports import RunCheckpointStore, RunEventStore
 from researchlens.modules.runs.domain import RunStage
 from researchlens.modules.runs.infrastructure import SqlAlchemyRunsRuntime
 from researchlens.modules.runs.infrastructure.queue_backend_db import DbRunQueueBackend
 from researchlens.modules.runs.infrastructure.run_repository_sql import SqlAlchemyRunRepository
 from researchlens.modules.runs.infrastructure.runtime import RunsRequestContext
-from researchlens.modules.runs.orchestration import (
-    LangGraphRunOrchestrator,
-    RunGraphRuntimeBridge,
-)
+from researchlens.modules.runs.orchestration import LangGraphRunOrchestrator, RunGraphRuntimeBridge
 from researchlens.shared.config import ResearchLensSettings
 from researchlens.shared.db import DatabaseRuntime
 from researchlens.shared.db.transaction_manager import SqlAlchemyTransactionManager
 from researchlens.shared.embeddings.factory import build_embedding_client
 from researchlens.shared.llm.factory import build_llm_client
 from researchlens.shared.llm.ports import StructuredGenerationClient
+from researchlens.worker_polling import poll_worker_once
+from researchlens.worker_stage_factories import stage_factories
+
+__all__ = ["build_worker_runs_runtime", "poll_worker_once"]
 
 
 class WorkerRunsRuntime(Protocol):
@@ -108,36 +101,27 @@ def _build_run_orchestrator(
         for name, provider in retrieval_providers.items()
         if name in settings.retrieval.fallback_providers
     )
+    factories = stage_factories(
+        settings=settings,
+        session=session,
+        bridge=bridge,
+        drafting_llm_client=drafting_llm_client,
+        evaluation_evaluator=evaluation_evaluator,
+        retrieval_providers=(primary_retrieval_provider, fallback_retrieval_providers),
+        builders=(
+            _build_retrieval_runtime,
+            _build_drafting_runtime,
+            _build_evaluation_runtime,
+            _build_repair_runtime,
+        ),
+    )
     return LangGraphRunOrchestrator(
         bridge=bridge,
-        retrieval_subgraph_factory=lambda state: build_retrieval_subgraph(
-            _build_retrieval_runtime(
-                settings=settings,
-                session=session,
-                bridge=bridge,
-                state=state,
-                primary_retrieval_provider=primary_retrieval_provider,
-                fallback_retrieval_providers=fallback_retrieval_providers,
-            )
-        ),
-        drafting_subgraph_factory=lambda state: build_drafting_subgraph(
-            _build_drafting_runtime(
-                settings=settings,
-                session=session,
-                bridge=bridge,
-                state=state,
-                drafting_llm_client=drafting_llm_client,
-            )
-        ),
-        evaluation_subgraph_factory=lambda state: build_evaluation_subgraph(
-            _build_evaluation_runtime(
-                settings=settings,
-                session=session,
-                bridge=bridge,
-                state=state,
-                evaluation_evaluator=evaluation_evaluator,
-            )
-        ),
+        retrieval_subgraph_factory=factories[0],
+        drafting_subgraph_factory=factories[1],
+        evaluation_subgraph_factory=factories[2],
+        repair_subgraph_factory=factories[3],
+        reevaluation_subgraph_factory=factories[4],
     )
 
 
@@ -212,6 +196,26 @@ def _build_evaluation_runtime(
     )
 
 
+def _build_repair_runtime(
+    *,
+    settings: ResearchLensSettings,
+    session: AsyncSession,
+    bridge: RunGraphRuntimeBridge,
+    state: object,
+    repair_llm_client: StructuredGenerationClient | None,
+) -> RepairGraphRuntime:
+    return RepairGraphRuntime(
+        settings=settings,
+        repository=SqlAlchemyRepairRepository(session),
+        generation_client=repair_llm_client or build_llm_client(settings.llm),
+        cancellation_probe=_RunCancellationProbe(session),
+        events=bridge.stage_event_sink(state=state, stage=RunStage.REPAIR),  # type: ignore[arg-type]
+        checkpoints=bridge.stage_checkpoint_sink(
+            state=state, stage=RunStage.REPAIR  # type: ignore[arg-type]
+        ),
+    )
+
+
 def _build_evaluation_evaluator(settings: ResearchLensSettings) -> SectionGroundingEvaluator:
     return RagasGroundingEvaluator(
         claim_extractor=RagasAssistedClaimExtractor(
@@ -235,28 +239,3 @@ class _RunCancellationProbe:
     async def cancel_requested(self, *, run_id: UUID) -> bool:
         run = await self._repository.get_by_id(run_id=run_id)
         return run is not None and run.cancel_requested_at is not None
-
-
-async def poll_worker_once(
-    *,
-    runs_runtime: WorkerRunsRuntime,
-    settings: ResearchLensSettings,
-) -> None:
-    async with runs_runtime.request_context() as context:
-        async with context.transaction_manager.boundary():
-            queue_items = await context.queue_backend.claim_available(
-                now=datetime.now(tz=UTC),
-                lease_duration=timedelta(seconds=settings.queue.lease_seconds),
-                limit=settings.queue.batch_size,
-                max_attempts=settings.queue.max_attempts,
-            )
-        for queue_item in queue_items:
-            if queue_item.lease_token is None:
-                continue
-            await context.process_run_queue_item.execute(
-                ProcessRunQueueItemCommand(
-                    queue_item_id=queue_item.id,
-                    lease_token=queue_item.lease_token,
-                    run_id=queue_item.run_id,
-                )
-            )

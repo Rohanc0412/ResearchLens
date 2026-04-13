@@ -27,6 +27,7 @@ Phase 8 keeps LangGraph as the only production orchestrator for research runs.
 
 - The graph checks cancel state at stage boundaries through runs-owned durable state.
 - Queued or running cancel requests still finalize as `canceled`, never `failed`.
+- Phase 9 inserts a graph-native repair subgraph after evaluation and a targeted repair-reevaluation graph step before finalization. The reevaluation step is bounded to changed sections and never loops back into repair.
 - Retry before drafting still resumes from the latest successful checkpoint.
 - Retry at or after drafting still restarts from `draft`.
 - Evaluation runs after drafting, so operational evaluation failures also retry from `draft`.

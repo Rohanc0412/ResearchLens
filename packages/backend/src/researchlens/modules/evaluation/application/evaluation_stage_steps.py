@@ -46,11 +46,16 @@ class EvaluationStageSteps:
         self._evaluator = evaluator
         self._cancellation_probe = cancellation_probe
 
-    async def create_pass(self, *, run_input: EvaluationRunInput) -> EvaluationPassRecord:
+    async def create_pass(
+        self,
+        *,
+        run_input: EvaluationRunInput,
+        scope: str = "pipeline",
+    ) -> EvaluationPassRecord:
         return await self._repository.create_pass(
             tenant_id=run_input.tenant_id,
             run_id=run_input.run_id,
-            scope="pipeline",
+            scope=scope,
         )
 
     async def evaluate_sections(

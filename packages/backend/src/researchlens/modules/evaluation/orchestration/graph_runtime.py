@@ -49,16 +49,32 @@ class EvaluationGraphRuntime:
             cancellation_probe=cancellation_probe,
         )
 
-    async def load_inputs(self, *, run_id: UUID) -> EvaluationRunInput:
-        await self._events.info(
-            key="evaluate.started",
-            message="Starting grounding evaluation",
-            payload={},
+    async def load_inputs(
+        self,
+        *,
+        run_id: UUID,
+        section_ids: tuple[str, ...] | None = None,
+        scope: str = "pipeline",
+    ) -> EvaluationRunInput:
+        if scope == "repair_reevaluation":
+            key = "repair.reevaluation_started"
+            message = "Starting targeted repair reevaluation"
+        else:
+            key = "evaluate.started"
+            message = "Starting grounding evaluation"
+        await self._events.info(key=key, message=message, payload={"scope": scope})
+        return await self._input_reader.load_run_evaluation_input(
+            run_id=run_id,
+            section_ids=section_ids,
         )
-        return await self._input_reader.load_run_evaluation_input(run_id=run_id)
 
-    async def create_pass(self, *, run_input: EvaluationRunInput) -> EvaluationPassRecord:
-        return await self._steps.create_pass(run_input=run_input)
+    async def create_pass(
+        self,
+        *,
+        run_input: EvaluationRunInput,
+        scope: str = "pipeline",
+    ) -> EvaluationPassRecord:
+        return await self._steps.create_pass(run_input=run_input, scope=scope)
 
     async def evaluate_sections(
         self,
@@ -100,13 +116,18 @@ class EvaluationGraphRuntime:
             evaluation_pass=evaluation_pass,
             section_results=section_results.section_results,
         )
+        event_prefix = (
+            "repair.reevaluation"
+            if evaluation_pass.scope == "repair_reevaluation"
+            else "evaluate"
+        )
         await self._events.info(
-            key="evaluate.summary_computed",
+            key=f"{event_prefix}.summary_computed",
             message="Computed evaluation summary",
             payload=summary.model_dump(mode="json"),
         )
         await self._events.info(
-            key="evaluate.completed",
+            key=f"{event_prefix}.completed",
             message=(
                 "Evaluation completed: "
                 f"{summary.sections_requiring_repair_count} sections marked for possible repair"
@@ -120,13 +141,15 @@ class EvaluationGraphRuntime:
         *,
         summary: EvaluationSummary,
         completed_stages: tuple[str, ...],
+        scope: str = "pipeline",
     ) -> None:
         payload = summary.model_dump(mode="json")
+        next_stage = "repair" if scope == "pipeline" else "finalize"
         await self._checkpoints.checkpoint(
-            key="evaluate:completed",
-            summary={**payload, "next_stage": "finalize"},
+            key=f"{scope}:completed",
+            summary={**payload, "next_stage": next_stage},
             completed_stages=completed_stages,
-            next_stage=None,
+            next_stage=next_stage,
         )
 
     async def handle_failure(self, *, exc: Exception) -> None:

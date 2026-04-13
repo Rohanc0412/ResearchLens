@@ -39,6 +39,7 @@ def add_section_result_row(
             section_has_contradicted_claim=result.section_has_contradicted_claim,
             repair_recommended=result.repair_recommended,
             repair_attempt_count=0,
+            repair_result_id=result.repair_result_id,
             created_at=now,
             updated_at=now,
         )

@@ -10,6 +10,7 @@ from researchlens.modules.conversations.presentation import (
 )
 from researchlens.modules.evaluation.presentation import router as evaluation_router
 from researchlens.modules.projects.presentation import router as projects_router
+from researchlens.modules.repair.presentation import router as repair_router
 from researchlens.modules.runs.presentation import router as runs_router
 from researchlens.shared.errors import InfrastructureError
 from researchlens.shared.logging import RequestLoggingMiddleware
@@ -63,6 +64,7 @@ def create_app() -> FastAPI:
     app.include_router(message_router)
     app.include_router(runs_router)
     app.include_router(evaluation_router)
+    app.include_router(repair_router)
     return app
 
 
@@ -83,6 +85,9 @@ def _schema_is_ready(connection: Connection) -> bool:
         "evaluation_section_results",
         "messages",
         "projects",
+        "repair_fallback_edits",
+        "repair_passes",
+        "repair_results",
         "run_checkpoints",
         "run_events",
         "run_queue_items",

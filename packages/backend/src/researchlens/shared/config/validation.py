@@ -65,6 +65,8 @@ def _validate_provider_settings(
         errors.append(
             "LLM_API_KEY is required when drafting is enabled with an active LLM provider."
         )
+    if settings.repair.enabled and settings.llm.provider != "disabled" and not settings.llm.api_key:
+        errors.append("LLM_API_KEY is required when repair is enabled with an active LLM provider.")
 
 
 def _validate_retrieval_settings(

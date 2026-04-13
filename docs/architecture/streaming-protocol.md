@@ -64,6 +64,8 @@ Run events are written for users, not backend operators. Examples include:
 - `Reviewed Results`
 - `Computed evaluation summary`
 - `Evaluation completed: 2 sections marked for possible repair`
+- `Repair completed`
+- `Starting targeted repair reevaluation`
 - `Progress saved`
 - `Stopping after the current safe step`
 - `Run stopped`

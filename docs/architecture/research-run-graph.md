@@ -1,6 +1,6 @@
 # Research Run Graph
 
-The Phase 8 top-level research-run graph is:
+The Phase 9 top-level research-run graph is:
 
 `load_run_context`
 -> `restore_or_initialize_graph_state`
@@ -8,6 +8,8 @@ The Phase 8 top-level research-run graph is:
 -> `retrieval_subgraph`
 -> `drafting_subgraph`
 -> `evaluation_subgraph`
+-> `repair_subgraph` when the Phase 8 repair policy selects sections
+-> `maybe_reevaluate_repaired_sections_subgraph` when repair changed sections
 -> `finalize_run`
 
 ## Node roles
@@ -18,11 +20,13 @@ The Phase 8 top-level research-run graph is:
 - `retrieval_subgraph`: executes outline, planning, search, ranking, enrichment, ingestion, and retrieval checkpoint/event writes.
 - `drafting_subgraph`: executes evidence-pack preparation, section drafting, report assembly, and drafting checkpoint/event writes.
 - `evaluation_subgraph`: loads drafted sections and section-scoped evidence, creates an append-only evaluation pass, evaluates sections with bounded concurrency, persists claims/issues/section results, rolls up metrics, and writes an evaluation checkpoint.
+- `repair_subgraph`: selects only sections with `repair_attempt_count < 1` and either faithfulness below 70 percent or a contradicted claim, consumes persisted issue details, runs provider-backed structured repair, applies conservative validated fallback edits when safe, updates canonical draft rows, and writes repair persistence/events/checkpoints.
+- `maybe_reevaluate_repaired_sections_subgraph`: runs evaluation in `scope=repair_reevaluation` only for sections whose canonical text changed during repair or fallback, links the reevaluation pass back to repair results, and never routes back into repair.
 - `finalize_run`: maps graph completion or cooperative cancel into the existing terminal lifecycle mutations.
 
 ## Stage boundaries
 
 - `runs` still owns `stage.started`, `checkpoint.written`, and `stage.completed` lifecycle boundaries.
-- Retrieval, drafting, and evaluation subgraphs emit additional human-readable progress events and compact stage-local checkpoints through runs-owned bridges.
+- Retrieval, drafting, evaluation, repair, and targeted reevaluation emit additional human-readable progress events and compact stage-local checkpoints through runs-owned bridges.
 - The graph never becomes the durable source of truth; it is only the execution-flow layer.
-- Evaluation findings are product quality outputs. Unsupported or weak claims can set `repair_recommended=true` while the run still reaches `succeeded`; only operational evaluator failures fail the stage/run.
+- Evaluation findings are product quality outputs. Unsupported or weak claims can set `repair_recommended=true`; repair and targeted reevaluation make one controlled attempt to improve changed sections, and unresolved-after-repair findings still do not fail an otherwise operationally successful run.

@@ -17,13 +17,18 @@ class SqlAlchemyEvaluationInputReader:
     def __init__(self, session: AsyncSession) -> None:
         self._session = session
 
-    async def load_run_evaluation_input(self, *, run_id: UUID) -> EvaluationRunInput:
+    async def load_run_evaluation_input(
+        self,
+        *,
+        run_id: UUID,
+        section_ids: tuple[str, ...] | None = None,
+    ) -> EvaluationRunInput:
         runs = _table("runs")
         result = await self._session.execute(select(runs).where(runs.c.id == run_id))
         run = result.mappings().first()
         if run is None:
             raise NotFoundError(f"Run {run_id} was not found.")
-        sections = await self._load_sections(run_id=run_id)
+        sections = await self._load_sections(run_id=run_id, section_ids=section_ids)
         if not sections:
             raise ValidationError("Evaluation requires persisted drafted sections.")
         question = await self._request_text_for_run(run_id=run_id)
@@ -34,33 +39,43 @@ class SqlAlchemyEvaluationInputReader:
             sections=tuple(sections),
         )
 
-    async def _load_sections(self, *, run_id: UUID) -> list[EvaluationSectionInput]:
+    async def _load_sections(
+        self,
+        *,
+        run_id: UUID,
+        section_ids: tuple[str, ...] | None,
+    ) -> list[EvaluationSectionInput]:
         sections_table = _table("drafting_sections")
         drafts_table = _table("drafting_section_drafts")
-        rows = (
-            await self._session.execute(
-                select(
-                    sections_table.c.id.label("section_row_id"),
-                    sections_table.c.section_id,
-                    sections_table.c.title,
-                    sections_table.c.section_order,
-                    drafts_table.c.section_text,
-                )
-                .join(
-                    drafts_table,
-                    (drafts_table.c.run_id == sections_table.c.run_id)
-                    & (drafts_table.c.section_id == sections_table.c.section_id),
-                )
-                .where(sections_table.c.run_id == run_id)
-                .order_by(
-                    sections_table.c.section_order.asc(),
-                    sections_table.c.section_id.asc(),
-                )
+        query = (
+            select(
+                sections_table.c.id.label("section_row_id"),
+                sections_table.c.section_id,
+                sections_table.c.title,
+                sections_table.c.section_order,
+                drafts_table.c.section_text,
             )
-        ).mappings().all()
+            .join(
+                drafts_table,
+                (drafts_table.c.run_id == sections_table.c.run_id)
+                & (drafts_table.c.section_id == sections_table.c.section_id),
+            )
+            .where(sections_table.c.run_id == run_id)
+            .order_by(
+                sections_table.c.section_order.asc(),
+                sections_table.c.section_id.asc(),
+            )
+        )
+        if section_ids is not None:
+            query = query.where(sections_table.c.section_id.in_(section_ids))
+        rows = (await self._session.execute(query)).mappings().all()
         sections: list[EvaluationSectionInput] = []
         for row in rows:
             evidence = await self._load_evidence(section_row_id=cast(UUID, row["section_row_id"]))
+            repair_result_id = await self._latest_repair_result_id(
+                run_id=run_id,
+                section_id=cast(str, row["section_id"]),
+            )
             sections.append(
                 EvaluationSectionInput(
                     section_id=cast(str, row["section_id"]),
@@ -68,9 +83,33 @@ class SqlAlchemyEvaluationInputReader:
                     section_order=cast(int, row["section_order"]),
                     section_text=cast(str, row["section_text"]),
                     allowed_evidence=evidence,
+                    repair_result_id=repair_result_id,
                 )
             )
         return sections
+
+    async def _latest_repair_result_id(
+        self,
+        *,
+        run_id: UUID,
+        section_id: str,
+    ) -> UUID | None:
+        repair_results = metadata.tables.get("repair_results")
+        if repair_results is None:
+            return None
+        return cast(
+            UUID | None,
+            await self._session.scalar(
+                select(repair_results.c.id)
+                .where(
+                    repair_results.c.run_id == run_id,
+                    repair_results.c.section_id == section_id,
+                    repair_results.c.changed.is_(True),
+                )
+                .order_by(repair_results.c.completed_at.desc(), repair_results.c.id.desc())
+                .limit(1)
+            ),
+        )
 
     async def _load_evidence(self, *, section_row_id: UUID) -> tuple[EvaluationEvidenceInput, ...]:
         rows = (

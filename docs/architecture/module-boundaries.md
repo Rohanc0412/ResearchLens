@@ -29,6 +29,7 @@ ResearchLens backend code uses explicit layers inside each module. Phase 8 keeps
 - LLM and embedding provider details stay in shared provider-agnostic ports and isolated OpenAI adapter packages; retrieval orchestration does not import OpenAI SDK/response types.
 - Drafting owns section briefs, allowed evidence packs, citation-token validation, per-section outputs, and report assembly. It consumes retrieval-owned persisted chunks as inputs through a drafting-owned input-reader port, not by importing retrieval or runs modules directly; worker composition remains the integration point.
 - Evaluation owns claim verdicts, issue types, repair policy, scoring, RAGAS adapters, evaluation rows, and read/query use cases. It consumes drafted section rows and evidence-pack rows through an evaluation-owned input-reader port without importing drafting or runs modules directly.
+- Repair owns repair input assembly, single-attempt selection, provider-backed repair prompts, output validation, fallback edits, repair rows, and repair read/query use cases. It reads evaluation and drafting tables through repair-owned SQL ports rather than importing those modules.
 
 ## Shared backend scope
 

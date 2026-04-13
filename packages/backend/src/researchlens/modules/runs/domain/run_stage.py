@@ -20,6 +20,7 @@ RUN_STAGE_SEQUENCE = (
     RunStage.RETRIEVE,
     RunStage.DRAFT,
     RunStage.EVALUATE,
+    RunStage.REPAIR,
     RunStage.EXPORT,
 )
 

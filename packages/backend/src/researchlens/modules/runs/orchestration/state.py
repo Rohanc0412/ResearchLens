@@ -33,6 +33,12 @@ class RunGraphState(TypedDict):
     repair_recommended: NotRequired[bool]
     evaluation_status: NotRequired[str]
     evaluation_failure_summary: NotRequired[Any]
+    repair_summary: NotRequired[Any]
+    repaired_section_ids: NotRequired[Any]
+    repair_result_ids_by_section: NotRequired[Any]
+    reevaluation_summary: NotRequired[Any]
+    target_section_ids: NotRequired[tuple[str, ...]]
+    evaluation_scope: NotRequired[str]
 
 
 def initial_run_graph_state(

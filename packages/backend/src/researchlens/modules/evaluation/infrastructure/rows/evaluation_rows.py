@@ -85,6 +85,7 @@ class EvaluationSectionResultRow(Base):
     section_has_contradicted_claim: Mapped[bool] = mapped_column(Boolean, nullable=False)
     repair_recommended: Mapped[bool] = mapped_column(Boolean, nullable=False)
     repair_attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    repair_result_id: Mapped[UUID | None] = mapped_column(Uuid, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 

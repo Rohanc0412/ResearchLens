@@ -8,6 +8,8 @@ def stage_started_message(stage: RunStage) -> str:
         return "Drafting report"
     if stage == RunStage.EVALUATE:
         return "Checking quality"
+    if stage == RunStage.REPAIR:
+        return "Repairing grounded sections"
     return "Exporting result"
 
 
@@ -18,4 +20,6 @@ def stage_completed_message(stage: RunStage) -> str:
         return "Drafting complete"
     if stage == RunStage.EVALUATE:
         return "Quality check complete"
+    if stage == RunStage.REPAIR:
+        return "Repair complete"
     return "Export complete"

@@ -42,6 +42,7 @@ The backend currently includes:
 - graph-native retrieval orchestration that still delegates business logic to retrieval application/domain/infrastructure code
 - graph-native drafting orchestration that still delegates evidence-pack, citation, and report-assembly policy to drafting-owned code
 - graph-native evaluation orchestration that still delegates claim, scoring, repair-threshold, RAGAS, and persistence work to evaluation-owned code
+- graph-native repair orchestration that consumes persisted evaluation issues, updates canonical drafted sections, and invokes targeted reevaluation for changed sections only
 - a runs-owned graph bridge that maps graph progress into persisted Phase 5 events, checkpoints, cancel handling, retry floors, and final status transitions
 
 Phase 3 replaced the Phase 2 `bootstrap_actor` protected-route identity path with auth-backed bearer token resolution. Phase 5 keeps that bearer-token identity path for project, conversation, message, and run lifecycle routes. Health routes remain public.
@@ -53,6 +54,7 @@ Research runs are now split cleanly:
 - `retrieval` owns retrieval business logic, providers, ranking, enrichment, ingestion, and persistence
 - `drafting` owns evidence-pack derivation, section drafting, citation validation, and report assembly
 - `evaluation` owns claim extraction, claim verdict normalization, RAGAS faithfulness scoring, issue persistence, summary rollups, and repair recommendation signals
+- `repair` owns repair selection, prompt construction, provider-backed section repair, validated fallback edits, repair persistence, canonical section updates, read models, and repair-to-reevaluation linkage
 
 There is no remaining non-graph research-run execution shell in production code.
 

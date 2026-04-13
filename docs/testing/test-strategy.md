@@ -6,6 +6,7 @@ Phase 8 adds focused evaluation coverage for:
 
 - verdict scoring and report rollups
 - exact repair trigger policy and `max_repairs_per_section=1`
+- Phase 9 repair selection, structured output validation, conservative fallback edits, and targeted reevaluation routing
 - strict DTO and structured claim output contracts
 - citation-to-allowed-evidence validation
 - evaluation persistence and latest-summary/issue/repair-candidate queries

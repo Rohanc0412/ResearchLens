@@ -13,7 +13,12 @@ from researchlens.modules.evaluation.application.dtos import (
 
 
 class EvaluationInputReader(Protocol):
-    async def load_run_evaluation_input(self, *, run_id: UUID) -> EvaluationRunInput: ...
+    async def load_run_evaluation_input(
+        self,
+        *,
+        run_id: UUID,
+        section_ids: tuple[str, ...] | None = None,
+    ) -> EvaluationRunInput: ...
 
 
 class EvaluationRepository(Protocol):

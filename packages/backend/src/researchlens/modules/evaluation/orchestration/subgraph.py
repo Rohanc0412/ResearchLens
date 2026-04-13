@@ -25,6 +25,8 @@ class EvaluationGraphState(TypedDict):
     sections_requiring_repair: NotRequired[tuple[str, ...]]
     repair_recommended: NotRequired[bool]
     evaluation_status: NotRequired[str]
+    target_section_ids: NotRequired[tuple[str, ...]]
+    evaluation_scope: NotRequired[str]
 
 
 EvaluationNode = Callable[[EvaluationGraphState], Awaitable[dict[str, object]]]
@@ -50,10 +52,16 @@ def build_evaluation_subgraph(runtime: EvaluationGraphRuntime) -> Any:
 
 def _load_evaluation_inputs(runtime: EvaluationGraphRuntime) -> EvaluationNode:
     async def node(state: EvaluationGraphState) -> dict[str, object]:
-        evaluation_input = await runtime.load_inputs(run_id=state["run_id"])
+        scope = state.get("evaluation_scope", "pipeline")
+        evaluation_input = await runtime.load_inputs(
+            run_id=state["run_id"],
+            section_ids=state.get("target_section_ids"),
+            scope=scope,
+        )
         return {
             "run_id": state["run_id"],
             "completed_stages": state.get("completed_stages", tuple()),
+            "evaluation_scope": scope,
             "evaluation_input": evaluation_input,
         }
 
@@ -62,7 +70,10 @@ def _load_evaluation_inputs(runtime: EvaluationGraphRuntime) -> EvaluationNode:
 
 def _create_evaluation_pass(runtime: EvaluationGraphRuntime) -> EvaluationNode:
     async def node(state: EvaluationGraphState) -> dict[str, object]:
-        evaluation_pass = await runtime.create_pass(run_input=state["evaluation_input"])
+        evaluation_pass = await runtime.create_pass(
+            run_input=state["evaluation_input"],
+            scope=state.get("evaluation_scope", "pipeline"),
+        )
         return {**state, "evaluation_pass": evaluation_pass}
 
     return node
@@ -122,6 +133,7 @@ def _checkpoint_evaluation(runtime: EvaluationGraphRuntime) -> EvaluationNode:
         await runtime.checkpoint(
             summary=state["evaluation_summary"],
             completed_stages=state["completed_stages"],
+            scope=state.get("evaluation_scope", "pipeline"),
         )
         return dict(state)
 

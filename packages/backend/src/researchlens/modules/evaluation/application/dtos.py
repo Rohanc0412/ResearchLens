@@ -27,6 +27,7 @@ class EvaluationSectionInput(BaseModel):
     section_order: int = Field(ge=1)
     section_text: str
     allowed_evidence: tuple[EvaluationEvidenceInput, ...]
+    repair_result_id: UUID | None = None
 
     @property
     def allowed_chunk_ids(self) -> tuple[UUID, ...]:
@@ -110,6 +111,7 @@ class SectionEvaluationResult(BaseModel):
     ragas_faithfulness_pct: float = Field(ge=0, le=100)
     section_has_contradicted_claim: bool
     repair_recommended: bool
+    repair_result_id: UUID | None = None
 
 
 class EvaluationSummary(BaseModel):
