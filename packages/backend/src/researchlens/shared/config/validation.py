@@ -105,6 +105,9 @@ def _validate_shared_runtime_settings(
     settings: ResearchLensSettings,
     errors: list[str],
 ) -> None:
+    if "*" in settings.app.cors_allowed_origins:
+        errors.append("APP_CORS_ALLOWED_ORIGINS must not contain '*'.")
+
     if settings.queue.backend == "redis" and not settings.queue.url:
         errors.append("QUEUE_URL is required when QUEUE_BACKEND=redis.")
 
@@ -113,6 +116,9 @@ def _validate_shared_runtime_settings(
 
     if settings.auth.refresh_cookie_samesite not in {"lax", "strict", "none"}:
         errors.append("AUTH_REFRESH_COOKIE_SAMESITE must be lax, strict, or none.")
+
+    if settings.app.environment == "production" and not settings.auth.refresh_cookie_secure:
+        errors.append("AUTH_REFRESH_COOKIE_SECURE must be true in production.")
 
     database_url = make_url(settings.database.url)
     if settings.app.environment == "production" and database_url.get_backend_name() == "sqlite":

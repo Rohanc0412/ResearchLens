@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRouter
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
@@ -30,6 +31,13 @@ def create_app() -> FastAPI:
         lifespan=lifespan,
     )
     app.state.bootstrap = state
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(settings.app.cors_allowed_origins),
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
     app.add_middleware(RequestLoggingMiddleware)
     register_exception_handlers(app)
 

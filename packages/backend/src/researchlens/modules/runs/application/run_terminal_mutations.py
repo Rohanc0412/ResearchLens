@@ -81,6 +81,11 @@ class RunTerminalMutations:
                     reason="failure",
                 )
             )
+            message = (
+                "Run failed before processing started"
+                if locked_run.status == RunStatus.QUEUED
+                else "Run failed during processing"
+            )
             for event_type in (RunEventType.STAGE_FAILED, RunEventType.RUN_FAILED):
                 await self.event_store.append(
                     run_id=updated_run.id,
@@ -91,7 +96,7 @@ class RunTerminalMutations:
                     level=RunEventLevel.ERROR,
                     status=updated_run.status.value,
                     stage=updated_run.current_stage.value if updated_run.current_stage else None,
-                    message="Run failed while checking results",
+                    message=message,
                     payload_json={"error_code": error_code},
                     retry_count=updated_run.retry_count,
                     cancel_requested=updated_run.cancel_requested_at is not None,

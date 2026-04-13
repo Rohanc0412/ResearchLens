@@ -86,6 +86,45 @@ def test_drafting_validation_rejects_max_words_below_min_words() -> None:
         validate_settings(settings)
 
 
+def test_app_settings_parse_cors_allowed_origins_csv(monkeypatch: MonkeyPatch) -> None:
+    monkeypatch.setenv(
+        "APP_CORS_ALLOWED_ORIGINS",
+        "http://127.0.0.1:4173, http://localhost:4173",
+    )
+
+    settings = get_settings()
+
+    assert settings.app.cors_allowed_origins == (
+        "http://127.0.0.1:4173",
+        "http://localhost:4173",
+    )
+
+
+def test_validation_rejects_insecure_refresh_cookie_in_production() -> None:
+    settings = _settings(RetrievalSettings())
+    settings = settings.model_copy(
+        update={
+            "app": settings.app.model_copy(update={"environment": "production"}),
+            "auth": settings.auth.model_copy(update={"refresh_cookie_secure": False}),
+        }
+    )
+
+    with pytest.raises(InvalidSettingsError, match="AUTH_REFRESH_COOKIE_SECURE"):
+        validate_settings(settings)
+
+
+def test_validation_rejects_wildcard_cors_allowlist() -> None:
+    settings = _settings(RetrievalSettings())
+    settings = settings.model_copy(
+        update={
+            "app": settings.app.model_copy(update={"cors_allowed_origins": ("*",)}),
+        }
+    )
+
+    with pytest.raises(InvalidSettingsError, match="APP_CORS_ALLOWED_ORIGINS"):
+        validate_settings(settings)
+
+
 def _settings(
     retrieval: RetrievalSettings,
     drafting: DraftingSettings | None = None,

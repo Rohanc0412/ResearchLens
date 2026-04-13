@@ -41,6 +41,15 @@ python -m uv run --package researchlens-backend pytest packages/backend/tests
 python -m uv run --package researchlens-backend alembic -c packages/backend/alembic.ini upgrade head
 ```
 
+Local browser API access expects:
+
+```bash
+APP_CORS_ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173
+AUTH_REFRESH_COOKIE_SECURE=false
+```
+
+If you use Doppler for development, set `AUTH_REFRESH_COOKIE_SECURE=false` there as well. An injected `true` value will block refresh-cookie restore and logout on plain local HTTP.
+
 Frontend:
 
 ```bash

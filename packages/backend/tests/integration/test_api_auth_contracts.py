@@ -54,6 +54,55 @@ def test_register_login_refresh_me_and_logout_contracts(migrated_database_url: s
     assert logout_response.cookies.get(COOKIE_NAME) is None
 
 
+def test_register_sets_non_secure_refresh_cookie_for_local_http(
+    migrated_database_url: str,
+) -> None:
+    with TestClient(create_app()) as client:
+        response = client.post(
+            "/auth/register",
+            json={
+                "username": "Casey",
+                "email": "casey@example.com",
+                "password": VALID_PASSWORD,
+            },
+        )
+
+    assert response.status_code == 201
+    set_cookie = response.headers.get("set-cookie", "").lower()
+    assert "secure" not in set_cookie
+
+
+def test_auth_refresh_supports_credentialed_cors(migrated_database_url: str) -> None:
+    origin = "http://127.0.0.1:4173"
+    with TestClient(create_app()) as client:
+        client.post(
+            "/auth/register",
+            json={
+                "username": "Casey",
+                "email": "casey@example.com",
+                "password": VALID_PASSWORD,
+            },
+        )
+        preflight = client.options(
+            "/auth/refresh",
+            headers={
+                "Origin": origin,
+                "Access-Control-Request-Method": "POST",
+            },
+        )
+        refresh = client.post(
+            "/auth/refresh",
+            headers={"Origin": origin},
+        )
+
+    assert preflight.status_code == 200
+    assert preflight.headers["access-control-allow-origin"] == origin
+    assert preflight.headers["access-control-allow-credentials"] == "true"
+    assert refresh.status_code == 200
+    assert refresh.headers["access-control-allow-origin"] == origin
+    assert refresh.headers["access-control-allow-credentials"] == "true"
+
+
 def test_register_rejects_duplicates_and_weak_passwords(migrated_database_url: str) -> None:
     with TestClient(create_app()) as client:
         first = client.post(

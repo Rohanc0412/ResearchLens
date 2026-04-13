@@ -170,6 +170,34 @@ async def test_running_cancel_requests_stop_and_worker_finishes_cleanly(
 
 
 @pytest.mark.asyncio
+async def test_failure_before_mark_running_transitions_queued_run_to_failed(
+    database_runtime: DatabaseRuntime,
+) -> None:
+    tenant_id, user_id, conversation_id = await seed_project_conversation(database_runtime)
+    run_id = await create_run(
+        database_runtime,
+        tenant_id=tenant_id,
+        user_id=user_id,
+        conversation_id=conversation_id,
+    )
+    claimed = await claim_one(database_runtime, now=datetime.now(tz=UTC))
+    assert claimed is not None
+
+    await process_claimed(
+        database_runtime,
+        claimed=claimed,
+        stage_execution=ControlledRunExecutionOrchestrator(fail_before_stage=RunStage.RETRIEVE),
+    )
+    run = await get_run(database_runtime, tenant_id=tenant_id, run_id=run_id)
+    events = await list_run_events(database_runtime, tenant_id=tenant_id, run_id=run_id)
+
+    assert run.status == "failed"
+    assert run.current_stage == "retrieve"
+    assert run.failure_reason == "planned failure at retrieve"
+    assert any(event.event_type == "run.failed" for event in events)
+
+
+@pytest.mark.asyncio
 async def test_worker_composition_runs_retrieval_stage_and_persists_sources(
     database_runtime: DatabaseRuntime,
     monkeypatch: pytest.MonkeyPatch,

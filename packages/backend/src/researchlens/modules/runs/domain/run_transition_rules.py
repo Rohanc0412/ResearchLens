@@ -3,7 +3,7 @@ from researchlens.shared.errors import ConflictError
 
 ALLOWED_RUN_STATUS_TRANSITIONS = {
     RunStatus.CREATED: {RunStatus.QUEUED, RunStatus.CANCELED},
-    RunStatus.QUEUED: {RunStatus.RUNNING, RunStatus.CANCELED},
+    RunStatus.QUEUED: {RunStatus.RUNNING, RunStatus.FAILED, RunStatus.CANCELED},
     RunStatus.RUNNING: {RunStatus.SUCCEEDED, RunStatus.FAILED, RunStatus.CANCELED},
     RunStatus.FAILED: {RunStatus.QUEUED},
     RunStatus.CANCELED: set(),

@@ -12,7 +12,7 @@ class AuthSettings(BaseSettings):
     access_token_ttl_minutes: int = Field(default=15, ge=1)
     refresh_token_ttl_days: int = Field(default=30, ge=1)
     refresh_cookie_name: str = "researchlens_refresh"
-    refresh_cookie_secure: bool = True
+    refresh_cookie_secure: bool = False
     refresh_cookie_samesite: str = "lax"
     allow_register: bool = True
     clock_skew_seconds: int = Field(default=30, ge=0)

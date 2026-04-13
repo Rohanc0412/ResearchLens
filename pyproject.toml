@@ -32,6 +32,7 @@ dev = [
 [tool.ruff]
 target-version = "py312"
 line-length = 100
+extend-exclude = [".codex"]
 src = [
     "apps/api/src",
     "apps/worker/src",

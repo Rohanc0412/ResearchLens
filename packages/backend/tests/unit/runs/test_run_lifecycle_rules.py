@@ -22,6 +22,10 @@ def test_run_transition_rules_allow_legal_transition() -> None:
     ensure_run_transition_allowed(current=RunStatus.CREATED, target=RunStatus.QUEUED)
 
 
+def test_run_transition_rules_allow_queued_to_failed() -> None:
+    ensure_run_transition_allowed(current=RunStatus.QUEUED, target=RunStatus.FAILED)
+
+
 def test_run_transition_rules_reject_illegal_transition() -> None:
     with pytest.raises(ConflictError):
         ensure_run_transition_allowed(current=RunStatus.QUEUED, target=RunStatus.SUCCEEDED)
