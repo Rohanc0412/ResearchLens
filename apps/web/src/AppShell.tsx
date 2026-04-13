@@ -1,14 +1,12 @@
-import { PlaceholderCard } from "@researchlens/ui";
+import { RouterProvider } from "react-router-dom";
+
+import { AppProviders } from "./app/providers/AppProviders";
+import { appRouter } from "./app/routes/router";
 
 export function AppShell() {
   return (
-    <main>
-      <h1>ResearchLens Phase 0</h1>
-      <PlaceholderCard
-        title="Bootstrap scaffold"
-        body="Frontend structure exists, but product features are intentionally deferred."
-      />
-    </main>
+    <AppProviders>
+      <RouterProvider router={appRouter} />
+    </AppProviders>
   );
 }
-
