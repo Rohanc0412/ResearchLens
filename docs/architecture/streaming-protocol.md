@@ -2,18 +2,16 @@
 
 Run progress is exposed through `GET /runs/{run_id}/events`.
 
-Phase 10 export progress uses the same stream. Export emits concise stage-local messages such as `export.started` and `export.completed`, while the runs lifecycle still emits stage-started, checkpoint-written, and stage-completed events for `stage=export`. Event payloads contain artifact IDs and counts, not artifact bytes.
+## Transport modes
 
-## Modes
-
-- Default JSON mode returns historical events ordered by `event_number`.
-- SSE mode activates when `Accept: text/event-stream` is present.
-- JSON mode accepts `after_event_number` for incremental polling.
+- JSON history mode is the default.
+- SSE mode activates when the client sends `Accept: text/event-stream`.
+- JSON mode accepts `after_event_number`.
 - SSE reconnect uses `Last-Event-ID`.
 
 ## Event envelope
 
-Every delivered event includes:
+Every run event includes:
 
 - `run_id`
 - `event_number`
@@ -28,49 +26,30 @@ Every delivered event includes:
 - `payload`
 - `ts`
 
-The envelope is frontend-ready. UI consumers should display `message`, `display_status`, and `display_stage` directly instead of translating raw backend enums.
+Frontend consumers should treat `message`, `display_status`, and `display_stage` as the stable display contract.
 
-Most retrieval, drafting, and evaluation progress notifications are delivered with `event_type="checkpoint.written"` and a stage-specific human-readable `message`. Clients should treat `message` and `payload` as the user-facing progress contract rather than expecting a custom `event_type` for every sub-step.
+## Replay and ordering
 
-Phase 8 keeps the frontend-facing envelope stable while evaluation joins the LangGraph flow. Graph progress is translated into the same persisted `run_events` rows and therefore follows the same ordering, dedupe, JSON, and SSE replay rules as Phase 5.
-
-## Ordering and replay guarantees
-
-- Ordering is guaranteed per run, not globally.
+- Ordering is guaranteed per run.
 - `event_number` is strictly increasing per run.
-- Reconnect replay returns only events where `event_number > Last-Event-ID`.
-- Event visibility is guaranteed only after the transaction that wrote the event commits.
-- Duplicate logical events are prevented by server-side `event_key` dedupe, not by the client hiding duplicates.
+- Replay returns only events where `event_number > Last-Event-ID`.
+- Server-side `event_key` dedupe prevents duplicate logical events at persistence time.
 
-## Keepalives and closure
+## Keepalive and closure
 
-- Idle SSE streams emit keepalive comments.
-- Terminal runs keep the stream open for a short grace window so final committed events can arrive.
-- After the grace window, terminal streams close cleanly and clients should stop reconnecting.
+- Idle streams emit keepalive comments.
+- Terminal runs stay open briefly so final committed events can flush.
+- After terminal grace elapses, the server closes cleanly and clients should stop reconnecting.
 
-## Human-readable messages
+## Frontend consumption rules
 
-Run events are written for users, not backend operators. Examples include:
+Phase 11 frontend behavior is:
 
-- `Run created`
-- `Waiting for an available worker`
-- `Run started`
-- `Searching for relevant sources`
-- `Draft preparation started`
-- `Draft evidence pack ready`
-- `Draft section started`
-- `Draft section completed`
-- `Draft report assembled`
-- `Starting grounding evaluation`
-- `Evaluating Methods`
-- `Reviewed Results`
-- `Computed evaluation summary`
-- `Evaluation completed: 2 sections marked for possible repair`
-- `Repair completed`
-- `Starting targeted repair reevaluation`
-- `Progress saved`
-- `Stopping after the current safe step`
-- `Run stopped`
-- `Retrying from the last saved step`
-- `Retrying from drafting`
-- `Run completed successfully`
+- fetch JSON history first for durable replay
+- open an authenticated SSE stream against the same route
+- reconnect with `Last-Event-ID`
+- merge events by `event_number`
+- stop reconnecting after terminal closure
+- surface backend-provided `can_stop`, `can_retry`, `cancel_requested`, `display_status`, and `display_stage` directly
+
+The frontend does not invent local stage semantics or translate backend enums into a separate lifecycle model.
