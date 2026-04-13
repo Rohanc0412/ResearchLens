@@ -17,6 +17,7 @@ class LangGraphRunOrchestrator(RunExecutionOrchestrator):
         evaluation_subgraph_factory: StageSubgraphFactory,
         repair_subgraph_factory: StageSubgraphFactory,
         reevaluation_subgraph_factory: StageSubgraphFactory,
+        artifact_export_subgraph_factory: StageSubgraphFactory,
     ) -> None:
         self._bridge = bridge
         self._retrieval_subgraph_factory = retrieval_subgraph_factory
@@ -24,6 +25,7 @@ class LangGraphRunOrchestrator(RunExecutionOrchestrator):
         self._evaluation_subgraph_factory = evaluation_subgraph_factory
         self._repair_subgraph_factory = repair_subgraph_factory
         self._reevaluation_subgraph_factory = reevaluation_subgraph_factory
+        self._artifact_export_subgraph_factory = artifact_export_subgraph_factory
 
     async def execute(
         self,
@@ -44,5 +46,6 @@ class LangGraphRunOrchestrator(RunExecutionOrchestrator):
             evaluation_subgraph_factory=self._evaluation_subgraph_factory,
             repair_subgraph_factory=self._repair_subgraph_factory,
             reevaluation_subgraph_factory=self._reevaluation_subgraph_factory,
+            artifact_export_subgraph_factory=self._artifact_export_subgraph_factory,
         )
         await graph.ainvoke(state)

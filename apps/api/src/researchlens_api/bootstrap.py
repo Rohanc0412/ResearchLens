@@ -1,9 +1,11 @@
 import logging
 from dataclasses import dataclass
 
+from researchlens.modules.artifacts.infrastructure import SqlAlchemyArtifactsRuntime
 from researchlens.modules.auth.infrastructure import SqlAlchemyAuthRuntime
 from researchlens.modules.conversations.infrastructure import SqlAlchemyConversationsRuntime
 from researchlens.modules.evaluation.infrastructure import SqlAlchemyEvaluationRuntime
+from researchlens.modules.evidence.infrastructure import SqlAlchemyEvidenceRuntime
 from researchlens.modules.projects.infrastructure import SqlAlchemyProjectsRuntime
 from researchlens.modules.repair.infrastructure import SqlAlchemyRepairRuntime
 from researchlens.modules.runs.infrastructure import SqlAlchemyRunsRuntime
@@ -19,7 +21,9 @@ class ApiBootstrapState:
     settings: ResearchLensSettings
     database: DatabaseRuntime
     auth_runtime: SqlAlchemyAuthRuntime
+    artifacts_runtime: SqlAlchemyArtifactsRuntime
     conversations_runtime: SqlAlchemyConversationsRuntime
+    evidence_runtime: SqlAlchemyEvidenceRuntime
     evaluation_runtime: SqlAlchemyEvaluationRuntime
     projects_runtime: SqlAlchemyProjectsRuntime
     repair_runtime: SqlAlchemyRepairRuntime
@@ -42,7 +46,9 @@ def build_api_bootstrap_state() -> ApiBootstrapState:
             session_factory=database.session_factory,
             settings=settings,
         ),
+        artifacts_runtime=SqlAlchemyArtifactsRuntime(database.session_factory, settings),
         conversations_runtime=SqlAlchemyConversationsRuntime(database.session_factory),
+        evidence_runtime=SqlAlchemyEvidenceRuntime(database.session_factory),
         evaluation_runtime=SqlAlchemyEvaluationRuntime(database.session_factory),
         projects_runtime=SqlAlchemyProjectsRuntime(database.session_factory),
         repair_runtime=SqlAlchemyRepairRuntime(database.session_factory),

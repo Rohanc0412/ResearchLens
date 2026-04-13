@@ -5,6 +5,7 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
+import researchlens.modules.artifacts.infrastructure.rows  # noqa: F401
 import researchlens.modules.auth.infrastructure.rows  # noqa: F401
 import researchlens.modules.conversations.infrastructure.rows  # noqa: F401
 import researchlens.modules.drafting.infrastructure.rows  # noqa: F401

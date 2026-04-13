@@ -1,6 +1,13 @@
 # System Overview
 
-ResearchLens is a phased monorepo rebuild. The current backend builds on the Phase 5 durable run lifecycle, the Phase 6 retrieval foundation, the Phase 7 drafting module, and the Phase 8 evaluation module while keeping LangGraph as the only research-run orchestrator.
+ResearchLens is a phased monorepo rebuild. The current backend builds on the durable run lifecycle, retrieval foundation, drafting, evaluation, repair, evidence inspection, and artifact export modules while keeping LangGraph as the only research-run orchestrator.
+
+Phase 10 adds two bounded contexts on top of the graph-backed pipeline:
+
+- `evidence` is a read-focused composition module. It exposes DTOs for run evidence summaries, section evidence traces, chunk context, and source details by querying durable retrieval, drafting, evaluation, repair, and artifact tables. It does not duplicate source-of-truth rows.
+- `artifacts` owns artifact metadata, report manifests, download records, the local filesystem artifact store, deterministic markdown/manifest rendering, and the graph-native export subgraph.
+
+The top-level run graph remains owned by `runs`. Export is invoked as `artifact_export_subgraph` before finalization and writes events/checkpoints through the existing runs bridges.
 
 ## Monorepo structure
 

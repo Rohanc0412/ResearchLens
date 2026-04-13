@@ -25,7 +25,7 @@ Backend configuration is centralized under `researchlens.shared.config` using `p
 - `embeddings`: provider selection, text-embedding-3-small model default, batching/concurrency limits, credentials, and cache behavior
 - `observability`: service name, log level, JSON logs, tracing toggle
 - `queue`: backend mode, URL, polling interval, lease timing, claim batch size, and SSE keepalive/grace windows
-- `storage`: local or S3 mode, local artifact root, bucket, endpoint
+- `storage`: local artifact mode and filesystem artifact root
 
 ## Validation
 
@@ -38,7 +38,6 @@ Startup validation currently rejects at least these cases:
 - OpenAI embeddings without credentials
 - drafting min/max word ranges that are internally inconsistent
 - redis queue mode without a queue URL
-- S3 storage mode without a bucket
 - SMTP enabled without a host
 - production with SQLite as the database backend
 - production with auth dev bypass enabled
@@ -93,6 +92,13 @@ Queue note:
 - The worker now has an explicit stop path and exits its poll loop cleanly on shutdown signals instead of relying on abrupt process termination.
 - LangGraph wiring is internal and uses the existing queue, retrieval, drafting, evaluation, LLM, and embedding settings surface.
 - Phase 8 adds evaluation settings but no separate provider stack. Evaluation uses the shared `LLM_*` OpenAI-backed `gpt-5-nano` path and RAGAS in the evaluation module.
+
+Artifact storage settings:
+
+- `STORAGE_MODE`: only `local` is currently supported.
+- `STORAGE_LOCAL_ARTIFACT_ROOT`: root directory for stored markdown and manifest bytes. The filesystem artifact store rejects absolute storage keys and path traversal.
+
+No S3/GCS adapter is wired in Phase 10; unsupported provider settings were removed instead of silently falling back to local storage.
 
 Phase 6 retrieval settings include:
 

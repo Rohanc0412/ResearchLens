@@ -3,6 +3,10 @@ from typing import cast
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from researchlens.modules.artifacts.orchestration import (
+    ArtifactExportGraphRuntime,
+    build_artifact_export_subgraph,
+)
 from researchlens.modules.drafting.orchestration import (
     DraftingGraphRuntime,
     build_drafting_subgraph,
@@ -36,7 +40,9 @@ def stage_factories(
     evaluation_evaluator: SectionGroundingEvaluator | None,
     retrieval_providers: tuple[object, tuple[object, ...]],
     builders: tuple[RuntimeBuilder, RuntimeBuilder, RuntimeBuilder, RuntimeBuilder],
+    artifact_export_builder: RuntimeBuilder,
 ) -> tuple[
+    StageSubgraphFactory,
     StageSubgraphFactory,
     StageSubgraphFactory,
     StageSubgraphFactory,
@@ -49,6 +55,7 @@ def stage_factories(
         _evaluation(settings, session, bridge, evaluation_evaluator, builders[2]),
         _repair(settings, session, bridge, drafting_llm_client, builders[3]),
         _reevaluation(settings, session, bridge, evaluation_evaluator, builders[2]),
+        _artifact_export(settings, session, bridge, artifact_export_builder),
     )
 
 
@@ -158,4 +165,23 @@ def _reevaluation(
             )
         ),
         repair_repository=SqlAlchemyRepairRepository(session),
+    )
+
+
+def _artifact_export(
+    settings: ResearchLensSettings,
+    session: AsyncSession,
+    bridge: RunGraphRuntimeBridge,
+    builder: RuntimeBuilder,
+) -> StageSubgraphFactory:
+    return lambda state: build_artifact_export_subgraph(
+        cast(
+            ArtifactExportGraphRuntime,
+            builder(
+                settings=settings,
+                session=session,
+                bridge=bridge,
+                state=state,
+            ),
+        )
     )

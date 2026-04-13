@@ -37,6 +37,7 @@ class RunGraphState(TypedDict):
     repaired_section_ids: NotRequired[Any]
     repair_result_ids_by_section: NotRequired[Any]
     reevaluation_summary: NotRequired[Any]
+    artifact_export_summary: NotRequired[Any]
     target_section_ids: NotRequired[tuple[str, ...]]
     evaluation_scope: NotRequired[str]
 

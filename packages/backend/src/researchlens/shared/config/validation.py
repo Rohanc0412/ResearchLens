@@ -108,9 +108,6 @@ def _validate_shared_runtime_settings(
     if settings.queue.backend == "redis" and not settings.queue.url:
         errors.append("QUEUE_URL is required when QUEUE_BACKEND=redis.")
 
-    if settings.storage.mode == "s3" and not settings.storage.bucket:
-        errors.append("STORAGE_BUCKET is required when STORAGE_MODE=s3.")
-
     if settings.smtp.enabled and not settings.smtp.host:
         errors.append("SMTP_HOST is required when SMTP_ENABLED=true.")
 

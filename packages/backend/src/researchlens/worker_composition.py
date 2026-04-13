@@ -4,6 +4,14 @@ from uuid import UUID
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from researchlens.modules.artifacts.application import (
+    ExportReportUseCase,
+)
+from researchlens.modules.artifacts.infrastructure import (
+    SqlAlchemyExportBundleReader,
+    build_persist_export_artifacts,
+)
+from researchlens.modules.artifacts.orchestration import ArtifactExportGraphRuntime
 from researchlens.modules.drafting.infrastructure import (
     SqlAlchemyDraftingRepository,
     SqlAlchemyDraftingRunInputReader,
@@ -114,6 +122,7 @@ def _build_run_orchestrator(
             _build_evaluation_runtime,
             _build_repair_runtime,
         ),
+        artifact_export_builder=_build_artifact_export_runtime,
     )
     return LangGraphRunOrchestrator(
         bridge=bridge,
@@ -122,6 +131,7 @@ def _build_run_orchestrator(
         evaluation_subgraph_factory=factories[2],
         repair_subgraph_factory=factories[3],
         reevaluation_subgraph_factory=factories[4],
+        artifact_export_subgraph_factory=factories[5],
     )
 
 
@@ -212,6 +222,25 @@ def _build_repair_runtime(
         events=bridge.stage_event_sink(state=state, stage=RunStage.REPAIR),  # type: ignore[arg-type]
         checkpoints=bridge.stage_checkpoint_sink(
             state=state, stage=RunStage.REPAIR  # type: ignore[arg-type]
+        ),
+    )
+
+
+def _build_artifact_export_runtime(
+    *,
+    settings: ResearchLensSettings,
+    session: AsyncSession,
+    bridge: RunGraphRuntimeBridge,
+    state: object,
+) -> ArtifactExportGraphRuntime:
+    return ArtifactExportGraphRuntime(
+        export_report=ExportReportUseCase(
+            bundle_reader=SqlAlchemyExportBundleReader(session),
+            persist_artifacts=build_persist_export_artifacts(session=session, settings=settings),
+        ),
+        events=bridge.stage_event_sink(state=state, stage=RunStage.EXPORT),  # type: ignore[arg-type]
+        checkpoints=bridge.stage_checkpoint_sink(
+            state=state, stage=RunStage.EXPORT  # type: ignore[arg-type]
         ),
     )
 

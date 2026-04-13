@@ -3,12 +3,14 @@ from fastapi.routing import APIRouter
 from sqlalchemy import inspect, text
 from sqlalchemy.engine import Connection
 
+from researchlens.modules.artifacts.presentation import router as artifacts_router
 from researchlens.modules.auth.presentation import router as auth_router
 from researchlens.modules.conversations.presentation import (
     conversation_router,
     message_router,
 )
 from researchlens.modules.evaluation.presentation import router as evaluation_router
+from researchlens.modules.evidence.presentation import router as evidence_router
 from researchlens.modules.projects.presentation import router as projects_router
 from researchlens.modules.repair.presentation import router as repair_router
 from researchlens.modules.runs.presentation import router as runs_router
@@ -65,6 +67,8 @@ def create_app() -> FastAPI:
     app.include_router(runs_router)
     app.include_router(evaluation_router)
     app.include_router(repair_router)
+    app.include_router(evidence_router)
+    app.include_router(artifacts_router)
     return app
 
 
@@ -77,6 +81,9 @@ def _schema_is_ready(connection: Connection) -> bool:
         "auth_refresh_tokens",
         "auth_sessions",
         "auth_users",
+        "artifact_download_records",
+        "artifact_manifests",
+        "artifacts",
         "conversation_run_triggers",
         "conversations",
         "evaluation_claims",

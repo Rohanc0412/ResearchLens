@@ -24,6 +24,7 @@ def build_run_graph(
     evaluation_subgraph_factory: StageSubgraphFactory,
     repair_subgraph_factory: StageSubgraphFactory,
     reevaluation_subgraph_factory: StageSubgraphFactory,
+    artifact_export_subgraph_factory: StageSubgraphFactory,
 ) -> Any:
     graph = StateGraph[RunGraphState](RunGraphState)
     _add_run_nodes(
@@ -34,6 +35,7 @@ def build_run_graph(
         evaluation_subgraph_factory=evaluation_subgraph_factory,
         repair_subgraph_factory=repair_subgraph_factory,
         reevaluation_subgraph_factory=reevaluation_subgraph_factory,
+        artifact_export_subgraph_factory=artifact_export_subgraph_factory,
     )
     _add_run_edges(graph)
     return graph.compile()
@@ -48,6 +50,7 @@ def _add_run_nodes(
     evaluation_subgraph_factory: StageSubgraphFactory,
     repair_subgraph_factory: StageSubgraphFactory,
     reevaluation_subgraph_factory: StageSubgraphFactory,
+    artifact_export_subgraph_factory: StageSubgraphFactory,
 ) -> None:
     graph.add_node("load_run_context", cast(Any, _load_run_context(bridge)))
     graph.add_node("restore_or_initialize_graph_state", cast(Any, _restore_graph_state()))
@@ -75,6 +78,10 @@ def _add_run_nodes(
         "maybe_reevaluate_repaired_sections_subgraph",
         cast(Any, _run_reevaluation_subgraph(reevaluation_subgraph_factory)),
     )
+    graph.add_node(
+        "artifact_export_subgraph",
+        cast(Any, _run_stage_subgraph(bridge, RunStage.EXPORT, artifact_export_subgraph_factory)),
+    )
     graph.add_node("finalize_run", cast(Any, _finalize_run(bridge)))
 
 
@@ -90,6 +97,7 @@ def _add_run_edges(graph: StateGraph[RunGraphState]) -> None:
             "drafting_subgraph": "drafting_subgraph",
             "evaluation_subgraph": "evaluation_subgraph",
             "repair_subgraph": "repair_subgraph",
+            "artifact_export_subgraph": "artifact_export_subgraph",
             "finalize_run": "finalize_run",
         },
     )
@@ -113,7 +121,8 @@ def _add_run_edges(graph: StateGraph[RunGraphState]) -> None:
             "finalize_run": "finalize_run",
         },
     )
-    graph.add_edge("maybe_reevaluate_repaired_sections_subgraph", "finalize_run")
+    graph.add_edge("maybe_reevaluate_repaired_sections_subgraph", "artifact_export_subgraph")
+    graph.add_edge("artifact_export_subgraph", "finalize_run")
     graph.add_edge("finalize_run", END)
 
 
@@ -187,6 +196,12 @@ def _run_stage_subgraph(
             and state["start_stage"] != RunStage.REPAIR.value
         ):
             return {}
+        if (
+            stage == RunStage.EXPORT
+            and state.get("current_stage") != RunStage.EXPORT.value
+            and state["start_stage"] != RunStage.EXPORT.value
+        ):
+            return {}
         if not await bridge.stage_entered(state=state, stage=stage):
             return {"terminal_status": "canceled"}
         result = await subgraph_factory(state).ainvoke(state)
@@ -235,6 +250,8 @@ def _route_from_resume(state: RunGraphState) -> str:
         return "drafting_subgraph"
     if state["start_stage"] == RunStage.EVALUATE.value:
         return "evaluation_subgraph"
+    if state["start_stage"] == RunStage.EXPORT.value:
+        return "artifact_export_subgraph"
     if state["start_stage"] == RunStage.RETRIEVE.value:
         return "retrieval_subgraph"
     return "finalize_run"
@@ -243,7 +260,9 @@ def _route_from_resume(state: RunGraphState) -> str:
 def _route_after_evaluation(state: RunGraphState) -> str:
     if state.get("terminal_status") == "canceled":
         return "finalize_run"
-    return "repair_subgraph" if state.get("repair_recommended") is True else "finalize_run"
+    if state.get("repair_recommended") is True:
+        return "repair_subgraph"
+    return "artifact_export_subgraph"
 
 
 def _route_after_repair(state: RunGraphState) -> str:
@@ -252,5 +271,5 @@ def _route_after_repair(state: RunGraphState) -> str:
     return (
         "maybe_reevaluate_repaired_sections_subgraph"
         if tuple(state.get("repaired_section_ids", ()))
-        else "finalize_run"
+        else "artifact_export_subgraph"
     )

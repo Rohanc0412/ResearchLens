@@ -52,6 +52,12 @@ def test_backend_modules_do_not_cross_import_each_other() -> None:
                     and target.startswith(f"researchlens.modules.{candidate}.orchestration")
                 ):
                     continue
+                if (
+                    allow_runs_orchestration
+                    and candidate == "artifacts"
+                    and target.startswith("researchlens.modules.artifacts.orchestration")
+                ):
+                    continue
                 assert not target.startswith(f"researchlens.modules.{candidate}")
 
 

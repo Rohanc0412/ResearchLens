@@ -2,6 +2,8 @@
 
 Run progress is exposed through `GET /runs/{run_id}/events`.
 
+Phase 10 export progress uses the same stream. Export emits concise stage-local messages such as `export.started` and `export.completed`, while the runs lifecycle still emits stage-started, checkpoint-written, and stage-completed events for `stage=export`. Event payloads contain artifact IDs and counts, not artifact bytes.
+
 ## Modes
 
 - Default JSON mode returns historical events ordered by `event_number`.

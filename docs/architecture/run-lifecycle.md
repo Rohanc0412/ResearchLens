@@ -1,6 +1,12 @@
 # Run Lifecycle
 
-Phase 5 moved run lifecycle ownership into `researchlens.modules.runs`. Phase 8 keeps that durable ownership and routes retrieval, drafting, and evaluation through the top-level LangGraph.
+Phase 5 moved run lifecycle ownership into `researchlens.modules.runs`. Phase 10 keeps that durable ownership and routes retrieval, drafting, evaluation, repair, targeted repair reevaluation, and export through the top-level LangGraph.
+
+Phase 10 adds `export` to the successful research-run lifecycle after repair and targeted repair reevaluation. The stage persists markdown and manifest artifacts and writes compact export checkpoints that reference artifact IDs rather than embedding artifact bytes.
+
+Artifact export uses stable logical artifact kinds per run, so resume or retry of the export stage updates the same `final_report_markdown` and `report_manifest` records. Download records are intentionally append-only and are not deduplicated.
+
+Unresolved quality findings after repair remain quality outcomes, not lifecycle failures. Export fails only for operational export errors such as missing final drafts, missing stored citation chunks, malformed citation tokens, or storage write/read failures.
 
 ## Statuses and transitions
 

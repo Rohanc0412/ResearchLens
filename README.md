@@ -90,5 +90,9 @@ Current HTTP surface:
 - `/conversations/{conversation_id}/*` for conversation, message, and run creation flows
 - `/runs/{run_id}`, `/runs/{run_id}/events`, `/runs/{run_id}/cancel`, and `/runs/{run_id}/retry`
 - `/runs/{run_id}/evaluation` and `/runs/{run_id}/evaluation/issues`
+- `/runs/{run_id}/evidence`, `/runs/{run_id}/evidence/sections/{section_id}`, `/evidence/chunks/{chunk_id}`, and `/evidence/sources/{source_id}`
+- `/runs/{run_id}/artifacts`, `/artifacts/{artifact_id}`, and `/artifacts/{artifact_id}/download`
 
-The API entrypoint stays composition-only and wires health, auth, projects, conversations, messages, runs, and evaluation read routers from the backend package. The worker entrypoint stays composition-only and delegates queue polling plus retrieval/drafting/evaluation-aware run processing to backend composition helpers and installed backend modules.
+Phase 10 adds evidence inspection and artifact export. Export runs as a LangGraph stage after repair/targeted reevaluation, assembles final section text deterministically, writes final report markdown plus manifest JSON to the local filesystem artifact store, persists metadata/manifests/download records, and exposes download endpoints over the stored bytes.
+
+The API entrypoint stays composition-only and wires health, auth, projects, conversations, messages, runs, evaluation, repair, evidence, and artifact routers from the backend package. The worker entrypoint stays composition-only and delegates queue polling plus retrieval/drafting/evaluation/repair/export-aware run processing to backend composition helpers and installed backend modules.

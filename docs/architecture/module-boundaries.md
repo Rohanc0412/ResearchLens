@@ -1,6 +1,18 @@
 # Module Boundaries
 
-ResearchLens backend code uses explicit layers inside each module. Phase 8 keeps that modular-monolith shape while making LangGraph the only research-run orchestrator.
+ResearchLens backend code uses explicit layers inside each module. Phase 10 keeps that modular-monolith shape while making LangGraph the only research-run orchestrator.
+
+Phase 10 boundaries:
+
+- `evidence.application` defines read use cases and DTOs for inspection only.
+- `evidence.infrastructure` composes persisted data with SQL query adapters and does not import other modules' ORM rows.
+- `evidence.presentation` keeps routes thin and returns strict response DTOs.
+- `artifacts.domain` defines artifact kinds and export bundle/value models.
+- `artifacts.application` owns citation resolution, manifest building, markdown rendering, artifact persistence, artifact listing/detail, and download recording.
+- `artifacts.infrastructure` owns artifact ORM rows, SQL repositories, export bundle reads, and the local filesystem artifact store.
+- `artifacts.orchestration` exposes the export graph runtime/subgraph. It calls application use cases and does not own storage or manifest policy.
+
+`runs` remains the lifecycle and top-level graph owner. `artifacts` participates as a stage subgraph; `evidence` does not orchestrate execution.
 
 ## Required layers
 

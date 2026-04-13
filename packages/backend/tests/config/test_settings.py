@@ -25,8 +25,7 @@ def test_settings_parse_grouped_environment(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", "sqlite+aiosqlite:///./.data/test.db")
     monkeypatch.setenv("QUEUE_BACKEND", "redis")
     monkeypatch.setenv("QUEUE_URL", "redis://localhost:6379/0")
-    monkeypatch.setenv("STORAGE_MODE", "s3")
-    monkeypatch.setenv("STORAGE_BUCKET", "researchlens-test")
+    monkeypatch.setenv("STORAGE_MODE", "local")
     monkeypatch.setenv("LLM_PROVIDER", "openai")
     monkeypatch.setenv("LLM_API_KEY", "test-key")
 
@@ -34,7 +33,7 @@ def test_settings_parse_grouped_environment(monkeypatch: MonkeyPatch) -> None:
 
     assert settings.app.environment == "test"
     assert settings.queue.backend == "redis"
-    assert settings.storage.bucket == "researchlens-test"
+    assert settings.storage.mode == "local"
     assert settings.llm.provider == "openai"
 
 

@@ -2,7 +2,16 @@
 
 Backend tests cover module boundaries, smoke startup, migrations, unit policies, repositories, API contracts, and integration-stage behavior.
 
-Phase 8 adds focused evaluation coverage for:
+Phase 10 backend coverage now includes:
+
+- artifact citation resolution, filesystem writes/reads, checksums, and idempotent artifact persistence
+- artifact export integration from persisted retrieval/drafting outputs
+- evidence summary composition over existing durable retrieval/drafting/evaluation/repair/artifact tables
+- download record persistence
+- migration creation of artifact metadata, manifest, and download-record tables
+- graph import-boundary checks for the new artifacts/evidence modules and export subgraph wiring
+
+Earlier evaluation and repair coverage includes:
 
 - verdict scoring and report rollups
 - exact repair trigger policy and `max_repairs_per_section=1`
