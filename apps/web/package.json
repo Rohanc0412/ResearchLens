@@ -13,14 +13,19 @@
     "clean": "node -e \"const fs=require('fs'); for (const p of ['dist','coverage','test-results','playwright-report']) fs.rmSync(p,{recursive:true,force:true});\""
   },
   "dependencies": {
+    "@researchlens/api-client": "workspace:*",
     "@researchlens/ui": "workspace:*",
+    "@tanstack/react-query": "^5.99.0",
+    "framer-motion": "^12.38.0",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^7.14.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
     "@testing-library/jest-dom": "^6.6.2",
     "@testing-library/react": "^16.0.1",
+    "@testing-library/user-event": "^14.6.1",
     "@types/react": "^18.3.5",
     "@types/react-dom": "^18.3.0",
     "@vitejs/plugin-react": "^4.3.1",
