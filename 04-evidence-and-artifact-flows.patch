@@ -1,0 +1,516 @@
+diff --git a/apps/web/src/entities/artifact/artifact.api.ts b/apps/web/src/entities/artifact/artifact.api.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..65e4ef6cbba4c316f4808943c1b1a206e4509d89
+--- /dev/null
++++ b/apps/web/src/entities/artifact/artifact.api.ts
+@@ -0,0 +1,44 @@
++import {
++  ArtifactsService,
++  type ArtifactResponse,
++} from "@researchlens/api-client";
++import { useMutation, useQuery } from "@tanstack/react-query";
++
++import { useAuth } from "../../app/providers/AuthProvider";
++import { downloadArtifactBlob } from "../../shared/api/client";
++
++export const artifactKeys = {
++  list: (runId: string) => ["artifacts", runId] as const,
++  detail: (artifactId: string) => ["artifacts", "detail", artifactId] as const,
++};
++
++export function useArtifactsQuery(runId: string) {
++  const auth = useAuth();
++
++  return useQuery({
++    queryKey: artifactKeys.list(runId),
++    queryFn: () =>
++      auth.authorizedRequest(() => ArtifactsService.listRunArtifactsRunsRunIdArtifactsGet(runId)),
++    enabled: auth.status === "authenticated" && Boolean(runId),
++  });
++}
++
++export function useArtifactQuery(artifactId: string) {
++  const auth = useAuth();
++
++  return useQuery({
++    queryKey: artifactKeys.detail(artifactId),
++    queryFn: () =>
++      auth.authorizedRequest(() => ArtifactsService.getArtifactArtifactsArtifactIdGet(artifactId)),
++    enabled: auth.status === "authenticated" && Boolean(artifactId),
++  });
++}
++
++export function useArtifactDownloadMutation() {
++  const auth = useAuth();
++
++  return useMutation({
++    mutationFn: async (artifact: ArtifactResponse) =>
++      downloadArtifactBlob(artifact.id, auth.accessToken, artifact.filename),
++  });
++}
+diff --git a/apps/web/src/entities/evidence/evidence.api.ts b/apps/web/src/entities/evidence/evidence.api.ts
+new file mode 100644
+index 0000000000000000000000000000000000000000..b7604607c92ae27a8f10afc9e3ee87494156baf0
+--- /dev/null
++++ b/apps/web/src/entities/evidence/evidence.api.ts
+@@ -0,0 +1,106 @@
++import {
++  EvidenceService,
++  EvaluationService,
++  RepairService,
++} from "@researchlens/api-client";
++import { useQuery } from "@tanstack/react-query";
++
++import { useAuth } from "../../app/providers/AuthProvider";
++
++export const evidenceKeys = {
++  summary: (runId: string) => ["evidence", runId, "summary"] as const,
++  section: (runId: string, sectionId: string) => ["evidence", runId, "sections", sectionId] as const,
++  chunk: (chunkId: string) => ["evidence", "chunk", chunkId] as const,
++  source: (sourceId: string) => ["evidence", "source", sourceId] as const,
++  evaluation: (runId: string) => ["evaluation", runId] as const,
++  issues: (runId: string) => ["evaluation", runId, "issues"] as const,
++  repair: (runId: string) => ["repair", runId] as const,
++};
++
++export function useRunEvidenceSummaryQuery(runId: string) {
++  const auth = useAuth();
++
++  return useQuery({
++    queryKey: evidenceKeys.summary(runId),
++    queryFn: () =>
++      auth.authorizedRequest(() => EvidenceService.getRunEvidenceRunsRunIdEvidenceGet(runId)),
++    enabled: auth.status === "authenticated" && Boolean(runId),
++  });
++}
++
++export function useSectionEvidenceQuery(runId: string, sectionId: string) {
++  const auth = useAuth();
++
++  return useQuery({
++    queryKey: evidenceKeys.section(runId, sectionId),
++    queryFn: () =>
++      auth.authorizedRequest(() =>
++        EvidenceService.getSectionEvidenceRunsRunIdEvidenceSectionsSectionIdGet(
++          runId,
++          sectionId,
++        ),
++      ),
++    enabled: auth.status === "authenticated" && Boolean(runId) && Boolean(sectionId),
++  });
++}
++
++export function useChunkDetailQuery(chunkId: string) {
++  const auth = useAuth();
++
++  return useQuery({
++    queryKey: evidenceKeys.chunk(chunkId),
++    queryFn: () =>
++      auth.authorizedRequest(() =>
++        EvidenceService.getChunkDetailEvidenceChunksChunkIdGet(chunkId),
++      ),
++    enabled: auth.status === "authenticated" && Boolean(chunkId),
++  });
++}
++
++export function useSourceDetailQuery(sourceId: string) {
++  const auth = useAuth();
++
++  return useQuery({
++    queryKey: evidenceKeys.source(sourceId),
++    queryFn: () =>
++      auth.authorizedRequest(() =>
++        EvidenceService.getSourceDetailEvidenceSourcesSourceIdGet(sourceId),
++      ),
++    enabled: auth.status === "authenticated" && Boolean(sourceId),
++  });
++}
++
++export function useEvaluationSummaryQuery(runId: string) {
++  const auth = useAuth();
++
++  return useQuery({
++    queryKey: evidenceKeys.evaluation(runId),
++    queryFn: () =>
++      auth.authorizedRequest(() => EvaluationService.getRunEvaluationRunsRunIdEvaluationGet(runId)),
++    enabled: auth.status === "authenticated" && Boolean(runId),
++  });
++}
++
++export function useEvaluationIssuesQuery(runId: string) {
++  const auth = useAuth();
++
++  return useQuery({
++    queryKey: evidenceKeys.issues(runId),
++    queryFn: () =>
++      auth.authorizedRequest(() =>
++        EvaluationService.listRunEvaluationIssuesRunsRunIdEvaluationIssuesGet(runId),
++      ),
++    enabled: auth.status === "authenticated" && Boolean(runId),
++  });
++}
++
++export function useRepairSummaryQuery(runId: string) {
++  const auth = useAuth();
++
++  return useQuery({
++    queryKey: evidenceKeys.repair(runId),
++    queryFn: () =>
++      auth.authorizedRequest(() => RepairService.getRunRepairRunsRunIdRepairGet(runId)),
++    enabled: auth.status === "authenticated" && Boolean(runId),
++  });
++}
+diff --git a/apps/web/src/pages/artifacts/ArtifactsPage.tsx b/apps/web/src/pages/artifacts/ArtifactsPage.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..ab3d565bbe8f02d27bed5189263d1a08132a9723
+--- /dev/null
++++ b/apps/web/src/pages/artifacts/ArtifactsPage.tsx
+@@ -0,0 +1,24 @@
++import { useSearchParams, useParams } from "react-router-dom";
++
++import { Page } from "../../shared/ui/Page";
++import { ArtifactBrowser } from "../../widgets/artifact_list/ArtifactBrowser";
++import { EvidenceOverview } from "../../widgets/evidence_panel/EvidenceOverview";
++
++export function ArtifactsPage() {
++  const { runId = "" } = useParams();
++  const [searchParams] = useSearchParams();
++  const sectionId = searchParams.get("section");
++
++  return (
++    <Page
++      eyebrow="Artifacts"
++      title="Run outputs"
++      subtitle="Artifacts, previewable exports, evaluation summary, and evidence linkage."
++    >
++      <ArtifactBrowser runId={runId} />
++      <div id="evidence">
++        <EvidenceOverview runId={runId} sectionId={sectionId} />
++      </div>
++    </Page>
++  );
++}
+diff --git a/apps/web/src/pages/evidence/SnippetDetailPage.tsx b/apps/web/src/pages/evidence/SnippetDetailPage.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..c7339a01ebcc997e483699d1b17acb0cf184a047
+--- /dev/null
++++ b/apps/web/src/pages/evidence/SnippetDetailPage.tsx
+@@ -0,0 +1,68 @@
++import { useParams } from "react-router-dom";
++
++import {
++  useChunkDetailQuery,
++  useSourceDetailQuery,
++} from "../../entities/evidence/evidence.api";
++import { Card } from "../../shared/ui/Card";
++import { EmptyState } from "../../shared/ui/EmptyState";
++import { Page } from "../../shared/ui/Page";
++
++export function SnippetDetailPage() {
++  const { snippetId = "" } = useParams();
++  const chunk = useChunkDetailQuery(snippetId);
++  const source = useSourceDetailQuery(chunk.data?.source_id ?? "");
++
++  if (!chunk.isLoading && !chunk.data) {
++    return (
++      <Page eyebrow="Evidence" title="Snippet not found">
++        <EmptyState
++          title="Snippet not found"
++          body="The requested evidence snippet was not available for the current tenant."
++        />
++      </Page>
++    );
++  }
++
++  return (
++    <Page
++      eyebrow="Evidence"
++      title={chunk.data?.source_title ?? "Snippet detail"}
++      subtitle="Durable retrieval chunk with source metadata and surrounding context."
++    >
++      <div className="grid grid--2">
++        <Card title="Snippet text" meta={`Chunk ${chunk.data?.chunk_index ?? 0}`}>
++          <div className="stack">
++            <p>{chunk.data?.chunk_text}</p>
++            {(chunk.data?.context_chunks ?? []).map((item) => (
++              <div key={item.chunk_id} className="card">
++                <div className="card__body">
++                  <div className="meta-line">Context chunk {item.chunk_index}</div>
++                  <div>{item.excerpt_text}</div>
++                </div>
++              </div>
++            ))}
++          </div>
++        </Card>
++
++        <Card title="Source metadata" meta={source.data?.canonical_key ?? "Loading"}>
++          <div className="stack">
++            <div className="meta-line">
++              {source.data?.authors.join(", ") || "Author metadata unavailable"}
++            </div>
++            <div>{source.data?.venue ?? "Venue unavailable"}</div>
++            <div>{source.data?.year ?? "Year unavailable"}</div>
++            <div className="meta-line">
++              {JSON.stringify(source.data?.identifiers ?? {}, null, 2)}
++            </div>
++            {source.data?.url ? (
++              <a href={source.data.url} rel="noreferrer" target="_blank">
++                <span className="pill">Open source</span>
++              </a>
++            ) : null}
++          </div>
++        </Card>
++      </div>
++    </Page>
++  );
++}
+diff --git a/apps/web/src/widgets/artifact_list/ArtifactBrowser.tsx b/apps/web/src/widgets/artifact_list/ArtifactBrowser.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..ce86d5939cfbf8074395625b1935fb7d8d867037
+--- /dev/null
++++ b/apps/web/src/widgets/artifact_list/ArtifactBrowser.tsx
+@@ -0,0 +1,163 @@
++import { useEffect, useState } from "react";
++import { Link } from "react-router-dom";
++
++import {
++  useArtifactDownloadMutation,
++  useArtifactsQuery,
++} from "../../entities/artifact/artifact.api";
++import {
++  useEvaluationIssuesQuery,
++  useEvaluationSummaryQuery,
++  useRepairSummaryQuery,
++  useRunEvidenceSummaryQuery,
++} from "../../entities/evidence/evidence.api";
++import { formatDateTime } from "../../shared/lib/format";
++import { Button } from "../../shared/ui/Button";
++import { Card } from "../../shared/ui/Card";
++import { EmptyState } from "../../shared/ui/EmptyState";
++import { ErrorBanner } from "../../shared/ui/ErrorBanner";
++
++export function ArtifactBrowser({ runId }: { runId: string }) {
++  const artifacts = useArtifactsQuery(runId);
++  const evidence = useRunEvidenceSummaryQuery(runId);
++  const evaluation = useEvaluationSummaryQuery(runId);
++  const issues = useEvaluationIssuesQuery(runId);
++  const repair = useRepairSummaryQuery(runId);
++  const download = useArtifactDownloadMutation();
++  const [previewText, setPreviewText] = useState("");
++  const [previewTitle, setPreviewTitle] = useState("");
++
++  useEffect(() => {
++    if (!download.data) {
++      return;
++    }
++
++    if (download.data.mediaType.includes("json") || download.data.mediaType.startsWith("text/")) {
++      void download.data.blob.text().then(setPreviewText);
++    }
++  }, [download.data]);
++
++  if (artifacts.error) {
++    return <ErrorBanner body="Artifacts could not be loaded." />;
++  }
++
++  if (!artifacts.isLoading && (artifacts.data?.length ?? 0) === 0) {
++    return (
++      <EmptyState
++        title="No artifacts yet"
++        body="This run has not produced exportable artifacts."
++      />
++    );
++  }
++
++  return (
++    <div className="grid grid--2">
++      <div className="stack">
++        <Card title="Artifacts" meta={`Run ${runId}`}>
++          <div className="artifact-list">
++            {(artifacts.data ?? []).map((artifact) => (
++              <Card
++                key={artifact.id}
++                title={artifact.filename}
++                meta={`${artifact.kind} • ${artifact.media_type} • ${formatDateTime(
++                  artifact.created_at,
++                )}`}
++              >
++                <div className="row row--between">
++                  <div className="meta-line">{artifact.byte_size} bytes</div>
++                  <div className="row">
++                    <Button
++                      compact
++                      onClick={() =>
++                        void download.mutateAsync(artifact).then(({ blob, filename, mediaType }) => {
++                          setPreviewTitle(filename);
++                          const link = document.createElement("a");
++                          link.href = URL.createObjectURL(blob);
++                          link.download = filename;
++                          link.click();
++                          URL.revokeObjectURL(link.href);
++                          if (mediaType.startsWith("text/") || mediaType.includes("json")) {
++                            void blob.text().then(setPreviewText);
++                          }
++                        })
++                      }
++                    >
++                      Download
++                    </Button>
++                    <Link to={`/runs/${runId}/artifacts#evidence`}>
++                      <Button compact variant="ghost">
++                        Evidence
++                      </Button>
++                    </Link>
++                  </div>
++                </div>
++              </Card>
++            ))}
++          </div>
++        </Card>
++
++        <Card title="Evidence linkage" meta="Read-only evidence state">
++          {evidence.data ? (
++            <div className="stack">
++              <div className="meta-line">
++                {evidence.data.section_count} sections • {evidence.data.chunk_count} snippets •{" "}
++                {evidence.data.source_count} sources
++              </div>
++              {(evidence.data.sections ?? []).map((section) => (
++                <div key={section.section_id} className="row row--between">
++                  <strong>{section.title}</strong>
++                  <Link to={`/runs/${runId}/artifacts?section=${section.section_id}`}>
++                    <span className="pill">Open section</span>
++                  </Link>
++                </div>
++              ))}
++            </div>
++          ) : (
++            <div className="meta-line">Loading evidence summary...</div>
++          )}
++        </Card>
++      </div>
++
++      <div className="stack">
++        <Card title="Preview" meta={previewTitle || "Download a text artifact to preview it"}>
++          <div className="preview">
++            <pre>{previewText || "Preview appears here for markdown, text, and manifest artifacts."}</pre>
++          </div>
++        </Card>
++
++        <Card title="Evaluation" meta="Current backend summary">
++          {evaluation.data ? (
++            <div className="stack">
++              <div className="row row--between">
++                <span className="pill">{evaluation.data.quality_pct.toFixed(1)}% quality</span>
++                <span className="meta-line">
++                  {evaluation.data.issue_count} issues • {evaluation.data.sections_requiring_repair_count} repair
++                </span>
++              </div>
++              {(issues.data ?? []).slice(0, 5).map((issue) => (
++                <div key={issue.issue_id} className="card">
++                  <div className="card__body">
++                    <strong>{issue.message}</strong>
++                    <div className="meta-line">
++                      {issue.section_title} • {issue.severity}
++                    </div>
++                  </div>
++                </div>
++              ))}
++            </div>
++          ) : (
++            <div className="meta-line">No evaluation summary available.</div>
++          )}
++        </Card>
++
++        <Card title="Repair" meta="If a repair result exists, it appears here">
++          <div className="meta-line">
++            {repair.data
++              ? `${repair.data.changed_count} sections changed`
++              : "No repair summary available for this run."}
++          </div>
++        </Card>
++      </div>
++    </div>
++  );
++}
+diff --git a/apps/web/src/widgets/evidence_panel/EvidenceOverview.tsx b/apps/web/src/widgets/evidence_panel/EvidenceOverview.tsx
+new file mode 100644
+index 0000000000000000000000000000000000000000..90b453cf91953fbb56dafce49a3d8c3f05681e8f
+--- /dev/null
++++ b/apps/web/src/widgets/evidence_panel/EvidenceOverview.tsx
+@@ -0,0 +1,75 @@
++import { Link } from "react-router-dom";
++
++import {
++  useRunEvidenceSummaryQuery,
++  useSectionEvidenceQuery,
++} from "../../entities/evidence/evidence.api";
++import { Card } from "../../shared/ui/Card";
++import { EmptyState } from "../../shared/ui/EmptyState";
++import { ErrorBanner } from "../../shared/ui/ErrorBanner";
++
++export function EvidenceOverview({
++  runId,
++  sectionId,
++}: {
++  runId: string;
++  sectionId?: string | null;
++}) {
++  const summary = useRunEvidenceSummaryQuery(runId);
++  const section = useSectionEvidenceQuery(runId, sectionId ?? "");
++
++  if (summary.error) {
++    return <ErrorBanner body="Evidence summary could not be loaded." />;
++  }
++
++  if (!summary.isLoading && !summary.data) {
++    return (
++      <EmptyState
++        title="No evidence available"
++        body="This run does not expose persisted evidence yet."
++      />
++    );
++  }
++
++  return (
++    <div className="grid grid--2">
++      <Card title="Sections" meta={summary.data ? `${summary.data.section_count} sections` : "Loading"}>
++        <div className="stack">
++          {(summary.data?.sections ?? []).map((item) => (
++            <div key={item.section_id} className="row row--between">
++              <div>
++                <strong>{item.title}</strong>
++                <div className="meta-line">
++                  {item.issue_count} issues • {item.repaired ? "Repaired" : "Draft canonical"}
++                </div>
++              </div>
++              <Link to={`/runs/${runId}/artifacts?section=${item.section_id}`}>
++                <span className="pill">Inspect</span>
++              </Link>
++            </div>
++          ))}
++        </div>
++      </Card>
++      <Card title="Section trace" meta={sectionId ?? "Choose a section"}>
++        {section.data ? (
++          <div className="stack">
++            <p className="page-subtitle">{section.data.canonical_summary}</p>
++            {(section.data.evidence_chunks ?? []).map((chunk) => (
++              <div key={chunk.chunk_id} className="card">
++                <div className="card__body stack">
++                  <strong>{chunk.source_title ?? "Untitled source"}</strong>
++                  <div>{chunk.excerpt_text}</div>
++                  <Link to={`/evidence/snippets/${chunk.chunk_id}`}>
++                    <span className="pill">Open snippet</span>
++                  </Link>
++                </div>
++              </div>
++            ))}
++          </div>
++        ) : (
++          <div className="meta-line">Choose a section to inspect claim and source traces.</div>
++        )}
++      </Card>
++    </div>
++  );
++}
