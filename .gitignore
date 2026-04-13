@@ -27,6 +27,7 @@ test-results/
 # IDEs
 .idea/
 .vscode/
+.codex/
 
 # OS
 .DS_Store
