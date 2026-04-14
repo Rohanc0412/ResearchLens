@@ -1,8 +1,9 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
-import asyncio
+from types import SimpleNamespace
 from typing import Any
 from uuid import uuid4
 
@@ -201,6 +202,60 @@ class _ConcurrentCheckpointStore:
         )
 
 
+class _FailIfUsedTransactionManager:
+    @asynccontextmanager
+    async def boundary(self) -> AsyncIterator[None]:
+        raise AssertionError("shared transaction manager should not be used")
+        yield
+
+    async def rollback(self) -> None:
+        raise AssertionError("shared transaction manager should not be used")
+
+
+class _FakeIsolatedTransactionManager:
+    def __init__(self, session: object) -> None:
+        self.session = session
+
+    @asynccontextmanager
+    async def boundary(self) -> AsyncIterator[None]:
+        yield
+
+
+class _FakeIsolatedEventStore:
+    created_sessions: list[object] = []
+    appended_messages: list[str] = []
+
+    def __init__(self, session: object) -> None:
+        self.created_sessions.append(session)
+
+    async def append(self, **kwargs):  # type: ignore[no-untyped-def]
+        self.appended_messages.append(kwargs["message"])
+        return _FakeEventStore().captured
+
+
+class _FakeIsolatedCheckpointStore:
+    created_sessions: list[object] = []
+    appended_keys: list[str] = []
+
+    def __init__(self, session: object) -> None:
+        self.created_sessions.append(session)
+
+    async def append(self, **kwargs):  # type: ignore[no-untyped-def]
+        self.appended_keys.append(kwargs["checkpoint_key"])
+        return _FakeCheckpointStore().captured
+
+
+class _FakeSessionFactory:
+    def __init__(self, session: object) -> None:
+        self.session = session
+        self.calls = 0
+
+    @asynccontextmanager
+    async def __call__(self) -> AsyncIterator[object]:
+        self.calls += 1
+        yield self.session
+
+
 def _run(cancel_requested: bool = False) -> Run:
     now = datetime.now(tz=UTC)
     return Run.create(
@@ -356,6 +411,80 @@ async def test_checkpoint_bridge_serializes_concurrent_appends() -> None:
     )
 
     assert checkpoint_store.max_active_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_event_bridge_uses_isolated_session_factory_when_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_factory = _FakeSessionFactory(SimpleNamespace(name="event-session"))
+    monkeypatch.setattr(
+        "researchlens.modules.runs.orchestration.event_bridge.SqlAlchemyTransactionManager",
+        _FakeIsolatedTransactionManager,
+    )
+    monkeypatch.setattr(
+        "researchlens.modules.runs.orchestration.event_bridge.SqlAlchemyRunEventStore",
+        _FakeIsolatedEventStore,
+    )
+    _FakeIsolatedEventStore.created_sessions.clear()
+    _FakeIsolatedEventStore.appended_messages.clear()
+    bridge = RunGraphEventBridge(
+        event_store=_FakeEventStore(),
+        transaction_manager=_FailIfUsedTransactionManager(),
+        clock=UtcRunClock(),
+        session_factory=session_factory,  # type: ignore[arg-type]
+    )
+
+    await bridge.info(
+        run_id=uuid4(),
+        retry_count=0,
+        cancel_requested=False,
+        stage=RunStage.EVALUATE,
+        key="evaluate.started",
+        message="Started",
+        payload={},
+    )
+
+    assert session_factory.calls == 1
+    assert _FakeIsolatedEventStore.created_sessions == [session_factory.session]
+    assert _FakeIsolatedEventStore.appended_messages == ["Started"]
+
+
+@pytest.mark.asyncio
+async def test_checkpoint_bridge_uses_isolated_session_factory_when_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session_factory = _FakeSessionFactory(SimpleNamespace(name="checkpoint-session"))
+    monkeypatch.setattr(
+        "researchlens.modules.runs.orchestration.checkpoint_bridge.SqlAlchemyTransactionManager",
+        _FakeIsolatedTransactionManager,
+    )
+    monkeypatch.setattr(
+        "researchlens.modules.runs.orchestration.checkpoint_bridge.SqlAlchemyRunCheckpointStore",
+        _FakeIsolatedCheckpointStore,
+    )
+    _FakeIsolatedCheckpointStore.created_sessions.clear()
+    _FakeIsolatedCheckpointStore.appended_keys.clear()
+    bridge = RunGraphCheckpointBridge(
+        checkpoint_store=_FakeCheckpointStore(),
+        transaction_manager=_FailIfUsedTransactionManager(),
+        clock=UtcRunClock(),
+        session_factory=session_factory,  # type: ignore[arg-type]
+    )
+
+    await bridge.checkpoint(
+        run_id=uuid4(),
+        retry_count=0,
+        stage=RunStage.EVALUATE,
+        key="evaluate.completed",
+        summary={"section_count": 2},
+        completed_stages=("retrieve", "draft"),
+        next_stage="repair",
+    )
+
+    assert session_factory.calls == 1
+    assert _FakeIsolatedCheckpointStore.created_sessions == [session_factory.session]
+    assert _FakeIsolatedCheckpointStore.appended_keys == ["attempt-0:evaluate.completed"]
 
 
 @pytest.mark.asyncio

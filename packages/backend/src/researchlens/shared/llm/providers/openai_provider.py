@@ -1,3 +1,4 @@
+import asyncio
 import json
 from typing import Any, cast
 
@@ -8,6 +9,9 @@ from researchlens.shared.llm.domain import StructuredGenerationRequest, Structur
 
 
 class OpenAiStructuredGenerationClient:
+    _MAX_RETRIES = 2
+    _MIN_TIMEOUT_SECONDS = 60.0
+
     def __init__(
         self,
         settings: LlmSettings,
@@ -41,23 +45,64 @@ class OpenAiStructuredGenerationClient:
             payload["temperature"] = self._settings.temperature
         headers = {"Authorization": f"Bearer {self._settings.api_key}"}
         base_url = self._settings.base_url or "https://api.openai.com/v1"
-        if self._client is not None:
-            response = await self._client.post("/responses", json=payload, headers=headers)
-            response.raise_for_status()
-        else:
-            async with httpx.AsyncClient(timeout=self._settings.timeout_seconds) as client:
-                response = await client.post(
-                    f"{base_url}/responses",
-                    json=payload,
-                    headers=headers,
-                )
-                response.raise_for_status()
+        response = await self._post_with_retries(
+            base_url=base_url,
+            payload=payload,
+            headers=headers,
+        )
         data = response.json()
         raw_text = _extract_output_text_from_response(data)
         return StructuredGenerationResult(
             data=_extract_structured_json(data),
             raw_text=raw_text,
         )
+
+    async def _post_with_retries(
+        self,
+        *,
+        base_url: str,
+        payload: dict[str, Any],
+        headers: dict[str, str],
+    ) -> httpx.Response:
+        last_error: Exception | None = None
+        for attempt in range(self._MAX_RETRIES + 1):
+            try:
+                response = await self._post_once(
+                    base_url=base_url,
+                    payload=payload,
+                    headers=headers,
+                )
+                if not _should_retry_status(response.status_code) or attempt >= self._MAX_RETRIES:
+                    response.raise_for_status()
+                    return response
+                await asyncio.sleep(_retry_delay_seconds(attempt))
+                continue
+            except (httpx.ReadTimeout, httpx.ConnectTimeout, httpx.TransportError) as exc:
+                last_error = exc
+                if attempt >= self._MAX_RETRIES:
+                    raise
+                await asyncio.sleep(_retry_delay_seconds(attempt))
+        assert last_error is not None
+        raise last_error
+
+    async def _post_once(
+        self,
+        *,
+        base_url: str,
+        payload: dict[str, Any],
+        headers: dict[str, str],
+    ) -> httpx.Response:
+        if self._client is not None:
+            return await self._client.post("/responses", json=payload, headers=headers)
+        async with httpx.AsyncClient(timeout=self._effective_timeout_seconds()) as client:
+            return await client.post(
+                f"{base_url}/responses",
+                json=payload,
+                headers=headers,
+            )
+
+    def _effective_timeout_seconds(self) -> float:
+        return max(self._settings.timeout_seconds, self._MIN_TIMEOUT_SECONDS)
 
     def _uses_fixed_temperature(self) -> bool:
         return self._settings.model.startswith("gpt-5")
@@ -146,6 +191,14 @@ def _structured_output_format(schema_name: str) -> dict[str, Any] | None:
         "schema": schema,
         "strict": True,
     }
+
+
+def _should_retry_status(status_code: int) -> bool:
+    return status_code in {408, 409, 429} or 500 <= status_code <= 599
+
+
+def _retry_delay_seconds(attempt: int) -> float:
+    return 0.25 * (attempt + 1)
 
 
 def _schema_by_name() -> dict[str, dict[str, Any]]:

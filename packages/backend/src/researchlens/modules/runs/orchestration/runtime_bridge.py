@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import timedelta
 from uuid import UUID
 
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
 from researchlens.modules.runs.application.dto import ResumeState
 from researchlens.modules.runs.application.ports import (
     RunCheckpointStore,
@@ -47,6 +49,7 @@ class RunGraphRuntimeBridge:
         transaction_manager: TransactionManager,
         clock: RunClock,
         queue_lease_seconds: int,
+        session_factory: async_sessionmaker[AsyncSession] | None = None,
     ) -> None:
         self._run_repository = run_repository
         self._event_store = event_store
@@ -71,11 +74,13 @@ class RunGraphRuntimeBridge:
             event_store=event_store,
             transaction_manager=transaction_manager,
             clock=clock,
+            session_factory=session_factory,
         )
         self._checkpoints = RunGraphCheckpointBridge(
             checkpoint_store=checkpoint_store,
             transaction_manager=transaction_manager,
             clock=clock,
+            session_factory=session_factory,
         )
 
     async def load_context(self, *, run_id: UUID) -> RunContextSnapshot:

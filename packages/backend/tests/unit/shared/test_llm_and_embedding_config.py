@@ -78,7 +78,9 @@ async def test_openai_llm_adapter_includes_temperature_for_non_gpt5_models() -> 
         ),
     )
 
-    await client.generate_structured(StructuredGenerationRequest(schema_name="schema", prompt="Prompt"))
+    await client.generate_structured(
+        StructuredGenerationRequest(schema_name="schema", prompt="Prompt")
+    )
 
     assert '"temperature":0.7' in str(seen["json"])
     assert '"reasoning"' not in str(seen["json"])
@@ -124,7 +126,9 @@ async def test_openai_llm_adapter_parses_nested_output_text_from_responses_api()
                         "content": [
                             {
                                 "type": "output_text",
-                                "text": '{"sections":[{"section_id":"overview","title":"Overview"}]}',
+                                "text": (
+                                    '{"sections":[{"section_id":"overview","title":"Overview"}]}'
+                                ),
                             }
                         ],
                     }
@@ -175,6 +179,85 @@ async def test_openai_llm_adapter_parses_output_parsed_payload() -> None:
     )
 
     assert result.data["status"] == "completed"
+
+
+@pytest.mark.asyncio
+async def test_openai_llm_adapter_retries_read_timeout_and_succeeds() -> None:
+    attempts = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts < 3:
+            raise httpx.ReadTimeout("timed out")
+        return httpx.Response(200, json={"output_json": {"ok": True}})
+
+    client = OpenAiStructuredGenerationClient(
+        LlmSettings(provider="openai", api_key="test-key"),
+        client=httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            base_url="https://api.openai.test/v1",
+        ),
+    )
+
+    result = await client.generate_structured(
+        StructuredGenerationRequest(schema_name="drafting_section", prompt="Prompt")
+    )
+
+    assert result.data == {"ok": True}
+    assert attempts == 3
+
+
+@pytest.mark.asyncio
+async def test_openai_llm_adapter_retries_retryable_http_status() -> None:
+    attempts = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            return httpx.Response(429, json={"error": {"message": "rate limited"}})
+        return httpx.Response(200, json={"output_json": {"ok": True}})
+
+    client = OpenAiStructuredGenerationClient(
+        LlmSettings(provider="openai", api_key="test-key"),
+        client=httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            base_url="https://api.openai.test/v1",
+        ),
+    )
+
+    result = await client.generate_structured(
+        StructuredGenerationRequest(schema_name="drafting_section", prompt="Prompt")
+    )
+
+    assert result.data == {"ok": True}
+    assert attempts == 2
+
+
+@pytest.mark.asyncio
+async def test_openai_llm_adapter_does_not_retry_non_retryable_http_status() -> None:
+    attempts = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal attempts
+        attempts += 1
+        return httpx.Response(400, json={"error": {"message": "bad request"}})
+
+    client = OpenAiStructuredGenerationClient(
+        LlmSettings(provider="openai", api_key="test-key"),
+        client=httpx.AsyncClient(
+            transport=httpx.MockTransport(handler),
+            base_url="https://api.openai.test/v1",
+        ),
+    )
+
+    with pytest.raises(httpx.HTTPStatusError):
+        await client.generate_structured(
+            StructuredGenerationRequest(schema_name="drafting_section", prompt="Prompt")
+        )
+
+    assert attempts == 1
 
 
 @pytest.mark.asyncio

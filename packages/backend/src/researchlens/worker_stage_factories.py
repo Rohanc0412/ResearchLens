@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import cast
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from researchlens.modules.artifacts.orchestration import (
     ArtifactExportGraphRuntime,
@@ -35,6 +35,7 @@ def stage_factories(
     *,
     settings: ResearchLensSettings,
     session: AsyncSession,
+    session_factory: async_sessionmaker[AsyncSession],
     bridge: RunGraphRuntimeBridge,
     drafting_llm_client: StructuredGenerationClient | None,
     evaluation_evaluator: SectionGroundingEvaluator | None,
@@ -51,10 +52,17 @@ def stage_factories(
 ]:
     return (
         _retrieval(settings, session, bridge, retrieval_providers, builders[0]),
-        _drafting(settings, session, bridge, drafting_llm_client, builders[1]),
-        _evaluation(settings, session, bridge, evaluation_evaluator, builders[2]),
-        _repair(settings, session, bridge, drafting_llm_client, builders[3]),
-        _reevaluation(settings, session, bridge, evaluation_evaluator, builders[2]),
+        _drafting(settings, session, session_factory, bridge, drafting_llm_client, builders[1]),
+        _evaluation(settings, session, session_factory, bridge, evaluation_evaluator, builders[2]),
+        _repair(settings, session, session_factory, bridge, drafting_llm_client, builders[3]),
+        _reevaluation(
+            settings,
+            session,
+            session_factory,
+            bridge,
+            evaluation_evaluator,
+            builders[2],
+        ),
         _artifact_export(settings, session, bridge, artifact_export_builder),
     )
 
@@ -84,6 +92,7 @@ def _retrieval(
 def _drafting(
     settings: ResearchLensSettings,
     session: AsyncSession,
+    session_factory: async_sessionmaker[AsyncSession],
     bridge: RunGraphRuntimeBridge,
     llm_client: StructuredGenerationClient | None,
     builder: RuntimeBuilder,
@@ -94,6 +103,7 @@ def _drafting(
             builder(
                 settings=settings,
                 session=session,
+                session_factory=session_factory,
                 bridge=bridge,
                 state=state,
                 drafting_llm_client=llm_client,
@@ -105,6 +115,7 @@ def _drafting(
 def _evaluation(
     settings: ResearchLensSettings,
     session: AsyncSession,
+    session_factory: async_sessionmaker[AsyncSession],
     bridge: RunGraphRuntimeBridge,
     evaluator: SectionGroundingEvaluator | None,
     builder: RuntimeBuilder,
@@ -115,6 +126,7 @@ def _evaluation(
             builder(
                 settings=settings,
                 session=session,
+                session_factory=session_factory,
                 bridge=bridge,
                 state=state,
                 evaluation_evaluator=evaluator,
@@ -126,6 +138,7 @@ def _evaluation(
 def _repair(
     settings: ResearchLensSettings,
     session: AsyncSession,
+    session_factory: async_sessionmaker[AsyncSession],
     bridge: RunGraphRuntimeBridge,
     llm_client: StructuredGenerationClient | None,
     builder: RuntimeBuilder,
@@ -136,6 +149,7 @@ def _repair(
             builder(
                 settings=settings,
                 session=session,
+                session_factory=session_factory,
                 bridge=bridge,
                 state=state,
                 repair_llm_client=llm_client,
@@ -147,6 +161,7 @@ def _repair(
 def _reevaluation(
     settings: ResearchLensSettings,
     session: AsyncSession,
+    session_factory: async_sessionmaker[AsyncSession],
     bridge: RunGraphRuntimeBridge,
     evaluator: SectionGroundingEvaluator | None,
     builder: RuntimeBuilder,
@@ -158,6 +173,7 @@ def _reevaluation(
                 builder(
                     settings=settings,
                     session=session,
+                    session_factory=session_factory,
                     bridge=bridge,
                     state=state,
                     evaluation_evaluator=evaluator,

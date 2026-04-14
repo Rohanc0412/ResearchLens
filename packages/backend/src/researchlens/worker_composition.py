@@ -2,7 +2,7 @@ from contextlib import AbstractAsyncContextManager
 from typing import Protocol
 from uuid import UUID
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from researchlens.modules.artifacts.application import (
     ExportReportUseCase,
@@ -73,6 +73,7 @@ def build_worker_runs_runtime(
         settings,
         run_orchestrator_factory=lambda **kwargs: _build_run_orchestrator(
             settings=settings,
+            session_factory=database.session_factory,
             session=kwargs["session"],
             event_store=kwargs["event_store"],
             checkpoint_store=kwargs["checkpoint_store"],
@@ -86,6 +87,7 @@ def build_worker_runs_runtime(
 def _build_run_orchestrator(
     *,
     settings: ResearchLensSettings,
+    session_factory: async_sessionmaker[AsyncSession],
     session: AsyncSession,
     event_store: RunEventStore,
     checkpoint_store: RunCheckpointStore,
@@ -101,6 +103,7 @@ def _build_run_orchestrator(
         transaction_manager=transaction_manager,
         clock=UtcRunClock(),
         queue_lease_seconds=settings.queue.lease_seconds,
+        session_factory=session_factory,
     )
     retrieval_providers = build_provider_registry(settings.retrieval)
     primary_retrieval_provider = retrieval_providers[settings.retrieval.primary_provider]
@@ -112,6 +115,7 @@ def _build_run_orchestrator(
     factories = stage_factories(
         settings=settings,
         session=session,
+        session_factory=session_factory,
         bridge=bridge,
         drafting_llm_client=drafting_llm_client,
         evaluation_evaluator=evaluation_evaluator,
@@ -168,6 +172,7 @@ def _build_drafting_runtime(
     *,
     settings: ResearchLensSettings,
     session: AsyncSession,
+    session_factory: async_sessionmaker[AsyncSession],
     bridge: RunGraphRuntimeBridge,
     state: object,
     drafting_llm_client: StructuredGenerationClient | None,
@@ -176,7 +181,7 @@ def _build_drafting_runtime(
         settings=settings,
         input_reader=SqlAlchemyDraftingRunInputReader(session),
         repository=SqlAlchemyDraftingRepository(session),
-        cancellation_probe=_RunCancellationProbe(session),
+        cancellation_probe=_RunCancellationProbe(session_factory),
         events=bridge.stage_event_sink(state=state, stage=RunStage.DRAFT),  # type: ignore[arg-type]
         checkpoints=bridge.stage_checkpoint_sink(
             state=state, stage=RunStage.DRAFT  # type: ignore[arg-type]
@@ -189,6 +194,7 @@ def _build_evaluation_runtime(
     *,
     settings: ResearchLensSettings,
     session: AsyncSession,
+    session_factory: async_sessionmaker[AsyncSession],
     bridge: RunGraphRuntimeBridge,
     state: object,
     evaluation_evaluator: SectionGroundingEvaluator | None,
@@ -198,7 +204,7 @@ def _build_evaluation_runtime(
         input_reader=SqlAlchemyEvaluationInputReader(session),
         repository=SqlAlchemyEvaluationRepository(session),
         evaluator=evaluation_evaluator or _build_evaluation_evaluator(settings),
-        cancellation_probe=_RunCancellationProbe(session),
+        cancellation_probe=_RunCancellationProbe(session_factory),
         events=bridge.stage_event_sink(state=state, stage=RunStage.EVALUATE),  # type: ignore[arg-type]
         checkpoints=bridge.stage_checkpoint_sink(
             state=state, stage=RunStage.EVALUATE  # type: ignore[arg-type]
@@ -210,6 +216,7 @@ def _build_repair_runtime(
     *,
     settings: ResearchLensSettings,
     session: AsyncSession,
+    session_factory: async_sessionmaker[AsyncSession],
     bridge: RunGraphRuntimeBridge,
     state: object,
     repair_llm_client: StructuredGenerationClient | None,
@@ -218,7 +225,7 @@ def _build_repair_runtime(
         settings=settings,
         repository=SqlAlchemyRepairRepository(session),
         generation_client=repair_llm_client or build_llm_client(settings.llm),
-        cancellation_probe=_RunCancellationProbe(session),
+        cancellation_probe=_RunCancellationProbe(session_factory),
         events=bridge.stage_event_sink(state=state, stage=RunStage.REPAIR),  # type: ignore[arg-type]
         checkpoints=bridge.stage_checkpoint_sink(
             state=state, stage=RunStage.REPAIR  # type: ignore[arg-type]
@@ -262,9 +269,10 @@ def _build_evaluation_evaluator(settings: ResearchLensSettings) -> SectionGround
 
 
 class _RunCancellationProbe:
-    def __init__(self, session: AsyncSession) -> None:
-        self._repository = SqlAlchemyRunRepository(session)
+    def __init__(self, session_factory: async_sessionmaker[AsyncSession]) -> None:
+        self._session_factory = session_factory
 
     async def cancel_requested(self, *, run_id: UUID) -> bool:
-        run = await self._repository.get_by_id(run_id=run_id)
-        return run is not None and run.cancel_requested_at is not None
+        async with self._session_factory() as session:
+            run = await SqlAlchemyRunRepository(session).get_by_id(run_id=run_id)
+            return run is not None and run.cancel_requested_at is not None

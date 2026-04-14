@@ -1,6 +1,8 @@
 import asyncio
 from uuid import UUID
 
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
+
 from researchlens.modules.runs.application.ports import RunEventStore, TransactionManager
 from researchlens.modules.runs.application.run_clock import RunClock
 from researchlens.modules.runs.domain import (
@@ -9,6 +11,8 @@ from researchlens.modules.runs.domain import (
     RunEventType,
     RunStage,
 )
+from researchlens.modules.runs.infrastructure.run_event_store_sql import SqlAlchemyRunEventStore
+from researchlens.shared.db.transaction_manager import SqlAlchemyTransactionManager
 
 
 class RunGraphEventBridge:
@@ -18,11 +22,13 @@ class RunGraphEventBridge:
         event_store: RunEventStore,
         transaction_manager: TransactionManager,
         clock: RunClock,
+        session_factory: async_sessionmaker[AsyncSession] | None = None,
     ) -> None:
         self._event_store = event_store
         self._transaction_manager = transaction_manager
         self._clock = clock
         self._lock = asyncio.Lock()
+        self._session_factory = session_factory
 
     async def info(
         self,
@@ -81,18 +87,39 @@ class RunGraphEventBridge:
         payload: dict[str, object],
     ) -> None:
         async with self._lock:
-            async with self._transaction_manager.boundary():
-                await self._event_store.append(
-                    run_id=run_id,
-                    event_type=RunEventType.CHECKPOINT_WRITTEN,
-                    audience=RunEventAudience.PROGRESS,
-                    level=level,
-                    status="running",
-                    stage=stage.value,
-                    message=message,
-                    payload_json=payload,
-                    retry_count=retry_count,
-                    cancel_requested=cancel_requested,
-                    created_at=self._clock.now(),
-                    event_key=f"attempt-{retry_count}:{key}",
-                )
+            if self._session_factory is None:
+                async with self._transaction_manager.boundary():
+                    await self._event_store.append(
+                        run_id=run_id,
+                        event_type=RunEventType.CHECKPOINT_WRITTEN,
+                        audience=RunEventAudience.PROGRESS,
+                        level=level,
+                        status="running",
+                        stage=stage.value,
+                        message=message,
+                        payload_json=payload,
+                        retry_count=retry_count,
+                        cancel_requested=cancel_requested,
+                        created_at=self._clock.now(),
+                        event_key=f"attempt-{retry_count}:{key}",
+                    )
+                return
+
+            async with self._session_factory() as session:
+                transaction_manager = SqlAlchemyTransactionManager(session)
+                event_store = SqlAlchemyRunEventStore(session)
+                async with transaction_manager.boundary():
+                    await event_store.append(
+                        run_id=run_id,
+                        event_type=RunEventType.CHECKPOINT_WRITTEN,
+                        audience=RunEventAudience.PROGRESS,
+                        level=level,
+                        status="running",
+                        stage=stage.value,
+                        message=message,
+                        payload_json=payload,
+                        retry_count=retry_count,
+                        cancel_requested=cancel_requested,
+                        created_at=self._clock.now(),
+                        event_key=f"attempt-{retry_count}:{key}",
+                    )
