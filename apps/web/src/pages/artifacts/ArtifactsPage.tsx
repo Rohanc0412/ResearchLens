@@ -15,7 +15,9 @@ export function ArtifactsPage() {
       title="Run outputs"
       subtitle="Artifacts, previewable exports, evaluation summary, and evidence linkage."
     >
-      <ArtifactBrowser runId={runId} />
+      <div className="inspection-shell">
+        <ArtifactBrowser runId={runId} />
+      </div>
       <div id="evidence">
         <EvidenceOverview runId={runId} sectionId={sectionId} />
       </div>

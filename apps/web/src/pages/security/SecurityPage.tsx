@@ -48,21 +48,33 @@ export function SecurityPage() {
       title="Session hardening"
       subtitle="Manage MFA enrollment, verification state, and disable flow."
     >
-      <div className="grid grid--2">
-        <Card title="MFA status" meta={status.data ? JSON.stringify(status.data) : "Loading"}>
+      <div className="security-grid">
+        <Card
+          className="workspace-panel"
+          title="MFA status"
+          meta={
+            status.data?.enabled
+              ? "Enabled"
+              : status.data?.pending
+                ? "Pending verification"
+                : "Not enrolled"
+          }
+        >
           <div className="stack">
             {statusMessage ? <Card title="Status">{statusMessage}</Card> : null}
             {status.error ? <ErrorBanner body={getErrorMessage(status.error)} /> : null}
-            <div className="meta-line">
-              Enabled: {status.data?.enabled ? "yes" : "no"} • Pending:{" "}
-              {status.data?.pending ? "yes" : "no"}
+            <div className="security-status">
+              <span className={status.data?.enabled ? "pill pill--success" : "pill pill--warning"}>
+                {status.data?.enabled ? "Protected" : "Action needed"}
+              </span>
+              <span className="meta-line">Pending: {status.data?.pending ? "yes" : "no"}</span>
             </div>
             <Button variant="primary" onClick={() => void enroll.mutateAsync()}>
               Start enrollment
             </Button>
             {enroll.data ? (
               <div className="stack">
-                <Card title="Enrollment details">
+                <Card className="workspace-panel" title="Enrollment details">
                   <div className="meta-line">{enroll.data.otpauth_uri}</div>
                 </Card>
                 <Input
@@ -81,7 +93,7 @@ export function SecurityPage() {
           </div>
         </Card>
 
-        <Card title="Disable MFA" meta="Requires a fresh TOTP code">
+        <Card className="workspace-panel" title="Disable MFA" meta="Requires a fresh TOTP code">
           <div className="stack">
             {disable.error ? <ErrorBanner body={getErrorMessage(disable.error)} /> : null}
             <Input

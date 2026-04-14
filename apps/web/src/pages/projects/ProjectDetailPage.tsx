@@ -57,8 +57,8 @@ export function ProjectDetailPage() {
       title={project.data?.name ?? "Project"}
       subtitle={project.data?.description ?? "Create or continue conversations in this project."}
     >
-      <div className="grid grid--2">
-        <Card title="Start a conversation" meta="Project-level launchpad">
+      <div className="project-detail-grid">
+        <Card className="prompt-launcher" title="Start a conversation" meta="Project-level launchpad">
           <div className="stack">
             <Textarea
               label="Research prompt"
@@ -79,20 +79,21 @@ export function ProjectDetailPage() {
           </div>
         </Card>
 
-        <Card title="Recent conversations" meta={`${conversations.data?.length ?? 0} visible`}>
+        <Card className="workspace-panel" title="Recent conversations" meta={`${conversations.data?.length ?? 0} visible`}>
           {(conversations.data?.length ?? 0) === 0 ? (
             <EmptyState
               title="No conversations yet"
               body="Start a prompt-driven conversation to create the first research run."
             />
           ) : (
-            <div className="project-list">
+            <div className="data-list">
               {(conversations.data ?? []).map((conversation) => (
                 <Link
                   key={conversation.id}
+                  className="data-row"
                   to={`/projects/${projectId}/conversations/${conversation.id}`}
                 >
-                  <Card interactive title={conversation.title}>
+                  <Card interactive className="data-row__card" title={conversation.title}>
                     <div className="meta-line">
                       Last message{" "}
                       {conversation.last_message_at

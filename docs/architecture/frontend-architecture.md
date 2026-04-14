@@ -45,7 +45,7 @@ Phase 11 rebuilds the browser app around generated backend contracts and a harde
 - `/login`: login, register, password reset request/confirm, MFA verification
 - `/projects`: project list and project creation
 - `/projects/:projectId`: project detail and conversation launch
-- `/projects/:projectId/conversations/:conversationId`: persisted messages, composer, run progress
+- `/projects/:projectId/conversations/:conversationId`: full-bleed research workspace with header, persisted message timeline, docked composer, live run progress, and report/evidence surface
 - `/runs/:runId/artifacts`: artifact list, preview, evidence linkage, evaluation/repair summary
 - `/evidence/snippets/:snippetId`: chunk detail and source metadata
 - `/security`: MFA status, enroll, verify, disable
@@ -58,4 +58,5 @@ The app keeps the established Obsidian language:
 - layered surfaces `#101015` and `#16161e`
 - accent `#9580c4`
 - Geist, Geist Mono, and Cal Sans
+- compact row-oriented dashboard surfaces, thin borders, small radii, and mono metadata
 - subtle Framer Motion transitions for page entry, sidebar width, dialogs, progress bars, and event reveals

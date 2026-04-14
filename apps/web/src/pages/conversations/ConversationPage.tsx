@@ -6,7 +6,9 @@ import { useConversationQuery } from "../../entities/conversation/conversation.a
 import { useMessagesQuery } from "../../entities/message/message.api";
 import { useCreateRunMutation } from "../../entities/run/run.api";
 import { Card } from "../../shared/ui/Card";
-import { Page } from "../../shared/ui/Page";
+import { ChatMessageList } from "../../widgets/conversation_shell/ChatMessageList";
+import { ChatViewHeader } from "../../widgets/conversation_shell/ChatViewHeader";
+import { ReportPane } from "../../widgets/conversation_shell/ReportPane";
 import { RunProgressCard } from "../../widgets/run_progress/RunProgressCard";
 
 export function ConversationPage() {
@@ -38,43 +40,31 @@ export function ConversationPage() {
   };
 
   return (
-    <Page
-      eyebrow="Conversation"
-      title={conversation.data?.title ?? "Conversation"}
-      subtitle={`Project ${projectId} conversation history and research execution.`}
-    >
-      <div className="grid grid--2">
-        <div className="stack">
-          <Card title="Composer" meta="Post notes or start a research run">
+    <div className="conversation-workspace">
+      <ChatViewHeader
+        title={conversation.data?.title ?? "Conversation"}
+        projectId={projectId}
+        messageCount={messages.data?.length ?? 0}
+        runId={runId}
+      />
+      <div className="conversation-workspace__grid">
+        <div className="conversation-workspace__main">
+          <ChatMessageList messages={messages.data ?? []} />
+          <div className="composer-dock">
             <ConversationComposer conversationId={conversationId} onResearch={startResearch} />
-          </Card>
-          <Card title="Messages" meta={`${messages.data?.length ?? 0} persisted`}>
-            <div className="message-list">
-              {(messages.data ?? []).map((message) => (
-                <article key={message.id} className="message" data-role={message.role}>
-                  <div className="row row--between">
-                    <strong>{message.role}</strong>
-                    <span className="meta-line">
-                      {new Date(message.created_at).toLocaleString()}
-                    </span>
-                  </div>
-                  <p>{message.content_text ?? JSON.stringify(message.content_json)}</p>
-                </article>
-              ))}
-            </div>
-          </Card>
+          </div>
         </div>
-
-        <div className="stack">
+        <aside className="conversation-workspace__side">
           {runId ? (
             <RunProgressCard runId={runId} />
           ) : (
-            <Card title="Run status" meta="No active run">
+            <Card className="workspace-panel" title="Run status" meta="No active run">
               Start a research run from the composer to stream progress, evidence, and artifacts here.
             </Card>
           )}
-        </div>
+          <ReportPane runId={runId} />
+        </aside>
       </div>
-    </Page>
+    </div>
   );
 }

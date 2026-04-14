@@ -32,11 +32,11 @@ export function EvidenceOverview({
   }
 
   return (
-    <div className="grid grid--2">
-      <Card title="Sections" meta={summary.data ? `${summary.data.section_count} sections` : "Loading"}>
+    <div className="evidence-workbench">
+      <Card className="workspace-panel" title="Sections" meta={summary.data ? `${summary.data.section_count} sections` : "Loading"}>
         <div className="stack">
           {(summary.data?.sections ?? []).map((item) => (
-            <div key={item.section_id} className="row row--between">
+            <div key={item.section_id} className="section-row">
               <div>
                 <strong>{item.title}</strong>
                 <div className="meta-line">
@@ -50,14 +50,14 @@ export function EvidenceOverview({
           ))}
         </div>
       </Card>
-      <Card title="Section trace" meta={sectionId ?? "Choose a section"}>
+      <Card className="preview-panel" title="Section trace" meta={sectionId ?? "Choose a section"}>
         {section.error ? <ErrorBanner body="Section trace could not be loaded." /> : null}
         {section.data ? (
           <div className="stack">
             <p className="page-subtitle">{section.data.canonical_summary}</p>
             {(section.data.evidence_chunks ?? []).map((chunk) => (
-              <div key={chunk.chunk_id} className="card">
-                <div className="card__body stack">
+              <div key={chunk.chunk_id} className="evidence-chunk">
+                <div className="stack">
                   <strong>{chunk.source_title ?? "Untitled source"}</strong>
                   <div>{chunk.excerpt_text}</div>
                   <Link to={`/evidence/snippets/${chunk.chunk_id}`}>

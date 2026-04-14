@@ -11,17 +11,7 @@ import { formatDateTime } from "../../shared/lib/format";
 import { Button } from "../../shared/ui/Button";
 import { Card } from "../../shared/ui/Card";
 import { ErrorBanner } from "../../shared/ui/ErrorBanner";
-
-function getRunProgress(status: string, stage: string | null) {
-  if (status === "succeeded" || status === "failed" || status === "canceled") return 100;
-  if (status === "queued") return 14;
-  if (stage === "retrieve") return 30;
-  if (stage === "draft") return 52;
-  if (stage === "evaluate") return 72;
-  if (stage === "repair") return 86;
-  if (stage === "export") return 96;
-  return 8;
-}
+import { buildRunProgressModel } from "./buildRunProgressModel";
 
 export function RunProgressCard({ runId }: { runId: string }) {
   const reduceMotion = useReducedMotion();
@@ -38,7 +28,7 @@ export function RunProgressCard({ runId }: { runId: string }) {
     return <ErrorBanner body="Run progress could not be loaded." />;
   }
 
-  const progress = getRunProgress(run.data.status, run.data.current_stage);
+  const model = buildRunProgressModel(run.data, timeline.events);
   const streamStatus = timeline.isConnected
     ? "Live stream connected"
     : run.data.status === "succeeded" || run.data.status === "failed" || run.data.status === "canceled"
@@ -68,8 +58,12 @@ export function RunProgressCard({ runId }: { runId: string }) {
         </div>
       }
     >
-      <div className="stack">
-        <div className="row row--between">
+      <div className="run-progress stack">
+        <div className="run-progress__summary">
+          <div>
+            <div className="eyebrow">Current action</div>
+            <strong>{model.currentAction}</strong>
+          </div>
           <span className="pill">{streamStatus}</span>
           {run.data.status === "succeeded" ? (
             <Link to={`/runs/${runId}/artifacts`}>
@@ -82,28 +76,37 @@ export function RunProgressCard({ runId }: { runId: string }) {
         <div className="run-progress__rail" aria-hidden="true">
           <motion.div
             className="run-progress__fill"
-            animate={{ width: `${progress}%` }}
+            animate={{ width: `${model.progress}%` }}
             initial={reduceMotion ? undefined : { width: "0%" }}
             transition={{ duration: 0.28 }}
           />
         </div>
+        <div className="run-progress__steps" aria-label="Run stages">
+          {model.steps.map((step) => (
+            <div key={step.key} className="run-progress__step" data-state={step.state}>
+              <span className="run-progress__dot" />
+              <div>
+                <strong>{step.title}</strong>
+                <p>{step.body}</p>
+              </div>
+            </div>
+          ))}
+        </div>
         {timeline.error ? <ErrorBanner body={timeline.error} /> : null}
         <div className="event-log">
-          {timeline.events.slice(-8).reverse().map((event) => (
+          {model.recentEvents.map((event) => (
             <motion.div
               key={event.event_number}
-              className="card"
+              className="event-log__item"
               initial={reduceMotion ? undefined : { opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
             >
-              <div className="card__body">
-                <div className="row row--between">
-                  <strong>{event.message}</strong>
-                  <span className="meta-line">#{event.event_number}</span>
-                </div>
-                <div className="meta-line">
-                  {event.display_status} | {event.display_stage} | {formatDateTime(event.ts)}
-                </div>
+              <div className="row row--between">
+                <strong>{event.message}</strong>
+                <span className="meta-line">#{event.event_number}</span>
+              </div>
+              <div className="meta-line">
+                {event.display_status} | {event.display_stage} | {formatDateTime(event.ts)}
               </div>
             </motion.div>
           ))}

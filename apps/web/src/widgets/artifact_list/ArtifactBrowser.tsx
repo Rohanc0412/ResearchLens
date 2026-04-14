@@ -38,9 +38,9 @@ export function ArtifactBrowser({ runId }: { runId: string }) {
   }, [download.data]);
 
   return (
-    <div className="grid grid--2">
+    <div className="artifact-workbench">
       <div className="stack">
-        <Card title="Artifacts" meta={`Run ${runId}`}>
+        <Card className="workspace-panel" title="Artifacts" meta={`Run ${runId}`}>
           {artifacts.error ? <ErrorBanner body="Artifacts could not be loaded." /> : null}
           {artifacts.isLoading ? <div className="meta-line">Loading artifacts...</div> : null}
           {!artifacts.isLoading && !artifacts.error && (artifacts.data?.length ?? 0) === 0 ? (
@@ -50,10 +50,11 @@ export function ArtifactBrowser({ runId }: { runId: string }) {
             />
           ) : null}
           {(artifacts.data?.length ?? 0) > 0 ? (
-            <div className="artifact-list">
+            <div className="data-list">
               {(artifacts.data ?? []).map((artifact) => (
                 <Card
                   key={artifact.id}
+                  className="artifact-row"
                   title={artifact.filename}
                   meta={`${artifact.kind} | ${artifact.media_type} | ${formatDateTime(
                     artifact.created_at,
@@ -95,7 +96,7 @@ export function ArtifactBrowser({ runId }: { runId: string }) {
           ) : null}
         </Card>
 
-        <Card title="Evidence linkage" meta="Read-only evidence state">
+        <Card className="workspace-panel" title="Evidence linkage" meta="Read-only evidence state">
           {evidence.error ? <ErrorBanner body="Evidence summary could not be loaded." /> : null}
           {evidence.data ? (
             <div className="stack">
@@ -104,7 +105,7 @@ export function ArtifactBrowser({ runId }: { runId: string }) {
                 {evidence.data.source_count} sources
               </div>
               {(evidence.data.sections ?? []).map((section) => (
-                <div key={section.section_id} className="row row--between">
+                <div key={section.section_id} className="section-row">
                   <strong>{section.title}</strong>
                   <Link to={`/runs/${runId}/artifacts?section=${section.section_id}`}>
                     <span className="pill">Open section</span>
@@ -121,13 +122,13 @@ export function ArtifactBrowser({ runId }: { runId: string }) {
       </div>
 
       <div className="stack">
-        <Card title="Preview" meta={previewTitle || "Download a text artifact to preview it"}>
+        <Card className="preview-panel" title="Preview" meta={previewTitle || "Download a text artifact to preview it"}>
           <div className="preview">
             <pre>{previewText || "Preview appears here for markdown, text, and manifest artifacts."}</pre>
           </div>
         </Card>
 
-        <Card title="Evaluation" meta="Current backend summary">
+        <Card className="workspace-panel" title="Evaluation" meta="Current backend summary">
           {evaluation.error ? <ErrorBanner body="Evaluation summary could not be loaded." /> : null}
           {evaluation.data ? (
             <div className="stack">
@@ -138,13 +139,11 @@ export function ArtifactBrowser({ runId }: { runId: string }) {
                 </span>
               </div>
               {(issues.data ?? []).slice(0, 5).map((issue) => (
-                <div key={issue.issue_id} className="card">
-                  <div className="card__body">
+                <div key={issue.issue_id} className="event-log__item">
                     <strong>{issue.message}</strong>
                     <div className="meta-line">
                       {issue.section_title} | {issue.severity}
                     </div>
-                  </div>
                 </div>
               ))}
             </div>
@@ -155,7 +154,7 @@ export function ArtifactBrowser({ runId }: { runId: string }) {
           )}
         </Card>
 
-        <Card title="Repair" meta="If a repair result exists, it appears here">
+        <Card className="workspace-panel" title="Repair" meta="If a repair result exists, it appears here">
           <div className="meta-line">
             {repair.data
               ? `${repair.data.changed_count} sections changed`

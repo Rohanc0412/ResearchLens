@@ -6,7 +6,6 @@ import { useConversationsQuery } from "../../entities/conversation/conversation.
 import { useProjectsQuery } from "../../entities/project/project.api";
 import { cn } from "../../shared/lib/cn";
 import { Button } from "../../shared/ui/Button";
-import { Card } from "../../shared/ui/Card";
 
 export function ProjectSidebar({
   collapsed,
@@ -32,7 +31,7 @@ export function ProjectSidebar({
         <div className="app-sidebar__eyebrow">ResearchLens</div>
         {!collapsed ? (
           <>
-            <div className="app-sidebar__title">Obsidian Research</div>
+            <div className="app-sidebar__title">Research Console</div>
             <div className="meta-line">{auth.user?.email ?? "Session restoring"}</div>
           </>
         ) : null}
@@ -52,20 +51,23 @@ export function ProjectSidebar({
       <div className="app-sidebar__scroll">
         <section className="app-sidebar__section">
           {!collapsed ? <div className="eyebrow">Projects</div> : null}
-          <div className="project-list">
+          <div className="sidebar-list">
             {(projects.data ?? []).map((project) => (
-              <NavLink key={project.id} to={`/projects/${project.id}`}>
+              <NavLink key={project.id} className="sidebar-item" to={`/projects/${project.id}`}>
                 {({ isActive }) => (
-                  <Card interactive className={cn(isActive && "card--interactive")}>
-                    <div className="stack">
-                      <strong>{collapsed ? project.name.slice(0, 1) : project.name}</strong>
-                      {!collapsed ? (
-                        <div className="meta-line">
-                          {project.description ?? "No project description yet"}
-                        </div>
-                      ) : null}
-                    </div>
-                  </Card>
+                  <div className={cn("sidebar-item__inner", isActive && "is-active")}>
+                    <span className="sidebar-item__glyph">{project.name.slice(0, 1)}</span>
+                    {!collapsed ? (
+                      <span>
+                        <strong>{project.name}</strong>
+                        {!collapsed ? (
+                          <span className="meta-line">
+                            {project.description ?? "No project description yet"}
+                          </span>
+                        ) : null}
+                      </span>
+                    ) : null}
+                  </div>
                 )}
               </NavLink>
             ))}
@@ -75,22 +77,26 @@ export function ProjectSidebar({
         {!collapsed && currentProjectId ? (
           <section className="app-sidebar__section">
             <div className="eyebrow">Recent Conversations</div>
-            <div className="project-list">
+            <div className="sidebar-list">
               {(conversations.data ?? []).slice(0, 6).map((conversation) => (
                 <NavLink
                   key={conversation.id}
+                  className="sidebar-item sidebar-item--conversation"
                   to={`/projects/${currentProjectId}/conversations/${conversation.id}`}
                 >
-                  <Card interactive>
-                    <div className="stack">
-                      <strong>{conversation.title}</strong>
-                      <div className="meta-line">
-                        {conversation.last_message_at
-                          ? `Active ${new Date(conversation.last_message_at).toLocaleString()}`
-                          : "No messages yet"}
-                      </div>
+                  {({ isActive }) => (
+                    <div className={cn("sidebar-item__inner", isActive && "is-active")}>
+                      <span className="sidebar-item__glyph">C</span>
+                      <span>
+                        <strong>{conversation.title}</strong>
+                        <span className="meta-line">
+                          {conversation.last_message_at
+                            ? `Active ${new Date(conversation.last_message_at).toLocaleString()}`
+                            : "No messages yet"}
+                        </span>
+                      </span>
                     </div>
-                  </Card>
+                  )}
                 </NavLink>
               ))}
             </div>

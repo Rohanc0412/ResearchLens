@@ -30,22 +30,20 @@ export function SnippetDetailPage() {
       title={chunk.data?.source_title ?? "Snippet detail"}
       subtitle="Durable retrieval chunk with source metadata and surrounding context."
     >
-      <div className="grid grid--2">
-        <Card title="Snippet text" meta={`Chunk ${chunk.data?.chunk_index ?? 0}`}>
+      <div className="evidence-workbench">
+        <Card className="preview-panel" title="Snippet text" meta={`Chunk ${chunk.data?.chunk_index ?? 0}`}>
           <div className="stack">
             <p>{chunk.data?.chunk_text}</p>
             {(chunk.data?.context_chunks ?? []).map((item) => (
-              <div key={item.chunk_id} className="card">
-                <div className="card__body">
+              <div key={item.chunk_id} className="evidence-chunk">
                   <div className="meta-line">Context chunk {item.chunk_index}</div>
                   <div>{item.excerpt_text}</div>
-                </div>
               </div>
             ))}
           </div>
         </Card>
 
-        <Card title="Source metadata" meta={source.data?.canonical_key ?? "Loading"}>
+        <Card className="workspace-panel" title="Source metadata" meta={source.data?.canonical_key ?? "Loading"}>
           <div className="stack">
             <div className="meta-line">
               {source.data?.authors.join(", ") || "Author metadata unavailable"}

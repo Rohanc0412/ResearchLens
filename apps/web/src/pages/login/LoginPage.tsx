@@ -74,8 +74,24 @@ export function LoginPage() {
 
   return (
     <div className="auth-shell">
-      <Card className="auth-card" title="ResearchLens" meta="Obsidian session access">
-        <div className="stack">
+      <section className="auth-hero">
+        <div className="auth-hero__panel">
+          <div className="eyebrow">ResearchLens</div>
+          <h1 className="display-heading">Evidence-led research workspace</h1>
+          <p>
+            Secure conversations, live run progress, artifact review, and evidence inspection in
+            one compact console.
+          </p>
+          <div className="auth-hero__stats">
+            <span>Runs</span>
+            <span>Evidence</span>
+            <span>MFA</span>
+          </div>
+        </div>
+      </section>
+      <section className="auth-form-shell">
+        <Card className="auth-card" title="ResearchLens" meta="Obsidian session access">
+          <div className="stack">
           <div className="segmented">
             {[
               ["login", "Login"],
@@ -162,8 +178,9 @@ export function LoginPage() {
               </Button>
             </>
           )}
-        </div>
-      </Card>
+          </div>
+        </Card>
+      </section>
     </div>
   );
 }
