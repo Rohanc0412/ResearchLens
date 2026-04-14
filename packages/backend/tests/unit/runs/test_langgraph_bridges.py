@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, cast
 from uuid import uuid4
 
 import pytest
@@ -208,9 +208,6 @@ class _FailIfUsedTransactionManager:
         raise AssertionError("shared transaction manager should not be used")
         yield
 
-    async def rollback(self) -> None:
-        raise AssertionError("shared transaction manager should not be used")
-
 
 class _FakeIsolatedTransactionManager:
     def __init__(self, session: object) -> None:
@@ -228,9 +225,12 @@ class _FakeIsolatedEventStore:
     def __init__(self, session: object) -> None:
         self.created_sessions.append(session)
 
-    async def append(self, **kwargs):  # type: ignore[no-untyped-def]
+    async def append(self, **kwargs: Any) -> RunEventRecord:
         self.appended_messages.append(kwargs["message"])
-        return _FakeEventStore().captured
+        return cast(
+            RunEventRecord,
+            await _FakeEventStore().append(**kwargs),  # type: ignore[no-untyped-call]
+        )
 
 
 class _FakeIsolatedCheckpointStore:
@@ -240,9 +240,12 @@ class _FakeIsolatedCheckpointStore:
     def __init__(self, session: object) -> None:
         self.created_sessions.append(session)
 
-    async def append(self, **kwargs):  # type: ignore[no-untyped-def]
+    async def append(self, **kwargs: Any) -> RunCheckpointRecord:
         self.appended_keys.append(kwargs["checkpoint_key"])
-        return _FakeCheckpointStore().captured
+        return cast(
+            RunCheckpointRecord,
+            await _FakeCheckpointStore().append(**kwargs),  # type: ignore[no-untyped-call]
+        )
 
 
 class _FakeSessionFactory:
@@ -414,25 +417,17 @@ async def test_checkpoint_bridge_serializes_concurrent_appends() -> None:
 
 
 @pytest.mark.asyncio
-async def test_event_bridge_uses_isolated_session_factory_when_configured(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_event_bridge_uses_isolated_session_factory_when_configured() -> None:
     session_factory = _FakeSessionFactory(SimpleNamespace(name="event-session"))
-    monkeypatch.setattr(
-        "researchlens.modules.runs.orchestration.event_bridge.SqlAlchemyTransactionManager",
-        _FakeIsolatedTransactionManager,
-    )
-    monkeypatch.setattr(
-        "researchlens.modules.runs.orchestration.event_bridge.SqlAlchemyRunEventStore",
-        _FakeIsolatedEventStore,
-    )
     _FakeIsolatedEventStore.created_sessions.clear()
     _FakeIsolatedEventStore.appended_messages.clear()
     bridge = RunGraphEventBridge(
         event_store=_FakeEventStore(),
         transaction_manager=_FailIfUsedTransactionManager(),
         clock=UtcRunClock(),
-        session_factory=session_factory,  # type: ignore[arg-type]
+        session_factory=cast(Any, session_factory),
+        event_store_factory=cast(Any, _FakeIsolatedEventStore),
+        transaction_manager_factory=_FakeIsolatedTransactionManager,
     )
 
     await bridge.info(
@@ -451,25 +446,17 @@ async def test_event_bridge_uses_isolated_session_factory_when_configured(
 
 
 @pytest.mark.asyncio
-async def test_checkpoint_bridge_uses_isolated_session_factory_when_configured(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+async def test_checkpoint_bridge_uses_isolated_session_factory_when_configured() -> None:
     session_factory = _FakeSessionFactory(SimpleNamespace(name="checkpoint-session"))
-    monkeypatch.setattr(
-        "researchlens.modules.runs.orchestration.checkpoint_bridge.SqlAlchemyTransactionManager",
-        _FakeIsolatedTransactionManager,
-    )
-    monkeypatch.setattr(
-        "researchlens.modules.runs.orchestration.checkpoint_bridge.SqlAlchemyRunCheckpointStore",
-        _FakeIsolatedCheckpointStore,
-    )
     _FakeIsolatedCheckpointStore.created_sessions.clear()
     _FakeIsolatedCheckpointStore.appended_keys.clear()
     bridge = RunGraphCheckpointBridge(
         checkpoint_store=_FakeCheckpointStore(),
         transaction_manager=_FailIfUsedTransactionManager(),
         clock=UtcRunClock(),
-        session_factory=session_factory,  # type: ignore[arg-type]
+        session_factory=cast(Any, session_factory),
+        checkpoint_store_factory=cast(Any, _FakeIsolatedCheckpointStore),
+        transaction_manager_factory=_FakeIsolatedTransactionManager,
     )
 
     await bridge.checkpoint(

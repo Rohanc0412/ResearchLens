@@ -18,6 +18,7 @@ from researchlens.modules.retrieval.infrastructure.persistence.rows import (
     RetrievalSourceSnapshotRow,
     RunRetrievalSourceRow,
 )
+from researchlens.shared.db.transaction_manager import SqlAlchemyTransactionManager
 from researchlens.shared.embeddings.domain import EmbeddingRequest
 from researchlens.shared.embeddings.ports import EmbeddingClient
 
@@ -29,12 +30,25 @@ class SqlAlchemyRetrievalIngestionRepository(RetrievalIngestionRepository):
         *,
         embedding_model: str,
         embedding_client: EmbeddingClient | None = None,
+        transaction_manager: SqlAlchemyTransactionManager | None = None,
     ) -> None:
         self._session = session
         self._embedding_model = embedding_model
         self._embedding_client = embedding_client
+        self._transaction_manager = transaction_manager
 
     async def persist_selected_sources(
+        self,
+        *,
+        run_id: UUID,
+        selected: list[RankedCandidate],
+    ) -> int:
+        if self._transaction_manager is not None:
+            async with self._transaction_manager.boundary():
+                return await self._persist_selected_sources(run_id=run_id, selected=selected)
+        return await self._persist_selected_sources(run_id=run_id, selected=selected)
+
+    async def _persist_selected_sources(
         self,
         *,
         run_id: UUID,

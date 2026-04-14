@@ -9,7 +9,7 @@ class DraftingSettings(BaseSettings):
     max_evidence_chars_per_item: int = Field(default=900, ge=100)
     section_min_words: int = Field(default=120, ge=1)
     section_max_words: int = Field(default=260, ge=1)
-    section_max_output_tokens: int = Field(default=1400, ge=100)
+    section_max_output_tokens: int = Field(default=15000, ge=100)
     correction_retry_count: int = Field(default=2, ge=0)
     max_concurrent_section_preparation: int = Field(default=4, ge=1)
     max_concurrent_section_drafts: int = Field(default=3, ge=1)

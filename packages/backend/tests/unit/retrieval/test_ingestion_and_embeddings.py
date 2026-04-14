@@ -12,34 +12,35 @@ from researchlens.modules.retrieval.domain.candidate import (
     SourceProvenance,
 )
 from researchlens.modules.retrieval.domain.ranking_policy import RankedCandidate, ScoreBreakdown
+from researchlens.modules.retrieval.infrastructure.ingestion.content_selection import (
+    choose_ingestible_content,
+)
 from researchlens.modules.retrieval.infrastructure.persistence.rows import (
     RetrievalChunkEmbeddingRow,
-    RetrievalSourceRow,
     RetrievalSourceChunkRow,
+    RetrievalSourceRow,
     RetrievalSourceSnapshotRow,
 )
 from researchlens.modules.retrieval.infrastructure.persistence.source_repository_sql import (
     SqlAlchemyRetrievalIngestionRepository,
 )
-from researchlens.modules.retrieval.infrastructure.ingestion.content_selection import (
-    choose_ingestible_content,
-)
+from researchlens.shared.db import DatabaseRuntime
 from researchlens.shared.embeddings.batching import (
     EmbeddingBatch,
     embed_batches_bounded,
     split_embedding_batches,
 )
-from researchlens.shared.db import DatabaseRuntime
+from researchlens.shared.embeddings.domain import EmbeddingRequest, EmbeddingResult
 
 
 class _FakeEmbeddingClient:
-    async def embed(self, request: object) -> object:
-        texts = getattr(request, "texts")
+    @property
+    def model(self) -> str:
+        return "text-embedding-3-small"
 
-        class _Result:
-            vectors = tuple((float(index + 1),) for index, _ in enumerate(texts))
-
-        return _Result()
+    async def embed(self, request: EmbeddingRequest) -> EmbeddingResult:
+        vectors = tuple((float(index + 1),) for index, _ in enumerate(request.texts))
+        return EmbeddingResult(vectors=vectors)
 
 
 def test_content_selection_prefers_full_text_then_abstract_then_title() -> None:
@@ -155,7 +156,9 @@ async def test_retrieval_ingestion_persists_chunk_before_embedding(
         await repository._insert_chunks(snapshot_id=snapshot_id, item=ranked)
         await session.commit()
 
-        chunk_count = await session.scalar(select(func.count()).select_from(RetrievalSourceChunkRow))
+        chunk_count = await session.scalar(
+            select(func.count()).select_from(RetrievalSourceChunkRow)
+        )
         embedding_count = await session.scalar(
             select(func.count()).select_from(RetrievalChunkEmbeddingRow)
         )

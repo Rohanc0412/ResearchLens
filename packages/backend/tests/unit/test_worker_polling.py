@@ -3,12 +3,14 @@ from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from types import SimpleNamespace
+from typing import cast
 from uuid import uuid4
 
 import pytest
 
 from researchlens.modules.runs.application import ProcessRunQueueItemCommand
 from researchlens.modules.runs.domain import RunQueueItem
+from researchlens.shared.config import ResearchLensSettings
 from researchlens.worker_polling import poll_worker_once
 
 
@@ -72,7 +74,11 @@ class _FakeRequestContext:
 
 
 class _FakeRunsRuntime:
-    def __init__(self, queue_items: list[RunQueueItem], processor: _NoopProcessor | None = None) -> None:
+    def __init__(
+        self,
+        queue_items: list[RunQueueItem],
+        processor: _NoopProcessor | None = None,
+    ) -> None:
         self._queue_backend = _ClaimOnlyQueueBackend(queue_items)
         self._processor = processor or _NoopProcessor()
         self.context_entries = 0
@@ -94,12 +100,15 @@ class _FakeRunsRuntime:
         )
 
 
-def _settings() -> object:
-    return SimpleNamespace(
-        queue=SimpleNamespace(
-            lease_seconds=30,
-            max_attempts=5,
-            batch_size=2,
+def _settings() -> ResearchLensSettings:
+    return cast(
+        ResearchLensSettings,
+        SimpleNamespace(
+            queue=SimpleNamespace(
+                lease_seconds=30,
+                max_attempts=5,
+                batch_size=2,
+            )
         )
     )
 

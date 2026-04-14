@@ -1,5 +1,5 @@
 import asyncio
-from uuid import uuid4
+from uuid import UUID, uuid4
 
 import pytest
 
@@ -15,7 +15,7 @@ class _RecordingCancellationProbe:
         self.active_calls = 0
         self.max_active_calls = 0
 
-    async def cancel_requested(self, *, run_id):  # type: ignore[no-untyped-def]
+    async def cancel_requested(self, *, run_id: UUID) -> bool:
         self.active_calls += 1
         self.max_active_calls = max(self.max_active_calls, self.active_calls)
         await asyncio.sleep(0)
@@ -30,7 +30,7 @@ async def test_drafting_stage_steps_serialize_cancellation_checks() -> None:
         settings=DraftingSettings(),
         repository=None,  # type: ignore[arg-type]
         generation_client=None,  # type: ignore[arg-type]
-        cancellation_probe=probe,  # type: ignore[arg-type]
+        cancellation_probe=probe,
         provider_name="openai",
     )
 
@@ -51,7 +51,7 @@ async def test_evaluation_stage_steps_serialize_cancellation_checks() -> None:
         settings=EvaluationSettings(),
         repository=None,  # type: ignore[arg-type]
         evaluator=None,  # type: ignore[arg-type]
-        cancellation_probe=probe,  # type: ignore[arg-type]
+        cancellation_probe=probe,
     )
     run_input = EvaluationRunInput(
         tenant_id=uuid4(),

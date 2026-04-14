@@ -1,14 +1,13 @@
 import asyncio
+from typing import Protocol
 
 from researchlens.modules.evaluation.application import EvaluationProgressSink
 
 
-class EvaluationGraphEventSink:
-    async def info(self, *, key: str, message: str, payload: dict[str, object]) -> None:
-        return None
+class EvaluationGraphEventSink(Protocol):
+    async def info(self, *, key: str, message: str, payload: dict[str, object]) -> None: ...
 
-    async def warning(self, *, key: str, message: str, payload: dict[str, object]) -> None:
-        return None
+    async def warning(self, *, key: str, message: str, payload: dict[str, object]) -> None: ...
 
 
 class EvaluationGraphCheckpointSink:

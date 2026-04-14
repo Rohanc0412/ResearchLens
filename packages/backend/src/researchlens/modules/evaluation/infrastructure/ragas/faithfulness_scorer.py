@@ -3,6 +3,8 @@ from collections.abc import Sequence
 
 
 class RagasFaithfulnessScorer:
+    _MIN_REASONING_MAX_TOKENS = 4096
+
     def __init__(
         self,
         *,
@@ -11,12 +13,14 @@ class RagasFaithfulnessScorer:
         api_key: str | None,
         base_url: str | None,
         timeout_seconds: float,
+        max_tokens: int,
     ) -> None:
         self._provider = provider
         self._model = model
         self._api_key = api_key
         self._base_url = base_url
         self._timeout_seconds = timeout_seconds
+        self._max_tokens = max_tokens
 
     async def score(
         self,
@@ -31,8 +35,19 @@ class RagasFaithfulnessScorer:
         from ragas.llms import llm_factory
         from ragas.metrics.collections import Faithfulness
 
-        client = AsyncOpenAI(api_key=self._api_key, base_url=self._base_url)
-        llm = llm_factory(self._model, client=client)
+        client = AsyncOpenAI(
+            api_key=self._api_key,
+            base_url=self._base_url,
+            timeout=self._timeout_seconds,
+        )
+        llm = llm_factory(
+            self._model,
+            client=client,
+            max_tokens=max(
+                self._max_tokens,
+                self._MIN_REASONING_MAX_TOKENS,
+            ),
+        )
         scorer = Faithfulness(llm=llm)
         result = await asyncio.wait_for(
             scorer.ascore(

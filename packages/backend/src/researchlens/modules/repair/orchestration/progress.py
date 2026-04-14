@@ -1,14 +1,13 @@
 import asyncio
+from typing import Protocol
 
 from researchlens.modules.repair.application import RepairProgressSink, SectionRepairOutcome
 
 
-class RepairGraphEventSink:
-    async def info(self, *, key: str, message: str, payload: dict[str, object]) -> None:
-        return None
+class RepairGraphEventSink(Protocol):
+    async def info(self, *, key: str, message: str, payload: dict[str, object]) -> None: ...
 
-    async def warning(self, *, key: str, message: str, payload: dict[str, object]) -> None:
-        return None
+    async def warning(self, *, key: str, message: str, payload: dict[str, object]) -> None: ...
 
 
 class RepairGraphCheckpointSink:

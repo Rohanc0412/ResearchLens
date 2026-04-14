@@ -6,6 +6,7 @@ import httpx
 
 from researchlens.shared.config.llm import LlmSettings
 from researchlens.shared.llm.domain import StructuredGenerationRequest, StructuredGenerationResult
+from researchlens.shared.llm.providers.openai_schemas import schema_by_name
 
 
 class OpenAiStructuredGenerationClient:
@@ -182,7 +183,7 @@ def _try_parse_json(value: str) -> dict[str, Any] | None:
 
 
 def _structured_output_format(schema_name: str) -> dict[str, Any] | None:
-    schema = _schema_by_name().get(schema_name)
+    schema = schema_by_name().get(schema_name)
     if schema is None:
         return None
     return {
@@ -199,136 +200,3 @@ def _should_retry_status(status_code: int) -> bool:
 
 def _retry_delay_seconds(attempt: int) -> float:
     return 0.25 * (attempt + 1)
-
-
-def _schema_by_name() -> dict[str, dict[str, Any]]:
-    string = {"type": "string", "minLength": 1}
-    uuid_string = {"type": "string", "format": "uuid"}
-    string_array = {"type": "array", "items": {"type": "string"}}
-    uuid_array = {"type": "array", "items": uuid_string}
-    return {
-        "drafting_section": {
-            "type": "object",
-            "properties": {
-                "section_id": string,
-                "section_text": string,
-                "section_summary": string,
-                "status": {"type": "string", "enum": ["completed"]},
-            },
-            "required": ["section_id", "section_text", "section_summary", "status"],
-            "additionalProperties": False,
-        },
-        "repair_section": {
-            "type": "object",
-            "properties": {
-                "section_id": string,
-                "revised_text": string,
-                "revised_summary": string,
-                "addressed_issue_ids": uuid_array,
-                "citations_used": uuid_array,
-                "self_check": string,
-            },
-            "required": [
-                "section_id",
-                "revised_text",
-                "revised_summary",
-                "addressed_issue_ids",
-                "citations_used",
-                "self_check",
-            ],
-            "additionalProperties": False,
-        },
-        "retrieval_query_plan": {
-            "type": "object",
-            "properties": {
-                "queries": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "intent": string,
-                            "query": string,
-                            "target_section": {"type": ["string", "null"]},
-                        },
-                        "required": ["intent", "query", "target_section"],
-                        "additionalProperties": False,
-                    },
-                }
-            },
-            "required": ["queries"],
-            "additionalProperties": False,
-        },
-        "retrieval_outline": {
-            "type": "object",
-            "properties": {
-                "report_title": string,
-                "sections": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "section_id": string,
-                            "title": string,
-                            "goal": string,
-                            "suggested_evidence_themes": string_array,
-                            "key_points": string_array,
-                            "section_order": {"type": "integer", "minimum": 1},
-                        },
-                        "required": [
-                            "section_id",
-                            "title",
-                            "goal",
-                            "suggested_evidence_themes",
-                            "key_points",
-                            "section_order",
-                        ],
-                        "additionalProperties": False,
-                    },
-                },
-            },
-            "required": ["report_title", "sections"],
-            "additionalProperties": False,
-        },
-        "evaluation_claim_verdicts": {
-            "type": "object",
-            "properties": {
-                "claims": {
-                    "type": "array",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "claim_index": {"type": "integer", "minimum": 1},
-                            "claim_text": string,
-                            "verdict": {
-                                "type": "string",
-                                "enum": [
-                                    "supported",
-                                    "missing_citation",
-                                    "invalid_citation",
-                                    "overstated",
-                                    "unsupported",
-                                    "contradicted",
-                                ],
-                            },
-                            "cited_chunk_ids": uuid_array,
-                            "supported_chunk_ids": uuid_array,
-                            "rationale": string,
-                            "repair_hint": string,
-                        },
-                        "required": [
-                            "claim_index",
-                            "claim_text",
-                            "verdict",
-                            "cited_chunk_ids",
-                            "supported_chunk_ids",
-                            "rationale",
-                            "repair_hint",
-                        ],
-                        "additionalProperties": False,
-                    },
-                }
-            },
-            "required": ["claims"],
-            "additionalProperties": False,
-        },
-    }

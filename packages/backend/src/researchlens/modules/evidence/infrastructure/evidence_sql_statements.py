@@ -66,16 +66,22 @@ order by i.claim_index asc, i.id asc
 
 SECTION_CHUNKS_SQL = """
 select e.chunk_id, e.source_id, e.source_title, e.chunk_index, e.excerpt_text
-from drafting_section_evidence e join drafting_section_drafts d on d.id = e.section_row_id
+from drafting_section_evidence e join drafting_sections d on d.id = e.section_row_id
 where e.tenant_id = :tenant_id and e.run_id = :run_id and d.section_id = :section_id
 order by e.source_rank asc, e.chunk_index asc
 """
 
 SECTION_SOURCES_SQL = """
-select distinct s.id as source_id, s.canonical_key, s.title, s.identifiers_json
-from retrieval_sources s join drafting_section_evidence e on e.source_id = s.id
-join drafting_section_drafts d on d.id = e.section_row_id
-where e.tenant_id = :tenant_id and e.run_id = :run_id and d.section_id = :section_id
+select s.id as source_id, s.canonical_key, s.title, s.identifiers_json
+from retrieval_sources s
+where exists(
+    select 1 from drafting_section_evidence e
+    join drafting_sections d on d.id = e.section_row_id
+    where e.source_id = s.id
+    and e.tenant_id = :tenant_id
+    and e.run_id = :run_id
+    and d.section_id = :section_id
+)
 order by s.title asc
 """
 
@@ -101,7 +107,7 @@ where c.snapshot_id = :snapshot_id and c.chunk_index between :start and :end ord
 
 CHUNK_USAGE_SQL = """
 select distinct e.run_id, d.section_id from drafting_section_evidence e
-join drafting_section_drafts d on d.id = e.section_row_id
+join drafting_sections d on d.id = e.section_row_id
 where e.tenant_id = :tenant_id and e.chunk_id = :chunk_id
 """
 

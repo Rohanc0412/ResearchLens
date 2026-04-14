@@ -103,7 +103,6 @@ def _build_run_orchestrator(
         transaction_manager=transaction_manager,
         clock=UtcRunClock(),
         queue_lease_seconds=settings.queue.lease_seconds,
-        session_factory=session_factory,
     )
     retrieval_providers = build_provider_registry(settings.retrieval)
     primary_retrieval_provider = retrieval_providers[settings.retrieval.primary_provider]
@@ -164,6 +163,7 @@ def _build_retrieval_runtime(
                 if settings.embeddings.provider != "disabled" and settings.embeddings.api_key
                 else None
             ),
+            transaction_manager=SqlAlchemyTransactionManager(session),
         ),
     )
 
@@ -264,6 +264,7 @@ def _build_evaluation_evaluator(settings: ResearchLensSettings) -> SectionGround
             api_key=settings.llm.api_key,
             base_url=settings.llm.base_url,
             timeout_seconds=settings.llm.timeout_seconds,
+            max_tokens=settings.llm.max_output_tokens,
         ),
     )
 

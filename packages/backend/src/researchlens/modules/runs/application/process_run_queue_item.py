@@ -10,8 +10,8 @@ from researchlens.modules.runs.application.ports import (
 )
 from researchlens.modules.runs.application.run_clock import RunClock, UtcRunClock
 from researchlens.modules.runs.application.run_terminal_mutations import RunTerminalMutations
-from researchlens.modules.runs.domain.run_entity import MAX_FAILURE_REASON_LENGTH
 from researchlens.modules.runs.domain import TERMINAL_RUN_STATUSES
+from researchlens.modules.runs.domain.run_entity import MAX_FAILURE_REASON_LENGTH
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,11 +49,19 @@ class ProcessRunQueueItemUseCase:
             await self._ack_queue_item(command)
             return
 
-        await self._run_orchestrator.execute(
-            run=run,
-            queue_item_id=command.queue_item_id,
-            lease_token=command.lease_token,
-        )
+        try:
+            await self._run_orchestrator.execute(
+                run=run,
+                queue_item_id=command.queue_item_id,
+                lease_token=command.lease_token,
+            )
+        except Exception as exc:
+            await self.finalize_execution_failure(
+                command,
+                reason=str(exc),
+                error_code=type(exc).__name__,
+            )
+            return
         await self._ack_queue_item(command)
 
     async def finalize_execution_failure(

@@ -91,7 +91,13 @@ export function LoginPage() {
       </section>
       <section className="auth-form-shell">
         <Card className="auth-card" title="ResearchLens" meta="Obsidian session access">
-          <div className="stack">
+          <form
+            className="stack"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void handlePrimary();
+            }}
+          >
           <div className="segmented">
             {[
               ["login", "Login"],
@@ -124,7 +130,7 @@ export function LoginPage() {
                 value={mfaCode}
                 onChange={(event) => setMfaCode(event.target.value)}
               />
-              <Button variant="primary" onClick={() => void handlePrimary()}>
+              <Button variant="primary" type="submit">
                 Verify challenge
               </Button>
             </>
@@ -167,7 +173,7 @@ export function LoginPage() {
                   onChange={(event) => setPassword(event.target.value)}
                 />
               ) : null}
-              <Button variant="primary" onClick={() => void handlePrimary()}>
+              <Button variant="primary" type="submit">
                 {mode === "register"
                   ? "Create account"
                   : mode === "request_reset"
@@ -178,7 +184,7 @@ export function LoginPage() {
               </Button>
             </>
           )}
-          </div>
+          </form>
         </Card>
       </section>
     </div>

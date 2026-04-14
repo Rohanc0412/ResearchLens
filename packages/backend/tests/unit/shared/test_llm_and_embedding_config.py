@@ -51,6 +51,7 @@ async def test_openai_llm_adapter_maps_responses_request() -> None:
 
     assert result.data == {"ok": True}
     assert "gpt-5-nano" in str(seen["json"])
+    assert '"max_output_tokens":15000' in str(seen["json"])
     assert '"temperature"' not in str(seen["json"])
     assert '"reasoning":{"effort":"low"}' in str(seen["json"])
     assert '"type":"json_schema"' in str(seen["json"])

@@ -28,7 +28,10 @@ from researchlens.modules.runs.presentation.run_response_models import (
     RunEventResponse,
     RunSummaryResponse,
 )
-from researchlens.modules.runs.presentation.run_sse import stream_run_events
+from researchlens.modules.runs.presentation.run_sse import (
+    RunStreamContextFactory,
+    stream_run_events,
+)
 
 router = APIRouter(tags=["runs"])
 RequestActorDep = Annotated[RequestActor, Depends(get_request_actor)]
@@ -97,7 +100,7 @@ async def list_or_stream_run_events(
             tenant_id=actor.tenant_id,
             run_id=run_id,
             last_event_id=int(last_event_id) if last_event_id else None,
-            request_context_factory=runtime.request_context,
+            request_context_factory=cast(RunStreamContextFactory, runtime.request_context),
             keepalive_seconds=settings.sse_keepalive_seconds,
             terminal_grace_seconds=settings.sse_terminal_grace_seconds,
         )

@@ -79,6 +79,11 @@ async def test_phase10_exports_artifacts_and_reads_evidence_summary(
             tenant_id=tenant_id,
             run_id=run_id,
         )
+        trace = await SqlAlchemyEvidenceQueries(session).section_trace(
+            tenant_id=tenant_id,
+            run_id=run_id,
+            section_id="overview",
+        )
         artifact_count = await session.scalar(
             select(func.count()).select_from(ArtifactRow).where(ArtifactRow.run_id == run_id)
         )
@@ -87,6 +92,8 @@ async def test_phase10_exports_artifacts_and_reads_evidence_summary(
     assert summary is not None
     assert summary.section_count == 1
     assert summary.chunk_count == 1
+    assert trace is not None
+    assert len(trace.source_refs) == 1
     assert artifact_count == 2
 
 

@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import timedelta
 from uuid import UUID
@@ -38,6 +39,11 @@ class RunContextSnapshot:
     latest_checkpoint: RunCheckpointRecord | None
 
 
+RunEventStoreFactory = Callable[[AsyncSession], RunEventStore]
+RunCheckpointStoreFactory = Callable[[AsyncSession], RunCheckpointStore]
+TransactionManagerFactory = Callable[[AsyncSession], TransactionManager]
+
+
 class RunGraphRuntimeBridge:
     def __init__(
         self,
@@ -50,6 +56,9 @@ class RunGraphRuntimeBridge:
         clock: RunClock,
         queue_lease_seconds: int,
         session_factory: async_sessionmaker[AsyncSession] | None = None,
+        event_store_factory: RunEventStoreFactory | None = None,
+        checkpoint_store_factory: RunCheckpointStoreFactory | None = None,
+        transaction_manager_factory: TransactionManagerFactory | None = None,
     ) -> None:
         self._run_repository = run_repository
         self._event_store = event_store
@@ -75,12 +84,16 @@ class RunGraphRuntimeBridge:
             transaction_manager=transaction_manager,
             clock=clock,
             session_factory=session_factory,
+            event_store_factory=event_store_factory,
+            transaction_manager_factory=transaction_manager_factory,
         )
         self._checkpoints = RunGraphCheckpointBridge(
             checkpoint_store=checkpoint_store,
             transaction_manager=transaction_manager,
             clock=clock,
             session_factory=session_factory,
+            checkpoint_store_factory=checkpoint_store_factory,
+            transaction_manager_factory=transaction_manager_factory,
         )
 
     async def load_context(self, *, run_id: UUID) -> RunContextSnapshot:

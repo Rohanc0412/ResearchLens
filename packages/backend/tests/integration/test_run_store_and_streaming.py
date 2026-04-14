@@ -1,7 +1,7 @@
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, cast
 from uuid import UUID, uuid4
 
 import pytest
@@ -23,7 +23,10 @@ from researchlens.modules.runs.infrastructure.run_checkpoint_store_sql import (
 )
 from researchlens.modules.runs.infrastructure.run_event_store_sql import SqlAlchemyRunEventStore
 from researchlens.modules.runs.infrastructure.run_repository_sql import SqlAlchemyRunRepository
-from researchlens.modules.runs.presentation.run_sse import stream_run_events
+from researchlens.modules.runs.presentation.run_sse import (
+    RunStreamContextFactory,
+    stream_run_events,
+)
 from researchlens.shared.db import DatabaseRuntime, SqlAlchemyTransactionManager
 
 
@@ -57,12 +60,12 @@ class FakeRunStreamContext:
 def fake_request_context_factory(
     events: list[RunEventView],
     statuses: list[str],
-):
+) -> RunStreamContextFactory:
     @asynccontextmanager
     async def _factory() -> AsyncIterator[FakeRunStreamContext]:
         yield FakeRunStreamContext(events, statuses)
 
-    return _factory
+    return cast(RunStreamContextFactory, _factory)
 
 
 @pytest.mark.asyncio

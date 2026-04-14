@@ -81,35 +81,41 @@ def _build_run(*, cancel_requested: bool = False) -> Run:
     return run
 
 
-def _build_use_case(run: Run) -> tuple[ProcessRunQueueItemUseCase, _FakeRunRepository, _FakeQueueBackend]:
+def _build_use_case(
+    run: Run,
+) -> tuple[ProcessRunQueueItemUseCase, _FakeRunRepository, _FakeQueueBackend]:
     repository = _FakeRunRepository(run)
     queue_backend = _FakeQueueBackend()
     use_case = ProcessRunQueueItemUseCase(
         run_repository=repository,  # type: ignore[arg-type]
         event_store=_FakeEventStore(),  # type: ignore[arg-type]
         queue_backend=queue_backend,  # type: ignore[arg-type]
-        transaction_manager=_FakeTransactionManager(),  # type: ignore[arg-type]
-        run_orchestrator=_FailingOrchestrator(),  # type: ignore[arg-type]
+        transaction_manager=_FakeTransactionManager(),
+        run_orchestrator=_FailingOrchestrator(),
     )
     return use_case, repository, queue_backend
 
 
 @pytest.mark.asyncio
-async def test_process_run_queue_item_execute_propagates_orchestrator_failure() -> None:
+async def test_process_run_queue_item_execute_finalizes_orchestrator_failure() -> None:
     run = _build_run()
     use_case, repository, queue_backend = _build_use_case(run)
+    terminal_mutations = _FakeTerminalMutations()
+    use_case._terminal_mutations = terminal_mutations  # type: ignore[assignment]
 
-    with pytest.raises(RuntimeError, match="boom"):
-        await use_case.execute(
-            ProcessRunQueueItemCommand(
-                queue_item_id=uuid4(),
-                lease_token=uuid4(),
-                run_id=run.id,
-            )
+    await use_case.execute(
+        ProcessRunQueueItemCommand(
+            queue_item_id=uuid4(),
+            lease_token=uuid4(),
+            run_id=run.id,
         )
+    )
 
-    assert repository.reads == 1
-    assert queue_backend.completed is False
+    assert repository.reads == 2
+    assert terminal_mutations.finalized is True
+    assert terminal_mutations.reason == "boom"
+    assert terminal_mutations.error_code == "RuntimeError"
+    assert queue_backend.completed is True
 
 
 @pytest.mark.asyncio
