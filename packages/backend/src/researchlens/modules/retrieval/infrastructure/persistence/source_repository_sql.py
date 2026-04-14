@@ -73,6 +73,7 @@ class SqlAlchemyRetrievalIngestionRepository(RetrievalIngestionRepository):
             updated_at=now,
         )
         self._session.add(row)
+        await self._session.flush()
         return row.id
 
     async def _upsert_snapshot(self, *, source_id: UUID, item: RankedCandidate) -> UUID | None:
@@ -98,6 +99,7 @@ class SqlAlchemyRetrievalIngestionRepository(RetrievalIngestionRepository):
             created_at=datetime.now(tz=UTC),
         )
         self._session.add(row)
+        await self._session.flush()
         return row.id
 
     async def _insert_chunks(self, *, snapshot_id: UUID, item: RankedCandidate) -> None:
@@ -117,6 +119,7 @@ class SqlAlchemyRetrievalIngestionRepository(RetrievalIngestionRepository):
             created_at=datetime.now(tz=UTC),
         )
         self._session.add(chunk_row)
+        await self._session.flush()
         existing_embedding = await self._session.scalar(
             select(RetrievalChunkEmbeddingRow).where(
                 RetrievalChunkEmbeddingRow.text_hash == text_hash,

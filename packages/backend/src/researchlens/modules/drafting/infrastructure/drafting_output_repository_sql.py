@@ -53,6 +53,7 @@ class SqlAlchemyDraftingRepository(DraftingRepository):
                     updated_at=now,
                 )
             )
+            await self._session.flush()
             for item in brief.evidence_pack.items:
                 self._session.add(
                     DraftingSectionEvidenceRow(

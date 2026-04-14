@@ -37,6 +37,11 @@ def build_api_bootstrap_state() -> ApiBootstrapState:
         level=settings.observability.log_level,
         json_logs=settings.observability.json_logs,
     )
+    if settings.app.environment != "production" and settings.auth.refresh_cookie_secure:
+        logger.warning(
+            "local browser auth may fail because AUTH_REFRESH_COOKIE_SECURE=true in %s",
+            settings.app.environment,
+        )
     database = build_database_runtime(settings)
     logger.info("api bootstrap ready environment=%s", settings.app.environment)
     return ApiBootstrapState(

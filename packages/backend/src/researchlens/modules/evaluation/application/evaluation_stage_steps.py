@@ -45,6 +45,7 @@ class EvaluationStageSteps:
         self._repository = repository
         self._evaluator = evaluator
         self._cancellation_probe = cancellation_probe
+        self._cancellation_lock = asyncio.Lock()
 
     async def create_pass(
         self,
@@ -138,5 +139,7 @@ class EvaluationStageSteps:
             return result
 
     async def _raise_if_canceled(self, *, run_input: EvaluationRunInput) -> None:
-        if await self._cancellation_probe.cancel_requested(run_id=run_input.run_id):
+        async with self._cancellation_lock:
+            canceled = await self._cancellation_probe.cancel_requested(run_id=run_input.run_id)
+        if canceled:
             raise CancellationRequestedError("Evaluation canceled at a stage boundary.")

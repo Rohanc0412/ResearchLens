@@ -40,7 +40,7 @@ export function EvidenceOverview({
               <div>
                 <strong>{item.title}</strong>
                 <div className="meta-line">
-                  {item.issue_count} issues • {item.repaired ? "Repaired" : "Draft canonical"}
+                  {item.issue_count} issues | {item.repaired ? "Repaired" : "Draft canonical"}
                 </div>
               </div>
               <Link to={`/runs/${runId}/artifacts?section=${item.section_id}`}>
@@ -51,6 +51,7 @@ export function EvidenceOverview({
         </div>
       </Card>
       <Card title="Section trace" meta={sectionId ?? "Choose a section"}>
+        {section.error ? <ErrorBanner body="Section trace could not be loaded." /> : null}
         {section.data ? (
           <div className="stack">
             <p className="page-subtitle">{section.data.canonical_summary}</p>
@@ -66,6 +67,10 @@ export function EvidenceOverview({
               </div>
             ))}
           </div>
+        ) : section.isLoading && sectionId ? (
+          <div className="meta-line">Loading section trace...</div>
+        ) : sectionId ? (
+          <div className="meta-line">Section trace is not available for this run yet.</div>
         ) : (
           <div className="meta-line">Choose a section to inspect claim and source traces.</div>
         )}

@@ -39,11 +39,18 @@ export function RunProgressCard({ runId }: { runId: string }) {
   }
 
   const progress = getRunProgress(run.data.status, run.data.current_stage);
+  const streamStatus = timeline.isConnected
+    ? "Live stream connected"
+    : run.data.status === "succeeded" || run.data.status === "failed" || run.data.status === "canceled"
+      ? "Run settled"
+      : timeline.error
+        ? "Stream reconnecting"
+        : "Stream idle";
 
   return (
     <Card
       title="Run progress"
-      meta={`${run.data.display_status} • ${run.data.display_stage} • updated ${formatDateTime(
+      meta={`${run.data.display_status} | ${run.data.display_stage} | updated ${formatDateTime(
         run.data.updated_at,
       )}`}
       actions={
@@ -63,7 +70,7 @@ export function RunProgressCard({ runId }: { runId: string }) {
     >
       <div className="stack">
         <div className="row row--between">
-          <span className="pill">{timeline.isConnected ? "Live stream connected" : "Stream idle"}</span>
+          <span className="pill">{streamStatus}</span>
           {run.data.status === "succeeded" ? (
             <Link to={`/runs/${runId}/artifacts`}>
               <Button compact variant="primary">
@@ -95,7 +102,7 @@ export function RunProgressCard({ runId }: { runId: string }) {
                   <span className="meta-line">#{event.event_number}</span>
                 </div>
                 <div className="meta-line">
-                  {event.display_status} • {event.display_stage} • {formatDateTime(event.ts)}
+                  {event.display_status} | {event.display_stage} | {formatDateTime(event.ts)}
                 </div>
               </div>
             </motion.div>

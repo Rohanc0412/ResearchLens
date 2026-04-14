@@ -3,6 +3,7 @@ import json
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import cast
+from uuid import UUID
 
 from researchlens.modules.drafting.application.assembly import assemble_report
 from researchlens.modules.drafting.application.briefs import (
@@ -54,6 +55,7 @@ class DraftingStageSteps:
         self._generation_client = generation_client
         self._cancellation_probe = cancellation_probe
         self._provider_name = provider_name
+        self._cancellation_lock = asyncio.Lock()
 
     async def prepare(
         self,
@@ -201,7 +203,7 @@ class DraftingStageSteps:
         progress: DraftingProgressSink | None,
     ) -> None:
         async with semaphore:
-            if await self._cancellation_probe.cancel_requested(run_id=brief.section.run_id):
+            if await self._cancel_requested(run_id=brief.section.run_id):
                 raise CancellationRequestedError("Drafting canceled before section generation.")
             if progress is not None:
                 await progress.section_started(section_id=brief.section.section_id)
@@ -248,6 +250,10 @@ class DraftingStageSteps:
                     if attempt >= self._settings.correction_retry_count:
                         raise
             raise RuntimeError("Drafting retry loop terminated unexpectedly.")
+
+    async def _cancel_requested(self, *, run_id: UUID) -> bool:
+        async with self._cancellation_lock:
+            return await self._cancellation_probe.cancel_requested(run_id=run_id)
 
 
 def _normalize_structured_data(data: dict[str, object]) -> dict[str, object]:

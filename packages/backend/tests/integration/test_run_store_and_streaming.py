@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
@@ -44,6 +46,23 @@ class FakeGetRunUseCase:
         status = self._statuses[min(self._index, len(self._statuses) - 1)]
         self._index += 1
         return type("RunSummary", (), {"status": status})()
+
+
+class FakeRunStreamContext:
+    def __init__(self, events: list[RunEventView], statuses: list[str]) -> None:
+        self.list_run_events = FakeListRunEventsUseCase(events)
+        self.get_run = FakeGetRunUseCase(statuses)
+
+
+def fake_request_context_factory(
+    events: list[RunEventView],
+    statuses: list[str],
+):
+    @asynccontextmanager
+    async def _factory() -> AsyncIterator[FakeRunStreamContext]:
+        yield FakeRunStreamContext(events, statuses)
+
+    return _factory
 
 
 @pytest.mark.asyncio
@@ -178,8 +197,7 @@ async def test_terminal_stream_closes_after_grace_window() -> None:
         tenant_id=uuid4(),
         run_id=uuid4(),
         last_event_id=None,
-        list_run_events=FakeListRunEventsUseCase([event]),
-        get_run=FakeGetRunUseCase(["succeeded", "succeeded"]),
+        request_context_factory=fake_request_context_factory([event], ["succeeded", "succeeded"]),
         keepalive_seconds=0,
         terminal_grace_seconds=0,
     )

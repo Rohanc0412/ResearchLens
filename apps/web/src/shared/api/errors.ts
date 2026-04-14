@@ -9,6 +9,10 @@ export function isApiError(error: unknown): error is ApiError {
   return error instanceof ApiError;
 }
 
+export function isApiErrorStatus(error: unknown, status: number) {
+  return isApiError(error) && error.status === status;
+}
+
 export function getErrorMessage(
   error: unknown,
   fallback = "Request failed. Please try again.",

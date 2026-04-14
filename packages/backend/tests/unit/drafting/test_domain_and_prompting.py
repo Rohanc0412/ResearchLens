@@ -12,6 +12,7 @@ from researchlens.modules.drafting.domain import (
     DraftingSection,
     EvidencePack,
     SectionDraft,
+    normalize_citation_tokens,
     parse_citation_tokens,
 )
 from researchlens.shared.errors import ValidationError
@@ -168,3 +169,17 @@ def test_section_draft_payload_is_strict() -> None:
                 "extra": True,
             }
         )
+
+
+def test_citation_normalization_accepts_common_model_variants() -> None:
+    chunk_id = uuid4()
+
+    normalized = normalize_citation_tokens(
+        f"Evidence [Chunk: {chunk_id}] and [[ chunk : {chunk_id} ]] and [[source {chunk_id}]]"
+    )
+
+    assert normalized == (
+        f"Evidence [[chunk:{str(chunk_id).lower()}]] "
+        f"and [[chunk:{str(chunk_id).lower()}]] "
+        f"and [[chunk:{str(chunk_id).lower()}]]"
+    )

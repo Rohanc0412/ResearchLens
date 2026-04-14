@@ -1,3 +1,4 @@
+import asyncio
 from typing import Protocol
 
 from researchlens.modules.drafting.application.ports import DraftingProgressSink
@@ -23,31 +24,36 @@ class DraftingGraphCheckpointSink(Protocol):
 class DraftingGraphProgressWriter(DraftingProgressSink):
     def __init__(self, events: DraftingGraphEventSink) -> None:
         self._events = events
+        self._lock = asyncio.Lock()
 
     async def evidence_pack_ready(self, *, section_id: str, evidence_count: int) -> None:
-        await self._events.info(
-            key=f"draft.evidence_pack_ready:{section_id}",
-            message="Draft evidence pack ready",
-            payload={"section_id": section_id, "evidence_count": evidence_count},
-        )
+        async with self._lock:
+            await self._events.info(
+                key=f"draft.evidence_pack_ready:{section_id}",
+                message="Draft evidence pack ready",
+                payload={"section_id": section_id, "evidence_count": evidence_count},
+            )
 
     async def section_started(self, *, section_id: str) -> None:
-        await self._events.info(
-            key=f"draft.section_started:{section_id}",
-            message="Draft section started",
-            payload={"section_id": section_id},
-        )
+        async with self._lock:
+            await self._events.info(
+                key=f"draft.section_started:{section_id}",
+                message="Draft section started",
+                payload={"section_id": section_id},
+            )
 
     async def section_completed(self, *, section_id: str) -> None:
-        await self._events.info(
-            key=f"draft.section_completed:{section_id}",
-            message="Draft section completed",
-            payload={"section_id": section_id},
-        )
+        async with self._lock:
+            await self._events.info(
+                key=f"draft.section_completed:{section_id}",
+                message="Draft section completed",
+                payload={"section_id": section_id},
+            )
 
     async def correction_retry(self, *, section_id: str, reason: str, attempt: int) -> None:
-        await self._events.warning(
-            key=f"draft.correction_retry:{section_id}:{attempt}",
-            message="Draft section correction retry",
-            payload={"section_id": section_id, "attempt": attempt, "reason": reason},
-        )
+        async with self._lock:
+            await self._events.warning(
+                key=f"draft.correction_retry:{section_id}:{attempt}",
+                message="Draft section correction retry",
+                payload={"section_id": section_id, "attempt": attempt, "reason": reason},
+            )

@@ -1,7 +1,26 @@
 import asyncio
+from datetime import UTC, datetime
+from uuid import uuid4
 
 import pytest
+from sqlalchemy import func, select
 
+from researchlens.modules.retrieval.domain.candidate import (
+    CanonicalIdentifiers,
+    NormalizedSearchCandidate,
+    QueryProvenance,
+    SourceProvenance,
+)
+from researchlens.modules.retrieval.domain.ranking_policy import RankedCandidate, ScoreBreakdown
+from researchlens.modules.retrieval.infrastructure.persistence.rows import (
+    RetrievalChunkEmbeddingRow,
+    RetrievalSourceRow,
+    RetrievalSourceChunkRow,
+    RetrievalSourceSnapshotRow,
+)
+from researchlens.modules.retrieval.infrastructure.persistence.source_repository_sql import (
+    SqlAlchemyRetrievalIngestionRepository,
+)
 from researchlens.modules.retrieval.infrastructure.ingestion.content_selection import (
     choose_ingestible_content,
 )
@@ -10,6 +29,17 @@ from researchlens.shared.embeddings.batching import (
     embed_batches_bounded,
     split_embedding_batches,
 )
+from researchlens.shared.db import DatabaseRuntime
+
+
+class _FakeEmbeddingClient:
+    async def embed(self, request: object) -> object:
+        texts = getattr(request, "texts")
+
+        class _Result:
+            vectors = tuple((float(index + 1),) for index, _ in enumerate(texts))
+
+        return _Result()
 
 
 def test_content_selection_prefers_full_text_then_abstract_then_title() -> None:
@@ -48,3 +78,91 @@ async def test_embed_batches_bounded_respects_concurrency() -> None:
 
     assert result == [[1.0], [2.0], [3.0], [4.0]]
     assert max_active == 2
+
+
+@pytest.mark.asyncio
+async def test_retrieval_ingestion_persists_chunk_before_embedding(
+    database_runtime: DatabaseRuntime,
+) -> None:
+    candidate = NormalizedSearchCandidate(
+        provider_name="openalex",
+        provider_record_id="W123",
+        identifiers=CanonicalIdentifiers(openalex_id="W123"),
+        title="Melanoma biomarker review",
+        authors=("Author",),
+        year=2024,
+        source_type="article",
+        abstract="A concise abstract about melanoma biomarkers.",
+        full_text=None,
+        landing_page_url="https://example.com/paper",
+        pdf_url=None,
+        venue="Journal",
+        citation_count=10,
+        keywords=("melanoma",),
+        retrieved_at=datetime.now(tz=UTC),
+        provider_metadata={},
+        provenance=(SourceProvenance(provider_name="openalex", provider_record_id="W123"),),
+        query_provenance=QueryProvenance(
+            source_query="melanoma biomarkers",
+            intent="overview",
+            target_section="overview",
+        ),
+    )
+    ranked = RankedCandidate(
+        candidate=candidate,
+        score_breakdown=ScoreBreakdown(
+            lexical=1.0,
+            embedding=0.5,
+            recency=1.0,
+            citation=0.3,
+            total=2.8,
+        ),
+    )
+
+    async with database_runtime.session_factory() as session:
+        repository = SqlAlchemyRetrievalIngestionRepository(
+            session,
+            embedding_model="text-embedding-3-small",
+            embedding_client=_FakeEmbeddingClient(),
+        )
+        source_id = uuid4()
+        snapshot_id = uuid4()
+        session.add(
+            RetrievalSourceRow(
+                id=source_id,
+                canonical_key=candidate.identifiers.canonical_key(candidate.title),
+                provider_name=candidate.provider_name,
+                provider_record_id=candidate.provider_record_id,
+                title=candidate.title,
+                identifiers_json={},
+                metadata_json={},
+                created_at=datetime.now(tz=UTC),
+                updated_at=datetime.now(tz=UTC),
+            )
+        )
+        session.add(
+            RetrievalSourceSnapshotRow(
+                id=snapshot_id,
+                source_id=source_id,
+                content_hash="snapshot-hash",
+                content_kind="abstract",
+                content_text=candidate.abstract or "",
+                created_at=datetime.now(tz=UTC),
+            )
+        )
+        await session.flush()
+
+        await repository._insert_chunks(snapshot_id=snapshot_id, item=ranked)
+        await session.commit()
+
+        chunk_count = await session.scalar(select(func.count()).select_from(RetrievalSourceChunkRow))
+        embedding_count = await session.scalar(
+            select(func.count()).select_from(RetrievalChunkEmbeddingRow)
+        )
+        embedding_chunk_ids = tuple(
+            await session.scalars(select(RetrievalChunkEmbeddingRow.chunk_id))
+        )
+
+    assert chunk_count == 1
+    assert embedding_count == 1
+    assert embedding_chunk_ids[0] is not None

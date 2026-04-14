@@ -30,31 +30,49 @@ python -m uv sync --all-packages --group dev
 corepack pnpm install
 ```
 
+## Doppler-first local configuration
+
+Local and dev execution are expected to run from Doppler-managed configuration, including non-secret values such as ports, CORS origins, auth cookie settings, and database URLs.
+
+If Doppler and `.env.example` disagree, Doppler wins for local/dev runtime behavior. `.env.example` is a reference-only shape document.
+
+Recommended local Doppler configs:
+
+- `dev`: host-mode execution, for example `DATABASE_URL=...@localhost:5432/...`
+- `compose-dev`: compose execution, for example `DATABASE_URL=...@postgres:5432/...` and `APP_API_HOST=0.0.0.0`
+
+Required browser-local values in Doppler:
+
+```bash
+APP_CORS_ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173
+AUTH_REFRESH_COOKIE_SECURE=false
+VITE_API_BASE_URL=http://127.0.0.1:8000
+```
+
 ## Key commands
 
 Backend:
 
 ```bash
-python -m uv run --package researchlens-api python -m researchlens_api.main
-python -m uv run --package researchlens-worker python -m researchlens_worker.main
-python -m uv run --package researchlens-backend pytest packages/backend/tests
-python -m uv run --package researchlens-backend alembic -c packages/backend/alembic.ini upgrade head
+doppler run --config dev -- python -m uv run --package researchlens-api python -m researchlens_api.main
+doppler run --config dev -- python -m uv run --package researchlens-worker python -m researchlens_worker.main
+doppler run --config dev -- python -m uv run --package researchlens-backend pytest packages/backend/tests
+doppler run --config dev -- python -m uv run --package researchlens-backend alembic -c packages/backend/alembic.ini upgrade head
 ```
 
-Local browser API access expects:
+Compose:
 
 ```bash
-APP_CORS_ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173
-AUTH_REFRESH_COOKIE_SECURE=false
+doppler run --config compose-dev -- docker compose -f infra/compose/docker-compose.dev.yml up --build
 ```
 
-If you use Doppler for development, set `AUTH_REFRESH_COOKIE_SECURE=false` there as well. An injected `true` value will block refresh-cookie restore and logout on plain local HTTP.
+The compose config must be container-safe. In particular, `DATABASE_URL` must target `postgres`, not `localhost`, and `APP_API_HOST` must be `0.0.0.0`.
 
 Frontend:
 
 ```bash
 corepack pnpm --filter @researchlens/api-client run generate
-corepack pnpm --filter web dev --host 127.0.0.1 --port 4173
+doppler run --config dev -- corepack pnpm --filter web dev --host 127.0.0.1 --port 4173
 corepack pnpm --filter web lint
 corepack pnpm --filter web typecheck
 corepack pnpm --filter web test
@@ -65,10 +83,10 @@ corepack pnpm --filter web exec playwright test
 Workspace CI-equivalent:
 
 ```bash
-python -m uv run --package researchlens-backend ruff check .
-python -m uv run --package researchlens-backend mypy apps/api/src apps/worker/src packages/backend/src packages/backend/tests
-python -m uv run --package researchlens-backend lint-imports --config .importlinter
-python -m uv run --package researchlens-backend pytest packages/backend/tests
+doppler run --config dev -- python -m uv run --package researchlens-backend ruff check .
+doppler run --config dev -- python -m uv run --package researchlens-backend mypy apps/api/src apps/worker/src packages/backend/src packages/backend/tests
+doppler run --config dev -- python -m uv run --package researchlens-backend lint-imports --config .importlinter
+doppler run --config dev -- python -m uv run --package researchlens-backend pytest packages/backend/tests
 corepack pnpm lint
 corepack pnpm typecheck
 corepack pnpm test

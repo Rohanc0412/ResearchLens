@@ -20,6 +20,8 @@ export const runKeys = {
   events: (runId: string) => ["runs", runId, "events"] as const,
 };
 
+const activeRunStreamControllers = new Map<string, AbortController>();
+
 export function useRunQuery(runId: string) {
   const auth = useAuth();
 
@@ -110,11 +112,13 @@ export function useLiveRunTimeline(runId: string) {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    if (status !== "authenticated") {
+    if (status !== "authenticated" || !runId) {
       return;
     }
 
     const controller = new AbortController();
+    activeRunStreamControllers.get(runId)?.abort();
+    activeRunStreamControllers.set(runId, controller);
     const existing =
       queryClient.getQueryData<RunEventResponse[]>(runKeys.events(runId)) ?? [];
     const lastEventId = existing.at(-1)?.event_number;
@@ -122,8 +126,15 @@ export function useLiveRunTimeline(runId: string) {
     void streamRunEvents({
       accessToken,
       getRefreshedAccessToken: restoreSession,
-      onConnectionChange: setConnected,
+      onConnectionChange: (isConnected) => {
+        if (activeRunStreamControllers.get(runId) === controller) {
+          setConnected(isConnected);
+        }
+      },
       onEvent: (event) => {
+        if (activeRunStreamControllers.get(runId) !== controller) {
+          return;
+        }
         setStreamError(null);
         queryClient.setQueryData<RunEventResponse[] | undefined>(
           runKeys.events(runId),
@@ -146,16 +157,30 @@ export function useLiveRunTimeline(runId: string) {
               : current,
         );
       },
-      onError: (error) => setStreamError(error.message),
+      onError: (error) => {
+        if (activeRunStreamControllers.get(runId) === controller) {
+          setStreamError(error.message);
+        }
+      },
       runId,
       signal: controller.signal,
       startAfterEventId: lastEventId,
     }).catch((error) => {
-      setStreamError(getErrorMessage(error, "Run stream failed."));
-      setConnected(false);
+      if (controller.signal.aborted) {
+        return;
+      }
+      if (activeRunStreamControllers.get(runId) === controller) {
+        setStreamError(getErrorMessage(error, "Run stream failed."));
+        setConnected(false);
+      }
     });
 
-    return () => controller.abort();
+    return () => {
+      if (activeRunStreamControllers.get(runId) === controller) {
+        activeRunStreamControllers.delete(runId);
+      }
+      controller.abort();
+    };
   }, [accessToken, queryClient, restoreSession, runId, status]);
 
   return useMemo(

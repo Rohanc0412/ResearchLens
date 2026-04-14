@@ -1,3 +1,4 @@
+import asyncio
 from uuid import UUID
 
 from researchlens.modules.runs.application.ports import RunEventStore, TransactionManager
@@ -21,6 +22,7 @@ class RunGraphEventBridge:
         self._event_store = event_store
         self._transaction_manager = transaction_manager
         self._clock = clock
+        self._lock = asyncio.Lock()
 
     async def info(
         self,
@@ -78,18 +80,19 @@ class RunGraphEventBridge:
         message: str,
         payload: dict[str, object],
     ) -> None:
-        async with self._transaction_manager.boundary():
-            await self._event_store.append(
-                run_id=run_id,
-                event_type=RunEventType.CHECKPOINT_WRITTEN,
-                audience=RunEventAudience.PROGRESS,
-                level=level,
-                status="running",
-                stage=stage.value,
-                message=message,
-                payload_json=payload,
-                retry_count=retry_count,
-                cancel_requested=cancel_requested,
-                created_at=self._clock.now(),
-                event_key=f"attempt-{retry_count}:{key}",
-            )
+        async with self._lock:
+            async with self._transaction_manager.boundary():
+                await self._event_store.append(
+                    run_id=run_id,
+                    event_type=RunEventType.CHECKPOINT_WRITTEN,
+                    audience=RunEventAudience.PROGRESS,
+                    level=level,
+                    status="running",
+                    stage=stage.value,
+                    message=message,
+                    payload_json=payload,
+                    retry_count=retry_count,
+                    cancel_requested=cancel_requested,
+                    created_at=self._clock.now(),
+                    event_key=f"attempt-{retry_count}:{key}",
+                )

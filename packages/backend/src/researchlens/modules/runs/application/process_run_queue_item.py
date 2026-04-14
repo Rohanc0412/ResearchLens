@@ -10,6 +10,7 @@ from researchlens.modules.runs.application.ports import (
 )
 from researchlens.modules.runs.application.run_clock import RunClock, UtcRunClock
 from researchlens.modules.runs.application.run_terminal_mutations import RunTerminalMutations
+from researchlens.modules.runs.domain.run_entity import MAX_FAILURE_REASON_LENGTH
 from researchlens.modules.runs.domain import TERMINAL_RUN_STATUSES
 
 
@@ -48,18 +49,32 @@ class ProcessRunQueueItemUseCase:
             await self._ack_queue_item(command)
             return
 
-        try:
-            await self._run_orchestrator.execute(
-                run=run,
-                queue_item_id=command.queue_item_id,
-                lease_token=command.lease_token,
-            )
-        except Exception as exc:
-            run = await self._run_repository.get_by_id(run_id=command.run_id) or run
+        await self._run_orchestrator.execute(
+            run=run,
+            queue_item_id=command.queue_item_id,
+            lease_token=command.lease_token,
+        )
+        await self._ack_queue_item(command)
+
+    async def finalize_execution_failure(
+        self,
+        command: ProcessRunQueueItemCommand,
+        *,
+        reason: str,
+        error_code: str,
+    ) -> None:
+        run = await self._run_repository.get_by_id(run_id=command.run_id)
+        if run is None or run.status in TERMINAL_RUN_STATUSES:
+            await self._ack_queue_item(command)
+            return
+
+        if run.cancel_requested_at is not None:
+            await self._terminal_mutations.finalize_cancel(run=run)
+        else:
             await self._terminal_mutations.finalize_failure(
                 run=run,
-                reason=str(exc),
-                error_code=type(exc).__name__,
+                reason=reason[:MAX_FAILURE_REASON_LENGTH],
+                error_code=error_code,
             )
         await self._ack_queue_item(command)
 

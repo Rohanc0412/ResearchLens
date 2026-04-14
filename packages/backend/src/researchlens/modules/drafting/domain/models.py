@@ -1,7 +1,10 @@
 from dataclasses import dataclass
 from uuid import UUID
 
-from researchlens.modules.drafting.domain.citation_tokens import ensure_only_valid_citation_tokens
+from researchlens.modules.drafting.domain.citation_tokens import (
+    ensure_only_valid_citation_tokens,
+    normalize_citation_tokens,
+)
 from researchlens.shared.errors import ValidationError
 
 
@@ -116,7 +119,7 @@ class SectionDraft:
     model_name: str
 
     def __post_init__(self) -> None:
-        section_text = self.section_text.strip()
+        section_text = normalize_citation_tokens(self.section_text.strip())
         if not section_text:
             raise ValidationError("Section text is required.")
         if section_text.startswith("#"):

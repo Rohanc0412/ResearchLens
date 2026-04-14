@@ -6,6 +6,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 
 import { useAuth } from "../../app/providers/AuthProvider";
+import { isApiErrorStatus } from "../../shared/api/errors";
 
 export const evidenceKeys = {
   summary: (runId: string) => ["evidence", runId, "summary"] as const,
@@ -23,7 +24,14 @@ export function useRunEvidenceSummaryQuery(runId: string) {
   return useQuery({
     queryKey: evidenceKeys.summary(runId),
     queryFn: () =>
-      auth.authorizedRequest(() => EvidenceService.getRunEvidenceRunsRunIdEvidenceGet(runId)),
+      auth
+        .authorizedRequest(() => EvidenceService.getRunEvidenceRunsRunIdEvidenceGet(runId))
+        .catch((error) => {
+          if (isApiErrorStatus(error, 404)) {
+            return null;
+          }
+          throw error;
+        }),
     enabled: auth.status === "authenticated" && Boolean(runId),
   });
 }
@@ -34,12 +42,19 @@ export function useSectionEvidenceQuery(runId: string, sectionId: string) {
   return useQuery({
     queryKey: evidenceKeys.section(runId, sectionId),
     queryFn: () =>
-      auth.authorizedRequest(() =>
-        EvidenceService.getSectionEvidenceRunsRunIdEvidenceSectionsSectionIdGet(
-          runId,
-          sectionId,
-        ),
-      ),
+      auth
+        .authorizedRequest(() =>
+          EvidenceService.getSectionEvidenceRunsRunIdEvidenceSectionsSectionIdGet(
+            runId,
+            sectionId,
+          ),
+        )
+        .catch((error) => {
+          if (isApiErrorStatus(error, 404)) {
+            return null;
+          }
+          throw error;
+        }),
     enabled: auth.status === "authenticated" && Boolean(runId) && Boolean(sectionId),
   });
 }
@@ -76,7 +91,14 @@ export function useEvaluationSummaryQuery(runId: string) {
   return useQuery({
     queryKey: evidenceKeys.evaluation(runId),
     queryFn: () =>
-      auth.authorizedRequest(() => EvaluationService.getRunEvaluationRunsRunIdEvaluationGet(runId)),
+      auth
+        .authorizedRequest(() => EvaluationService.getRunEvaluationRunsRunIdEvaluationGet(runId))
+        .catch((error) => {
+          if (isApiErrorStatus(error, 404)) {
+            return null;
+          }
+          throw error;
+        }),
     enabled: auth.status === "authenticated" && Boolean(runId),
   });
 }
@@ -87,9 +109,16 @@ export function useEvaluationIssuesQuery(runId: string) {
   return useQuery({
     queryKey: evidenceKeys.issues(runId),
     queryFn: () =>
-      auth.authorizedRequest(() =>
-        EvaluationService.listRunEvaluationIssuesRunsRunIdEvaluationIssuesGet(runId),
-      ),
+      auth
+        .authorizedRequest(() =>
+          EvaluationService.listRunEvaluationIssuesRunsRunIdEvaluationIssuesGet(runId),
+        )
+        .catch((error) => {
+          if (isApiErrorStatus(error, 404)) {
+            return [];
+          }
+          throw error;
+        }),
     enabled: auth.status === "authenticated" && Boolean(runId),
   });
 }

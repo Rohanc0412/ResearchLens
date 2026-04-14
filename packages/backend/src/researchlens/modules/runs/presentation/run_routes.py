@@ -1,4 +1,4 @@
-from typing import Annotated
+from typing import Annotated, cast
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response, status
@@ -10,18 +10,15 @@ from researchlens.modules.runs.application import (
     CreateRunCommand,
     CreateRunUseCase,
     GetRunQuery,
-    GetRunUseCase,
     ListRunEventsQuery,
-    ListRunEventsUseCase,
     RetryRunCommand,
     RetryRunUseCase,
 )
 from researchlens.modules.runs.presentation.dependencies import (
     RequestActor,
+    RunsRuntime,
     get_cancel_run_use_case,
     get_create_run_use_case,
-    get_get_run_use_case,
-    get_list_run_events_use_case,
     get_request_actor,
     get_retry_run_use_case,
 )
@@ -36,11 +33,6 @@ from researchlens.modules.runs.presentation.run_sse import stream_run_events
 router = APIRouter(tags=["runs"])
 RequestActorDep = Annotated[RequestActor, Depends(get_request_actor)]
 CreateRunUseCaseDep = Annotated[CreateRunUseCase, Depends(get_create_run_use_case)]
-GetRunUseCaseDep = Annotated[GetRunUseCase, Depends(get_get_run_use_case)]
-ListRunEventsUseCaseDep = Annotated[
-    ListRunEventsUseCase,
-    Depends(get_list_run_events_use_case),
-]
 CancelRunUseCaseDep = Annotated[CancelRunUseCase, Depends(get_cancel_run_use_case)]
 RetryRunUseCaseDep = Annotated[RetryRunUseCase, Depends(get_retry_run_use_case)]
 
@@ -80,11 +72,13 @@ async def create_run(
 
 @router.get("/runs/{run_id}", response_model=RunSummaryResponse)
 async def get_run(
+    request: Request,
     run_id: UUID,
     actor: RequestActorDep,
-    use_case: GetRunUseCaseDep,
 ) -> RunSummaryResponse:
-    run = await use_case.execute(GetRunQuery(tenant_id=actor.tenant_id, run_id=run_id))
+    runtime = cast(RunsRuntime, request.app.state.bootstrap.runs_runtime)
+    async with runtime.request_context() as context:
+        run = await context.get_run.execute(GetRunQuery(tenant_id=actor.tenant_id, run_id=run_id))
     return RunSummaryResponse.model_validate(run)
 
 
@@ -93,30 +87,30 @@ async def list_or_stream_run_events(
     request: Request,
     run_id: UUID,
     actor: RequestActorDep,
-    list_use_case: ListRunEventsUseCaseDep,
-    get_use_case: GetRunUseCaseDep,
     after_event_number: int | None = Query(default=None, ge=0),
     last_event_id: str | None = Header(default=None, alias="Last-Event-ID"),
 ) -> StreamingResponse | list[RunEventResponse]:
+    runtime = cast(RunsRuntime, request.app.state.bootstrap.runs_runtime)
     if "text/event-stream" in request.headers.get("accept", ""):
         settings = request.app.state.bootstrap.settings.queue
         stream = stream_run_events(
             tenant_id=actor.tenant_id,
             run_id=run_id,
             last_event_id=int(last_event_id) if last_event_id else None,
-            list_run_events=list_use_case,
-            get_run=get_use_case,
+            request_context_factory=runtime.request_context,
             keepalive_seconds=settings.sse_keepalive_seconds,
             terminal_grace_seconds=settings.sse_terminal_grace_seconds,
         )
         return StreamingResponse(stream, media_type="text/event-stream")
-    events = await list_use_case.execute(
-        ListRunEventsQuery(
-            tenant_id=actor.tenant_id,
-            run_id=run_id,
-            after_event_number=after_event_number,
+
+    async with runtime.request_context() as context:
+        events = await context.list_run_events.execute(
+            ListRunEventsQuery(
+                tenant_id=actor.tenant_id,
+                run_id=run_id,
+                after_event_number=after_event_number,
+            )
         )
-    )
     return [RunEventResponse.model_validate(event) for event in events]
 
 

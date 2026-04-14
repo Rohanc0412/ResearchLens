@@ -1,0 +1,155 @@
+Warning: Ignoring Doppler secrets already defined in the environment due to --preserve-env flag
+INFO worker worker bootstrap ready environment=development
+INFO worker HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&term=assay+platforms+validation+cohorts+melanoma+BRAF+NRAS+KIT+TMB+platforms+cfDNA+ctDNA+melanoma&retmax=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&term=ctDNA+monitoring+melanoma+prognosis+treatment+response+disease+monitoring+validation+cohorts&retmax=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&term=melanoma+liquid+biopsy+ctDNA+dynamics+minimal+residual+disease+early+relapse+circulating+tumor+cells+RNA+miRNA+panels+prospective+retrospective+validation&retmax=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&term=validated+immune+biomarkers+predict+benefit+monitor+response+melanoma+PD-L1+TMB+interferon+gamma+signatures+neoantigen+TILs+microenvironment+trials&retmax=10 "HTTP/1.1 429 Too Many Requests"
+INFO worker HTTP Request: GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&term=emerging+melanoma+biomarkers+microbiome+epigenetic+proteomic+metabolic+multi-omics+integration+external+validation+prospective+trials+assay+standardization&retmax=10 "HTTP/1.1 429 Too Many Requests"
+INFO worker HTTP Request: GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&term=melanoma+biomarker+modalities+taxonomy+diagnostic+prognostic+predictive+pharmacodynamic+definitions+analytical+clinical+validation+levels&retmax=10 "HTTP/1.1 429 Too Many Requests"
+INFO worker HTTP Request: GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&term=validated+genomic+alterations+in+melanoma+BRAF+NRAS+KIT+mutation+frequencies+therapeutic+implications+TERT+promoter+copy+number+alterations+tumor+mutational+burden+validation+cohorts&retmax=10 "HTTP/1.1 429 Too Many Requests"
+INFO worker HTTP Request: GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&term=melanoma+biomarker+landscape+diagnostic+prognostic+predictive+pharmacodynamic+post-2020+guidelines+review&retmax=10 "HTTP/1.1 429 Too Many Requests"
+INFO worker HTTP Request: GET https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&term=IFN-%CE%B3+gene+expression+signature+predictive+of+immunotherapy+response+melanoma+validated+trials&retmax=10 "HTTP/1.1 429 Too Many Requests"
+INFO worker HTTP Request: GET https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=melanoma+biomarker+landscape+diagnostic+prognostic+predictive+pharmacodynamic+post-2020+guidelines+review&format=json&pageSize=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=validated+genomic+alterations+in+melanoma+BRAF+NRAS+KIT+mutation+frequencies+therapeutic+implications+TERT+promoter+copy+number+alterations+tumor+mutational+burden+validation+cohorts&format=json&pageSize=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=melanoma+biomarker+modalities+taxonomy+diagnostic+prognostic+predictive+pharmacodynamic+definitions+analytical+clinical+validation+levels&format=json&pageSize=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=emerging+melanoma+biomarkers+microbiome+epigenetic+proteomic+metabolic+multi-omics+integration+external+validation+prospective+trials+assay+standardization&format=json&pageSize=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=validated+immune+biomarkers+predict+benefit+monitor+response+melanoma+PD-L1+TMB+interferon+gamma+signatures+neoantigen+TILs+microenvironment+trials&format=json&pageSize=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=assay+platforms+validation+cohorts+melanoma+BRAF+NRAS+KIT+TMB+platforms+cfDNA+ctDNA+melanoma&format=json&pageSize=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=ctDNA+monitoring+melanoma+prognosis+treatment+response+disease+monitoring+validation+cohorts&format=json&pageSize=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=IFN-%CE%B3+gene+expression+signature+predictive+of+immunotherapy+response+melanoma+validated+trials&format=json&pageSize=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://www.ebi.ac.uk/europepmc/webservices/rest/search?query=melanoma+liquid+biopsy+ctDNA+dynamics+minimal+residual+disease+early+relapse+circulating+tumor+cells+RNA+miRNA+panels+prospective+retrospective+validation&format=json&pageSize=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://export.arxiv.org/api/query?search_query=all%3Amelanoma+biomarker+landscape+diagnostic+prognostic+predictive+pharmacodynamic+post-2020+guidelines+review&start=0&max_results=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://export.arxiv.org/api/query?search_query=all%3Amelanoma+biomarker+modalities+taxonomy+diagnostic+prognostic+predictive+pharmacodynamic+definitions+analytical+clinical+validation+levels&start=0&max_results=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://api.openalex.org/works?search=ctDNA+monitoring+melanoma+prognosis+treatment+response+disease+monitoring+validation+cohorts&per-page=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://export.arxiv.org/api/query?search_query=all%3Aassay+platforms+validation+cohorts+melanoma+BRAF+NRAS+KIT+TMB+platforms+cfDNA+ctDNA+melanoma&start=0&max_results=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://export.arxiv.org/api/query?search_query=all%3Avalidated+genomic+alterations+in+melanoma+BRAF+NRAS+KIT+mutation+frequencies+therapeutic+implications+TERT+promoter+copy+number+alterations+tumor+mutational+burden+validation+cohorts&start=0&max_results=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://api.openalex.org/works?search=melanoma+biomarker+modalities+taxonomy+diagnostic+prognostic+predictive+pharmacodynamic+definitions+analytical+clinical+validation+levels&per-page=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://api.openalex.org/works?search=melanoma+biomarker+landscape+diagnostic+prognostic+predictive+pharmacodynamic+post-2020+guidelines+review&per-page=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://api.openalex.org/works?search=IFN-%CE%B3+gene+expression+signature+predictive+of+immunotherapy+response+melanoma+validated+trials&per-page=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://export.arxiv.org/api/query?search_query=all%3Amelanoma+liquid+biopsy+ctDNA+dynamics+minimal+residual+disease+early+relapse+circulating+tumor+cells+RNA+miRNA+panels+prospective+retrospective+validation&start=0&max_results=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://api.openalex.org/works?search=assay+platforms+validation+cohorts+melanoma+BRAF+NRAS+KIT+TMB+platforms+cfDNA+ctDNA+melanoma&per-page=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://api.openalex.org/works?search=melanoma+liquid+biopsy+ctDNA+dynamics+minimal+residual+disease+early+relapse+circulating+tumor+cells+RNA+miRNA+panels+prospective+retrospective+validation&per-page=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://api.openalex.org/works?search=validated+genomic+alterations+in+melanoma+BRAF+NRAS+KIT+mutation+frequencies+therapeutic+implications+TERT+promoter+copy+number+alterations+tumor+mutational+burden+validation+cohorts&per-page=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://api.openalex.org/works?search=emerging+melanoma+biomarkers+microbiome+epigenetic+proteomic+metabolic+multi-omics+integration+external+validation+prospective+trials+assay+standardization&per-page=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://export.arxiv.org/api/query?search_query=all%3ActDNA+monitoring+melanoma+prognosis+treatment+response+disease+monitoring+validation+cohorts&start=0&max_results=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://export.arxiv.org/api/query?search_query=all%3Avalidated+immune+biomarkers+predict+benefit+monitor+response+melanoma+PD-L1+TMB+interferon+gamma+signatures+neoantigen+TILs+microenvironment+trials&start=0&max_results=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://api.openalex.org/works?search=validated+immune+biomarkers+predict+benefit+monitor+response+melanoma+PD-L1+TMB+interferon+gamma+signatures+neoantigen+TILs+microenvironment+trials&per-page=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://export.arxiv.org/api/query?search_query=all%3AIFN-%CE%B3+gene+expression+signature+predictive+of+immunotherapy+response+melanoma+validated+trials&start=0&max_results=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: GET https://export.arxiv.org/api/query?search_query=all%3Aemerging+melanoma+biomarkers+microbiome+epigenetic+proteomic+metabolic+multi-omics+integration+external+validation+prospective+trials+assay+standardization&start=0&max_results=10 "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+INFO worker HTTP Request: POST https://api.openai.com/v1/responses "HTTP/1.1 200 OK"
+INFO worker Retrying request to /chat/completions in 0.437979 seconds
+INFO worker Retrying request to /chat/completions in 0.448846 seconds
+INFO worker Retrying request to /chat/completions in 0.489112 seconds
+INFO worker Retrying request to /chat/completions in 0.917667 seconds
+INFO worker Retrying request to /chat/completions in 0.981017 seconds
+INFO worker Retrying request to /chat/completions in 0.796955 seconds
+INFO worker Retrying request to /chat/completions in 0.424172 seconds
+INFO worker Retrying request to /chat/completions in 0.471283 seconds
+INFO worker Retrying request to /chat/completions in 0.454370 seconds
+INFO worker Retrying request to /chat/completions in 0.865249 seconds
+INFO worker Retrying request to /chat/completions in 0.850206 seconds
+INFO worker Retrying request to /chat/completions in 0.990956 seconds
+INFO worker Retrying request to /chat/completions in 0.463117 seconds
+INFO worker Retrying request to /chat/completions in 0.416989 seconds
+INFO worker Retrying request to /chat/completions in 0.417277 seconds
+INFO worker Retrying request to /chat/completions in 0.772863 seconds
+INFO worker Retrying request to /chat/completions in 0.907144 seconds
+INFO worker Retrying request to /chat/completions in 0.869849 seconds
+Traceback (most recent call last):
+  File "C:\projects\ResearchLens\packages\backend\src\researchlens\modules\runs\infrastructure\runtime.py", line 82, in request_context
+    yield self._build_context(session)
+  File "C:\projects\ResearchLens\packages\backend\src\researchlens\worker_polling.py", line 37, in poll_worker_once
+    await context.process_run_queue_item.execute(
+  File "C:\projects\ResearchLens\packages\backend\src\researchlens\modules\runs\application\process_run_queue_item.py", line 59, in execute
+    await self._terminal_mutations.transaction_manager.rollback()
+  File "C:\projects\ResearchLens\packages\backend\src\researchlens\shared\db\transaction_manager.py", line 35, in rollback
+    await self._session.rollback()
+  File "C:\projects\ResearchLens\.venv\Lib\site-packages\sqlalchemy\ext\asyncio\session.py", line 990, in rollback
+    await greenlet_spawn(self.sync_session.rollback)
+  File "C:\projects\ResearchLens\.venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 190, in greenlet_spawn
+    result = context.switch(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\projects\ResearchLens\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 1992, in rollback
+    self._transaction.rollback(_to_root=True)
+  File "<string>", line 2, in rollback
+  File "C:\projects\ResearchLens\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 101, in _go
+    self._raise_for_prerequisite_state(fn.__name__, current_state)
+  File "C:\projects\ResearchLens\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 988, in _raise_for_prerequisite_state
+    raise sa_exc.InvalidRequestError(
+sqlalchemy.exc.InvalidRequestError: This session is provisioning a new connection; concurrent operations are not permitted (Background on this error at: https://sqlalche.me/e/20/isce)
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\projects\ResearchLens\apps\worker\src\researchlens_worker\main.py", line 30, in <module>
+    main()
+  File "C:\projects\ResearchLens\apps\worker\src\researchlens_worker\main.py", line 24, in main
+    asyncio.run(_run_worker())
+  File "C:\Users\rohan\AppData\Local\Programs\Python\Python312\Lib\asyncio\runners.py", line 195, in run
+    return runner.run(main)
+           ^^^^^^^^^^^^^^^^
+  File "C:\Users\rohan\AppData\Local\Programs\Python\Python312\Lib\asyncio\runners.py", line 118, in run
+    return self._loop.run_until_complete(task)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rohan\AppData\Local\Programs\Python\Python312\Lib\asyncio\base_events.py", line 691, in run_until_complete
+    return future.result()
+           ^^^^^^^^^^^^^^^
+  File "C:\projects\ResearchLens\apps\worker\src\researchlens_worker\main.py", line 19, in _run_worker
+    await worker.run()
+  File "C:\projects\ResearchLens\apps\worker\src\researchlens_worker\worker_runtime.py", line 20, in run
+    await poll_worker_once(
+  File "C:\projects\ResearchLens\packages\backend\src\researchlens\worker_polling.py", line 36, in poll_worker_once
+    async with runs_runtime.request_context() as context:
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\rohan\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 231, in __aexit__
+    await self.gen.athrow(value)
+  File "C:\projects\ResearchLens\packages\backend\src\researchlens\modules\runs\infrastructure\runtime.py", line 81, in request_context
+    async with self._session_factory() as session:
+               ^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\projects\ResearchLens\.venv\Lib\site-packages\sqlalchemy\ext\asyncio\session.py", line 1071, in __aexit__
+    await asyncio.shield(task)
+  File "C:\projects\ResearchLens\.venv\Lib\site-packages\sqlalchemy\ext\asyncio\session.py", line 1016, in close
+    await greenlet_spawn(self.sync_session.close)
+  File "C:\projects\ResearchLens\.venv\Lib\site-packages\sqlalchemy\util\_concurrency_py3k.py", line 190, in greenlet_spawn
+    result = context.switch(*args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\projects\ResearchLens\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2507, in close
+    self._close_impl(invalidate=False)
+  File "C:\projects\ResearchLens\.venv\Lib\site-packages\sqlalchemy\orm\session.py", line 2576, in _close_impl
+    transaction.close(invalidate)
+  File "<string>", line 2, in close
+  File "C:\projects\ResearchLens\.venv\Lib\site-packages\sqlalchemy\orm\state_changes.py", line 119, in _go
+    raise sa_exc.IllegalStateChangeError(
+sqlalchemy.exc.IllegalStateChangeError: Method 'close()' can't be called here; method '_connection_for_bind()' is already in progress and this would cause an unexpected state change to <SessionTransactionState.CLOSED: 5> (Background on this error at: https://sqlalche.me/e/20/isce)

@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
+import asyncio
 from typing import Any
 from uuid import uuid4
 
@@ -25,6 +26,9 @@ class _NoopTransactionManager:
     @asynccontextmanager
     async def boundary(self) -> AsyncIterator[None]:
         yield
+
+    async def rollback(self) -> None:
+        return None
 
 
 @dataclass
@@ -148,6 +152,55 @@ class _FakeQueueBackend:
         raise NotImplementedError
 
 
+class _ConcurrentEventStore:
+    def __init__(self) -> None:
+        self.active_calls = 0
+        self.max_active_calls = 0
+
+    async def append(self, **kwargs):  # type: ignore[no-untyped-def]
+        self.active_calls += 1
+        self.max_active_calls = max(self.max_active_calls, self.active_calls)
+        await asyncio.sleep(0)
+        self.active_calls -= 1
+        return RunEventRecord(
+            id=uuid4(),
+            run_id=kwargs["run_id"],
+            event_number=1,
+            event_type=kwargs["event_type"],
+            audience=kwargs["audience"],
+            level=kwargs["level"],
+            status=RunStatus(kwargs["status"]),
+            stage=RunStage(kwargs["stage"]) if kwargs["stage"] else None,
+            message=kwargs["message"],
+            payload_json=kwargs["payload_json"],
+            retry_count=kwargs["retry_count"],
+            cancel_requested=kwargs["cancel_requested"],
+            created_at=kwargs["created_at"],
+            event_key=kwargs["event_key"],
+        )
+
+
+class _ConcurrentCheckpointStore:
+    def __init__(self) -> None:
+        self.active_calls = 0
+        self.max_active_calls = 0
+
+    async def append(self, **kwargs):  # type: ignore[no-untyped-def]
+        self.active_calls += 1
+        self.max_active_calls = max(self.max_active_calls, self.active_calls)
+        await asyncio.sleep(0)
+        self.active_calls -= 1
+        return RunCheckpointRecord(
+            id=uuid4(),
+            run_id=kwargs["run_id"],
+            stage=kwargs["stage"],
+            checkpoint_key=kwargs["checkpoint_key"],
+            payload_json=kwargs["payload_json"],
+            summary_json=kwargs["summary_json"],
+            created_at=kwargs["created_at"],
+        )
+
+
 def _run(cancel_requested: bool = False) -> Run:
     now = datetime.now(tz=UTC)
     return Run.create(
@@ -237,6 +290,72 @@ async def test_checkpoint_bridge_preserves_lifecycle_resume_fields() -> None:
     assert payload is not None
     assert payload["completed_stages"] == ["retrieve"]
     assert payload["attempt"] == 2
+
+
+@pytest.mark.asyncio
+async def test_event_bridge_serializes_concurrent_appends() -> None:
+    event_store = _ConcurrentEventStore()
+    bridge = RunGraphEventBridge(
+        event_store=event_store,  # type: ignore[arg-type]
+        transaction_manager=_NoopTransactionManager(),
+        clock=UtcRunClock(),
+    )
+
+    await asyncio.gather(
+        bridge.info(
+            run_id=uuid4(),
+            retry_count=0,
+            cancel_requested=False,
+            stage=RunStage.RETRIEVE,
+            key="retrieval:first",
+            message="First",
+            payload={},
+        ),
+        bridge.warning(
+            run_id=uuid4(),
+            retry_count=0,
+            cancel_requested=False,
+            stage=RunStage.RETRIEVE,
+            key="retrieval:second",
+            message="Second",
+            payload={},
+        ),
+    )
+
+    assert event_store.max_active_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_checkpoint_bridge_serializes_concurrent_appends() -> None:
+    checkpoint_store = _ConcurrentCheckpointStore()
+    bridge = RunGraphCheckpointBridge(
+        checkpoint_store=checkpoint_store,  # type: ignore[arg-type]
+        transaction_manager=_NoopTransactionManager(),
+        clock=UtcRunClock(),
+    )
+
+    await asyncio.gather(
+        bridge.checkpoint(
+            run_id=uuid4(),
+            retry_count=0,
+            stage=RunStage.RETRIEVE,
+            key="retrieval:first",
+            summary={"count": 1},
+            completed_stages=tuple(),
+            next_stage="draft",
+        ),
+        bridge.checkpoint(
+            run_id=uuid4(),
+            retry_count=0,
+            stage=RunStage.RETRIEVE,
+            key="retrieval:second",
+            summary={"count": 2},
+            completed_stages=tuple(),
+            next_stage="draft",
+        ),
+    )
+
+    assert checkpoint_store.max_active_calls == 1
 
 
 @pytest.mark.asyncio

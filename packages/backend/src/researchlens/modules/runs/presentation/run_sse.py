@@ -1,6 +1,7 @@
 import asyncio
 import json
 from collections.abc import AsyncIterator
+from contextlib import AbstractAsyncContextManager
 from dataclasses import asdict
 from typing import Protocol
 from uuid import UUID
@@ -17,13 +18,21 @@ class GetRunReader(Protocol):
     async def execute(self, query: GetRunQuery) -> RunSummaryView: ...
 
 
+class RunStreamContext(Protocol):
+    list_run_events: ListRunEventsReader
+    get_run: GetRunReader
+
+
+class RunStreamContextFactory(Protocol):
+    def __call__(self) -> AbstractAsyncContextManager[RunStreamContext]: ...
+
+
 async def stream_run_events(
     *,
     tenant_id: UUID,
     run_id: UUID,
     last_event_id: int | None,
-    list_run_events: ListRunEventsReader,
-    get_run: GetRunReader,
+    request_context_factory: RunStreamContextFactory,
     keepalive_seconds: int,
     terminal_grace_seconds: int,
 ) -> AsyncIterator[str]:
@@ -31,20 +40,21 @@ async def stream_run_events(
     terminal_seen_at = None
     loop = asyncio.get_running_loop()
     while True:
-        events = await list_run_events.execute(
-            ListRunEventsQuery(
-                tenant_id=tenant_id,
-                run_id=run_id,
-                after_event_number=after_event_number,
+        async with request_context_factory() as context:
+            events = await context.list_run_events.execute(
+                ListRunEventsQuery(
+                    tenant_id=tenant_id,
+                    run_id=run_id,
+                    after_event_number=after_event_number,
+                )
             )
-        )
+            run = await context.get_run.execute(GetRunQuery(tenant_id=tenant_id, run_id=run_id))
         for event in events:
             after_event_number = event.event_number
             yield f"event: {event.event_type}\n"
             yield f"id: {event.event_number}\n"
             yield f"data: {json.dumps(asdict(event), default=str)}\n\n"
 
-        run = await get_run.execute(GetRunQuery(tenant_id=tenant_id, run_id=run_id))
         if run.status in {"succeeded", "failed", "canceled"}:
             if terminal_seen_at is None:
                 terminal_seen_at = loop.time()

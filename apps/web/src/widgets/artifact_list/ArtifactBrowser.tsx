@@ -37,70 +37,70 @@ export function ArtifactBrowser({ runId }: { runId: string }) {
     }
   }, [download.data]);
 
-  if (artifacts.error) {
-    return <ErrorBanner body="Artifacts could not be loaded." />;
-  }
-
-  if (!artifacts.isLoading && (artifacts.data?.length ?? 0) === 0) {
-    return (
-      <EmptyState
-        title="No artifacts yet"
-        body="This run has not produced exportable artifacts."
-      />
-    );
-  }
-
   return (
     <div className="grid grid--2">
       <div className="stack">
         <Card title="Artifacts" meta={`Run ${runId}`}>
-          <div className="artifact-list">
-            {(artifacts.data ?? []).map((artifact) => (
-              <Card
-                key={artifact.id}
-                title={artifact.filename}
-                meta={`${artifact.kind} • ${artifact.media_type} • ${formatDateTime(
-                  artifact.created_at,
-                )}`}
-              >
-                <div className="row row--between">
-                  <div className="meta-line">{artifact.byte_size} bytes</div>
-                  <div className="row">
-                    <Button
-                      compact
-                      onClick={() =>
-                        void download.mutateAsync(artifact).then(({ blob, filename, mediaType }) => {
-                          setPreviewTitle(filename);
-                          const link = document.createElement("a");
-                          link.href = URL.createObjectURL(blob);
-                          link.download = filename;
-                          link.click();
-                          URL.revokeObjectURL(link.href);
-                          if (mediaType.startsWith("text/") || mediaType.includes("json")) {
-                            void blob.text().then(setPreviewText);
-                          }
-                        })
-                      }
-                    >
-                      Download
-                    </Button>
-                    <Link to={`/runs/${runId}/artifacts#evidence`}>
-                      <Button compact variant="ghost">
-                        Evidence
+          {artifacts.error ? <ErrorBanner body="Artifacts could not be loaded." /> : null}
+          {artifacts.isLoading ? <div className="meta-line">Loading artifacts...</div> : null}
+          {!artifacts.isLoading && !artifacts.error && (artifacts.data?.length ?? 0) === 0 ? (
+            <EmptyState
+              title="No artifacts yet"
+              body="This run has not produced exportable artifacts."
+            />
+          ) : null}
+          {(artifacts.data?.length ?? 0) > 0 ? (
+            <div className="artifact-list">
+              {(artifacts.data ?? []).map((artifact) => (
+                <Card
+                  key={artifact.id}
+                  title={artifact.filename}
+                  meta={`${artifact.kind} | ${artifact.media_type} | ${formatDateTime(
+                    artifact.created_at,
+                  )}`}
+                >
+                  <div className="row row--between">
+                    <div className="meta-line">{artifact.byte_size} bytes</div>
+                    <div className="row">
+                      <Button
+                        compact
+                        onClick={() =>
+                          void download
+                            .mutateAsync(artifact)
+                            .then(({ blob, filename, mediaType }) => {
+                              setPreviewTitle(filename);
+                              const link = document.createElement("a");
+                              link.href = URL.createObjectURL(blob);
+                              link.download = filename;
+                              link.click();
+                              URL.revokeObjectURL(link.href);
+                              if (mediaType.startsWith("text/") || mediaType.includes("json")) {
+                                void blob.text().then(setPreviewText);
+                              }
+                            })
+                        }
+                      >
+                        Download
                       </Button>
-                    </Link>
+                      <Link to={`/runs/${runId}/artifacts#evidence`}>
+                        <Button compact variant="ghost">
+                          Evidence
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+                </Card>
+              ))}
+            </div>
+          ) : null}
         </Card>
 
         <Card title="Evidence linkage" meta="Read-only evidence state">
+          {evidence.error ? <ErrorBanner body="Evidence summary could not be loaded." /> : null}
           {evidence.data ? (
             <div className="stack">
               <div className="meta-line">
-                {evidence.data.section_count} sections • {evidence.data.chunk_count} snippets •{" "}
+                {evidence.data.section_count} sections | {evidence.data.chunk_count} snippets |{" "}
                 {evidence.data.source_count} sources
               </div>
               {(evidence.data.sections ?? []).map((section) => (
@@ -112,8 +112,10 @@ export function ArtifactBrowser({ runId }: { runId: string }) {
                 </div>
               ))}
             </div>
-          ) : (
+          ) : evidence.isLoading ? (
             <div className="meta-line">Loading evidence summary...</div>
+          ) : evidence.error ? null : (
+            <div className="meta-line">Evidence is not available for this run yet.</div>
           )}
         </Card>
       </div>
@@ -126,12 +128,13 @@ export function ArtifactBrowser({ runId }: { runId: string }) {
         </Card>
 
         <Card title="Evaluation" meta="Current backend summary">
+          {evaluation.error ? <ErrorBanner body="Evaluation summary could not be loaded." /> : null}
           {evaluation.data ? (
             <div className="stack">
               <div className="row row--between">
                 <span className="pill">{evaluation.data.quality_pct.toFixed(1)}% quality</span>
                 <span className="meta-line">
-                  {evaluation.data.issue_count} issues • {evaluation.data.sections_requiring_repair_count} repair
+                  {evaluation.data.issue_count} issues | {evaluation.data.sections_requiring_repair_count} repair
                 </span>
               </div>
               {(issues.data ?? []).slice(0, 5).map((issue) => (
@@ -139,14 +142,16 @@ export function ArtifactBrowser({ runId }: { runId: string }) {
                   <div className="card__body">
                     <strong>{issue.message}</strong>
                     <div className="meta-line">
-                      {issue.section_title} • {issue.severity}
+                      {issue.section_title} | {issue.severity}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="meta-line">No evaluation summary available.</div>
+          ) : evaluation.isLoading ? (
+            <div className="meta-line">Loading evaluation summary...</div>
+          ) : evaluation.error ? null : (
+            <div className="meta-line">No evaluation summary available yet.</div>
           )}
         </Card>
 
