@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Protocol
 from uuid import UUID
 
@@ -79,3 +81,9 @@ class SectionGroundingEvaluator(Protocol):
 
 class RunCancellationProbe(Protocol):
     async def cancel_requested(self, *, run_id: UUID) -> bool: ...
+
+
+class TransactionManager(Protocol):
+    @asynccontextmanager
+    async def boundary(self) -> AsyncIterator[None]:
+        yield

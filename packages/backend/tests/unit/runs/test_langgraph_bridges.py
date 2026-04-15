@@ -302,6 +302,31 @@ def test_restore_graph_state_uses_checkpoint_next_stage() -> None:
     assert state["resuming"] is True
 
 
+def test_restore_graph_state_uses_queued_retry_stage_over_stale_checkpoint() -> None:
+    run = _run().replace_values(status=RunStatus.QUEUED, current_stage=RunStage.DRAFT)
+    checkpoint = RunCheckpointRecord(
+        id=uuid4(),
+        run_id=run.id,
+        stage=RunStage.EVALUATE,
+        checkpoint_key="attempt-0:evaluate:completed",
+        payload_json={
+            "completed_stages": ["retrieve", "draft", "evaluate"],
+            "next_stage": "repair",
+        },
+        summary_json={},
+        created_at=datetime.now(tz=UTC),
+    )
+
+    state = restore_graph_state(
+        run=run,
+        request_text="Question",
+        latest_checkpoint=checkpoint,
+    )
+
+    assert state["start_stage"] == "draft"
+    assert state["completed_stages"] == ("retrieve",)
+
+
 @pytest.mark.asyncio
 async def test_event_bridge_prefixes_event_keys_by_attempt() -> None:
     event_store = _FakeEventStore()
@@ -508,3 +533,40 @@ async def test_stage_entered_maps_cancel_request_to_terminal_state() -> None:
 
     assert entered is False
     assert state["terminal_status"] == "canceled"
+
+
+@pytest.mark.asyncio
+async def test_stage_entered_updates_current_stage() -> None:
+    run = _run().replace_values(current_stage=RunStage.REPAIR)
+    repository = _FakeRunRepository(run)
+    bridge = RunGraphRuntimeBridge(
+        run_repository=repository,
+        event_store=_FakeEventStore(),
+        checkpoint_store=_FakeCheckpointStore(),
+        queue_backend=_FakeQueueBackend(),
+        transaction_manager=_NoopTransactionManager(),
+        clock=UtcRunClock(),
+        queue_lease_seconds=30,
+    )
+    state: RunGraphState = {
+        "run_id": run.id,
+        "queue_item_id": uuid4(),
+        "lease_token": uuid4(),
+        "tenant_id": run.tenant_id,
+        "conversation_id": run.conversation_id,
+        "output_type": run.output_type,
+        "retry_count": 0,
+        "request_text": "",
+        "cancel_requested": False,
+        "start_stage": "retrieve",
+        "completed_stages": ("retrieve", "draft", "evaluate"),
+        "current_stage": "repair",
+        "latest_checkpoint_key": None,
+        "latest_checkpoint_stage": None,
+        "resuming": False,
+    }
+
+    entered = await bridge.stage_entered(state=state, stage=RunStage.EXPORT)
+
+    assert entered is True
+    assert repository._run.current_stage == RunStage.EXPORT

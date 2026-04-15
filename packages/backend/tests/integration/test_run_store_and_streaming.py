@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime, timedelta
@@ -55,6 +56,36 @@ class FakeRunStreamContext:
     def __init__(self, events: list[RunEventView], statuses: list[str]) -> None:
         self.list_run_events = FakeListRunEventsUseCase(events)
         self.get_run = FakeGetRunUseCase(statuses)
+
+
+class BlockingListRunEventsUseCase:
+    def __init__(self) -> None:
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+
+    async def execute(self, query: Any) -> list[RunEventView]:
+        self.started.set()
+        await self.release.wait()
+        return []
+
+
+class BlockingRunStreamContext:
+    def __init__(self, list_run_events: BlockingListRunEventsUseCase) -> None:
+        self.list_run_events = list_run_events
+        self.get_run = FakeGetRunUseCase(["running"])
+
+
+class BlockingRunStreamContextFactory:
+    def __init__(self) -> None:
+        self.list_run_events = BlockingListRunEventsUseCase()
+        self.exited = asyncio.Event()
+
+    @asynccontextmanager
+    async def __call__(self) -> AsyncIterator[BlockingRunStreamContext]:
+        try:
+            yield BlockingRunStreamContext(self.list_run_events)
+        finally:
+            self.exited.set()
 
 
 def fake_request_context_factory(
@@ -212,6 +243,29 @@ async def test_terminal_stream_closes_after_grace_window() -> None:
     assert any("event: run.succeeded" in item for item in items)
     assert any(": keepalive" in item for item in items)
     assert len(items) < 10
+
+
+@pytest.mark.asyncio
+async def test_stream_cancel_waits_for_context_exit() -> None:
+    context_factory = BlockingRunStreamContextFactory()
+    stream = stream_run_events(
+        tenant_id=uuid4(),
+        run_id=uuid4(),
+        last_event_id=None,
+        request_context_factory=cast(RunStreamContextFactory, context_factory),
+        keepalive_seconds=30,
+        terminal_grace_seconds=0,
+    )
+
+    read_task = asyncio.create_task(anext(stream))
+    await context_factory.list_run_events.started.wait()
+    read_task.cancel()
+    context_factory.list_run_events.release.set()
+
+    with pytest.raises(asyncio.CancelledError):
+        await read_task
+
+    assert context_factory.exited.is_set()
 
 
 async def _seed_run(database_runtime: DatabaseRuntime) -> UUID:

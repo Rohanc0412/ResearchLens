@@ -34,21 +34,18 @@ async def stream_run_events(
     last_event_id: int | None,
     request_context_factory: RunStreamContextFactory,
     keepalive_seconds: int,
-    terminal_grace_seconds: int,
+        terminal_grace_seconds: int,
 ) -> AsyncIterator[str]:
     after_event_number = last_event_id
     terminal_seen_at = None
     loop = asyncio.get_running_loop()
     while True:
-        async with request_context_factory() as context:
-            events = await context.list_run_events.execute(
-                ListRunEventsQuery(
-                    tenant_id=tenant_id,
-                    run_id=run_id,
-                    after_event_number=after_event_number,
-                )
-            )
-            run = await context.get_run.execute(GetRunQuery(tenant_id=tenant_id, run_id=run_id))
+        events, run = await _read_stream_batch(
+            tenant_id=tenant_id,
+            run_id=run_id,
+            after_event_number=after_event_number,
+            request_context_factory=request_context_factory,
+        )
         for event in events:
             after_event_number = event.event_number
             yield f"event: {event.event_type}\n"
@@ -65,3 +62,44 @@ async def stream_run_events(
 
         yield ": keepalive\n\n"
         await asyncio.sleep(keepalive_seconds)
+
+
+async def _read_stream_batch(
+    *,
+    tenant_id: UUID,
+    run_id: UUID,
+    after_event_number: int | None,
+    request_context_factory: RunStreamContextFactory,
+) -> tuple[list[RunEventView], RunSummaryView]:
+    task = asyncio.create_task(
+        _read_stream_batch_from_context(
+            tenant_id=tenant_id,
+            run_id=run_id,
+            after_event_number=after_event_number,
+            request_context_factory=request_context_factory,
+        )
+    )
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        await task
+        raise
+
+
+async def _read_stream_batch_from_context(
+    *,
+    tenant_id: UUID,
+    run_id: UUID,
+    after_event_number: int | None,
+    request_context_factory: RunStreamContextFactory,
+) -> tuple[list[RunEventView], RunSummaryView]:
+    async with request_context_factory() as context:
+        events = await context.list_run_events.execute(
+            ListRunEventsQuery(
+                tenant_id=tenant_id,
+                run_id=run_id,
+                after_event_number=after_event_number,
+            )
+        )
+        run = await context.get_run.execute(GetRunQuery(tenant_id=tenant_id, run_id=run_id))
+    return events, run

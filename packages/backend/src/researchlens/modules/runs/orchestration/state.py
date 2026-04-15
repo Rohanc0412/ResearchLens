@@ -1,7 +1,13 @@
 from typing import Any, NotRequired, TypedDict
 from uuid import UUID
 
-from researchlens.modules.runs.domain import Run, RunCheckpointRecord, RunStage
+from researchlens.modules.runs.domain import (
+    RUN_STAGE_SEQUENCE,
+    Run,
+    RunCheckpointRecord,
+    RunStage,
+    RunStatus,
+)
 
 
 class RunGraphState(TypedDict):
@@ -76,6 +82,13 @@ def restore_graph_state(
     payload = latest_checkpoint.payload_json if latest_checkpoint is not None else None
     completed_stages = tuple(_completed_stages(payload))
     next_stage = _next_stage(payload, run.current_stage)
+    if (
+        run.status == RunStatus.QUEUED
+        and run.current_stage is not None
+        and run.current_stage != next_stage
+    ):
+        next_stage = run.current_stage
+        completed_stages = _completed_before(next_stage)
     return {
         "run_id": run.id,
         "queue_item_id": UUID(int=0),
@@ -117,3 +130,7 @@ def _next_stage(
         if "completed_stages" in payload and current_stage is not None:
             return current_stage
     return current_stage or RunStage.RETRIEVE
+
+
+def _completed_before(stage: RunStage) -> tuple[str, ...]:
+    return tuple(item.value for item in RUN_STAGE_SEQUENCE[: RUN_STAGE_SEQUENCE.index(stage)])

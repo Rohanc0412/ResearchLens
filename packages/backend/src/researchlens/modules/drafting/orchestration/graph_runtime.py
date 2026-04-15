@@ -11,6 +11,7 @@ from researchlens.modules.drafting.application.ports import (
     DraftingRepository,
     DraftingRunInputReader,
     RunCancellationProbe,
+    TransactionManager,
 )
 from researchlens.modules.drafting.orchestration.progress import (
     DraftingGraphCheckpointSink,
@@ -31,6 +32,7 @@ class DraftingGraphRuntime:
         input_reader: DraftingRunInputReader,
         repository: DraftingRepository,
         cancellation_probe: RunCancellationProbe,
+        transaction_manager: TransactionManager,
         events: DraftingGraphEventSink,
         checkpoints: DraftingGraphCheckpointSink,
         generation_client: StructuredGenerationClient | None = None,
@@ -47,6 +49,7 @@ class DraftingGraphRuntime:
             repository=repository,
             generation_client=generation_client or build_llm_client(settings.llm),
             cancellation_probe=cancellation_probe,
+            transaction_manager=transaction_manager,
             provider_name=settings.llm.provider,
         )
 

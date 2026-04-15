@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
@@ -33,6 +35,12 @@ class ArtifactStorage(Protocol):
 
 class ExportBundleReader(Protocol):
     async def load_bundle(self, *, run_id: UUID) -> ReportExportBundle: ...
+
+
+class TransactionManager(Protocol):
+    @asynccontextmanager
+    async def boundary(self) -> AsyncIterator[None]:
+        yield
 
 
 class ArtifactRepository(Protocol):

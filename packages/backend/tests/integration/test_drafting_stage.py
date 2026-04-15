@@ -20,7 +20,7 @@ from researchlens.modules.drafting.orchestration import (
     build_drafting_subgraph,
 )
 from researchlens.shared.config import get_settings, reset_settings_cache
-from researchlens.shared.db import DatabaseRuntime
+from researchlens.shared.db import DatabaseRuntime, SqlAlchemyTransactionManager
 from researchlens.shared.errors import ValidationError
 
 from .drafting_support import FakeDraftingClient, seed_run_with_retrieval_outputs
@@ -73,6 +73,7 @@ async def test_drafting_stage_persists_sections_evidence_and_report(
             settings=get_settings(),
             input_reader=SqlAlchemyDraftingRunInputReader(session),
             repository=SqlAlchemyDraftingRepository(session),
+            transaction_manager=SqlAlchemyTransactionManager(session),
             cancellation_probe=_SessionCancellationProbe(session),
             events=_NoopEventWriter(),
             checkpoints=_NoopCheckpointWriter(),
@@ -127,6 +128,7 @@ async def test_drafting_stage_fails_when_a_section_has_no_evidence(
                 settings=get_settings(),
                 input_reader=SqlAlchemyDraftingRunInputReader(session),
                 repository=SqlAlchemyDraftingRepository(session),
+                transaction_manager=SqlAlchemyTransactionManager(session),
                 cancellation_probe=_SessionCancellationProbe(session),
                 events=_NoopEventWriter(),
                 checkpoints=_NoopCheckpointWriter(),
@@ -156,6 +158,7 @@ async def test_drafting_stage_retries_on_malformed_and_invalid_citations(
             settings=get_settings(),
             input_reader=SqlAlchemyDraftingRunInputReader(session),
             repository=SqlAlchemyDraftingRepository(session),
+            transaction_manager=SqlAlchemyTransactionManager(session),
             cancellation_probe=_SessionCancellationProbe(session),
             events=_NoopEventWriter(),
             checkpoints=_NoopCheckpointWriter(),
@@ -202,6 +205,7 @@ async def test_drafting_stage_drafts_sections_concurrently(
             settings=get_settings(),
             input_reader=SqlAlchemyDraftingRunInputReader(session),
             repository=SqlAlchemyDraftingRepository(session),
+            transaction_manager=SqlAlchemyTransactionManager(session),
             cancellation_probe=_SessionCancellationProbe(session),
             events=_NoopEventWriter(),
             checkpoints=_NoopCheckpointWriter(),

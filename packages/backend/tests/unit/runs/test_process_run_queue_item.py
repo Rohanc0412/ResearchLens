@@ -32,9 +32,17 @@ class _FakeQueueBackend:
 
 
 class _FakeTransactionManager:
+    def __init__(self) -> None:
+        self.boundaries = 0
+        self.rollbacks = 0
+
     @asynccontextmanager
     async def boundary(self) -> AsyncIterator[None]:
+        self.boundaries += 1
         yield
+
+    async def rollback(self) -> None:
+        self.rollbacks += 1
 
 
 class _FakeTerminalMutations:
@@ -83,23 +91,29 @@ def _build_run(*, cancel_requested: bool = False) -> Run:
 
 def _build_use_case(
     run: Run,
-) -> tuple[ProcessRunQueueItemUseCase, _FakeRunRepository, _FakeQueueBackend]:
+) -> tuple[
+    ProcessRunQueueItemUseCase,
+    _FakeRunRepository,
+    _FakeQueueBackend,
+    _FakeTransactionManager,
+]:
     repository = _FakeRunRepository(run)
     queue_backend = _FakeQueueBackend()
+    transaction_manager = _FakeTransactionManager()
     use_case = ProcessRunQueueItemUseCase(
         run_repository=repository,  # type: ignore[arg-type]
         event_store=_FakeEventStore(),  # type: ignore[arg-type]
         queue_backend=queue_backend,  # type: ignore[arg-type]
-        transaction_manager=_FakeTransactionManager(),
+        transaction_manager=transaction_manager,
         run_orchestrator=_FailingOrchestrator(),
     )
-    return use_case, repository, queue_backend
+    return use_case, repository, queue_backend, transaction_manager
 
 
 @pytest.mark.asyncio
 async def test_process_run_queue_item_execute_finalizes_orchestrator_failure() -> None:
     run = _build_run()
-    use_case, repository, queue_backend = _build_use_case(run)
+    use_case, repository, queue_backend, transaction_manager = _build_use_case(run)
     terminal_mutations = _FakeTerminalMutations()
     use_case._terminal_mutations = terminal_mutations  # type: ignore[assignment]
 
@@ -116,12 +130,14 @@ async def test_process_run_queue_item_execute_finalizes_orchestrator_failure() -
     assert terminal_mutations.reason == "boom"
     assert terminal_mutations.error_code == "RuntimeError"
     assert queue_backend.completed is True
+    assert transaction_manager.boundaries == 1
+    assert transaction_manager.rollbacks == 1
 
 
 @pytest.mark.asyncio
 async def test_finalize_execution_failure_records_failure_and_acks_queue_item() -> None:
     run = _build_run()
-    use_case, repository, queue_backend = _build_use_case(run)
+    use_case, repository, queue_backend, transaction_manager = _build_use_case(run)
     terminal_mutations = _FakeTerminalMutations()
     use_case._terminal_mutations = terminal_mutations  # type: ignore[assignment]
 
@@ -141,12 +157,13 @@ async def test_finalize_execution_failure_records_failure_and_acks_queue_item() 
     assert len(terminal_mutations.reason) == 4000
     assert terminal_mutations.error_code == "RuntimeError"
     assert queue_backend.completed is True
+    assert transaction_manager.boundaries == 1
 
 
 @pytest.mark.asyncio
 async def test_finalize_execution_failure_respects_existing_cancel_request() -> None:
     run = _build_run(cancel_requested=True)
-    use_case, repository, queue_backend = _build_use_case(run)
+    use_case, repository, queue_backend, transaction_manager = _build_use_case(run)
     terminal_mutations = _FakeTerminalMutations()
     use_case._terminal_mutations = terminal_mutations  # type: ignore[assignment]
 
@@ -164,3 +181,4 @@ async def test_finalize_execution_failure_respects_existing_cancel_request() -> 
     assert terminal_mutations.canceled is True
     assert terminal_mutations.finalized is False
     assert queue_backend.completed is True
+    assert transaction_manager.boundaries == 1

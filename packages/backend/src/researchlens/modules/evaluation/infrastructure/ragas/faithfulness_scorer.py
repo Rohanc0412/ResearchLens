@@ -1,9 +1,10 @@
 import asyncio
 from collections.abc import Sequence
+from typing import Any
 
 
 class RagasFaithfulnessScorer:
-    _MIN_REASONING_MAX_TOKENS = 4096
+    _MIN_REASONING_MAX_TOKENS = 8192
 
     def __init__(
         self,
@@ -37,16 +38,20 @@ class RagasFaithfulnessScorer:
 
         client = AsyncOpenAI(
             api_key=self._api_key,
-            base_url=self._base_url,
+            base_url=_normalized_base_url(self._base_url),
             timeout=self._timeout_seconds,
         )
-        llm = llm_factory(
-            self._model,
-            client=client,
+        token_limit_kwargs: dict[str, Any] = _token_limit_kwargs(
+            model=self._model,
             max_tokens=max(
                 self._max_tokens,
                 self._MIN_REASONING_MAX_TOKENS,
             ),
+        )
+        llm = llm_factory(
+            self._model,
+            client=client,
+            **token_limit_kwargs,
         )
         scorer = Faithfulness(llm=llm)
         result = await asyncio.wait_for(
@@ -59,3 +64,13 @@ class RagasFaithfulnessScorer:
         )
         value = float(result.value)
         return round(max(0.0, min(1.0, value)) * 100.0, 2)
+
+
+def _token_limit_kwargs(*, model: str, max_tokens: int) -> dict[str, int | str]:
+    if model.startswith("gpt-5"):
+        return {"max_completion_tokens": max_tokens, "reasoning_effort": "minimal"}
+    return {"max_tokens": max_tokens}
+
+
+def _normalized_base_url(base_url: str | None) -> str | None:
+    return base_url or None

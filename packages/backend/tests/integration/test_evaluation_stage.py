@@ -37,7 +37,7 @@ from researchlens.modules.evaluation.orchestration.progress import (
     EvaluationGraphEventSink,
 )
 from researchlens.shared.config import get_settings, reset_settings_cache
-from researchlens.shared.db import DatabaseRuntime
+from researchlens.shared.db import DatabaseRuntime, SqlAlchemyTransactionManager
 
 from .drafting_support import FakeDraftingClient, seed_run_with_retrieval_outputs
 
@@ -130,6 +130,7 @@ async def test_evaluation_subgraph_persists_queryable_repair_ready_outputs(
             repository=SqlAlchemyEvaluationRepository(session),
             evaluator=_FakeEvaluationEvaluator(),
             cancellation_probe=_SessionCancellationProbe(),
+            transaction_manager=SqlAlchemyTransactionManager(session),
             events=_NoopEventWriter(),
             checkpoints=_NoopCheckpointWriter(),
         )
@@ -176,6 +177,7 @@ async def _draft_run(database_runtime: DatabaseRuntime, *, run_id: UUID) -> None
             settings=get_settings(),
             input_reader=SqlAlchemyDraftingRunInputReader(session),
             repository=SqlAlchemyDraftingRepository(session),
+            transaction_manager=SqlAlchemyTransactionManager(session),
             cancellation_probe=_SessionCancellationProbe(),
             events=_NoopEventWriter(),
             checkpoints=_NoopCheckpointWriter(),

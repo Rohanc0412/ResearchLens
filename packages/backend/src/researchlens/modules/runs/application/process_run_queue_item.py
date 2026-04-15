@@ -35,6 +35,7 @@ class ProcessRunQueueItemUseCase:
         self._run_repository = run_repository
         self._queue_backend = queue_backend
         self._run_orchestrator = run_orchestrator
+        self._transaction_manager = transaction_manager
         self._clock = clock or UtcRunClock()
         self._terminal_mutations = RunTerminalMutations(
             run_repository=run_repository,
@@ -56,6 +57,7 @@ class ProcessRunQueueItemUseCase:
                 lease_token=command.lease_token,
             )
         except Exception as exc:
+            await self._transaction_manager.rollback()
             await self.finalize_execution_failure(
                 command,
                 reason=str(exc),
@@ -87,8 +89,9 @@ class ProcessRunQueueItemUseCase:
         await self._ack_queue_item(command)
 
     async def _ack_queue_item(self, command: ProcessRunQueueItemCommand) -> None:
-        await self._queue_backend.complete(
-            queue_item_id=command.queue_item_id,
-            lease_token=command.lease_token,
-            completed_at=self._clock.now(),
-        )
+        async with self._transaction_manager.boundary():
+            await self._queue_backend.complete(
+                queue_item_id=command.queue_item_id,
+                lease_token=command.lease_token,
+                completed_at=self._clock.now(),
+            )

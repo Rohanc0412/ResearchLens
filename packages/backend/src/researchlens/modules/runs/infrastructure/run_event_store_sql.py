@@ -45,7 +45,12 @@ class SqlAlchemyRunEventStore(RunEventStore):
             if existing is not None:
                 return to_event_domain(existing)
 
-        run_row = await self._session.get(RunRow, run_id)
+        run_row = await self._session.scalar(
+            select(RunRow)
+            .where(RunRow.id == run_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
         if run_row is None:
             raise ValueError("Run row was not found for event append.")
         run_row.last_event_number += 1

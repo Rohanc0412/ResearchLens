@@ -106,6 +106,7 @@ class SqlAlchemyEvaluationRepository:
                 result=result,
                 now=now,
             )
+            await self._session.flush()
             add_issue_rows(
                 self._session,
                 evaluation_pass=evaluation_pass,

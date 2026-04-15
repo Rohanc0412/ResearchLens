@@ -74,30 +74,14 @@ export function LoginPage() {
 
   return (
     <div className="auth-shell">
-      <section className="auth-hero">
-        <div className="auth-hero__panel">
-          <div className="eyebrow">ResearchLens</div>
-          <h1 className="display-heading">Evidence-led research workspace</h1>
-          <p>
-            Secure conversations, live run progress, artifact review, and evidence inspection in
-            one compact console.
-          </p>
-          <div className="auth-hero__stats">
-            <span>Runs</span>
-            <span>Evidence</span>
-            <span>MFA</span>
-          </div>
-        </div>
-      </section>
-      <section className="auth-form-shell">
-        <Card className="auth-card" title="ResearchLens" meta="Obsidian session access">
-          <form
-            className="stack"
-            onSubmit={(event) => {
-              event.preventDefault();
-              void handlePrimary();
-            }}
-          >
+      <Card className="auth-card" title="ResearchLens" meta="Obsidian session access">
+        <form
+          className="stack"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void handlePrimary();
+          }}
+        >
           <div className="segmented">
             {[
               ["login", "Login"],
@@ -184,9 +168,8 @@ export function LoginPage() {
               </Button>
             </>
           )}
-          </form>
-        </Card>
-      </section>
+        </form>
+      </Card>
     </div>
   );
 }

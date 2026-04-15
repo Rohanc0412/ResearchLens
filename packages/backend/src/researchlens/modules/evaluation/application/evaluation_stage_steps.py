@@ -14,6 +14,7 @@ from researchlens.modules.evaluation.application.ports import (
     EvaluationRepository,
     RunCancellationProbe,
     SectionGroundingEvaluator,
+    TransactionManager,
 )
 from researchlens.shared.config.evaluation import EvaluationSettings
 from researchlens.shared.errors import CancellationRequestedError
@@ -40,11 +41,13 @@ class EvaluationStageSteps:
         repository: EvaluationRepository,
         evaluator: SectionGroundingEvaluator,
         cancellation_probe: RunCancellationProbe,
+        transaction_manager: TransactionManager,
     ) -> None:
         self._settings = settings
         self._repository = repository
         self._evaluator = evaluator
         self._cancellation_probe = cancellation_probe
+        self._transaction_manager = transaction_manager
         self._cancellation_lock = asyncio.Lock()
 
     async def create_pass(
@@ -53,11 +56,12 @@ class EvaluationStageSteps:
         run_input: EvaluationRunInput,
         scope: str = "pipeline",
     ) -> EvaluationPassRecord:
-        return await self._repository.create_pass(
-            tenant_id=run_input.tenant_id,
-            run_id=run_input.run_id,
-            scope=scope,
-        )
+        async with self._transaction_manager.boundary():
+            return await self._repository.create_pass(
+                tenant_id=run_input.tenant_id,
+                run_id=run_input.run_id,
+                scope=scope,
+            )
 
     async def evaluate_sections(
         self,
@@ -94,10 +98,11 @@ class EvaluationStageSteps:
         evaluation_pass: EvaluationPassRecord,
         section_results: tuple[SectionEvaluationResult, ...],
     ) -> None:
-        await self._repository.persist_section_results(
-            evaluation_pass=evaluation_pass,
-            section_results=section_results,
-        )
+        async with self._transaction_manager.boundary():
+            await self._repository.persist_section_results(
+                evaluation_pass=evaluation_pass,
+                section_results=section_results,
+            )
 
     async def finalize(
         self,
@@ -111,7 +116,8 @@ class EvaluationStageSteps:
             section_count=len(run_input.sections),
             section_results=section_results,
         )
-        await self._repository.finalize_pass(evaluation_pass=evaluation_pass, summary=summary)
+        async with self._transaction_manager.boundary():
+            await self._repository.finalize_pass(evaluation_pass=evaluation_pass, summary=summary)
         return summary
 
     async def _evaluate_one_section(

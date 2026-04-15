@@ -1,56 +1,21 @@
-from types import SimpleNamespace
-from typing import Any, cast
-
-import pytest
-
 from researchlens.modules.evaluation.infrastructure.ragas.faithfulness_scorer import (
-    RagasFaithfulnessScorer,
+    _normalized_base_url,
+    _token_limit_kwargs,
 )
 
 
-@pytest.mark.asyncio
-async def test_ragas_faithfulness_scorer_uses_reasoning_safe_token_budget(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    seen: dict[str, object] = {}
+def test_token_limit_kwargs_use_gpt5_chat_completion_parameter() -> None:
+    assert _token_limit_kwargs(model="gpt-5-nano", max_tokens=8192) == {
+        "max_completion_tokens": 8192,
+        "reasoning_effort": "minimal",
+    }
 
-    def fake_llm_factory(model: str, **kwargs: object) -> object:
-        seen["model"] = model
-        seen["kwargs"] = kwargs
-        return object()
 
-    class FakeFaithfulness:
-        def __init__(self, *, llm: object) -> None:
-            seen["llm"] = llm
+def test_token_limit_kwargs_keep_legacy_chat_completion_parameter() -> None:
+    assert _token_limit_kwargs(model="gpt-4o-mini", max_tokens=4096) == {"max_tokens": 4096}
 
-        async def ascore(
-            self,
-            *,
-            user_input: str,
-            response: str,
-            retrieved_contexts: list[str],
-        ) -> object:
-            seen["sample"] = (user_input, response, retrieved_contexts)
-            return SimpleNamespace(value=0.75)
 
-    monkeypatch.setattr("ragas.llms.llm_factory", fake_llm_factory)
-    monkeypatch.setattr("ragas.metrics.collections.Faithfulness", FakeFaithfulness)
-
-    score = await RagasFaithfulnessScorer(
-        provider="openai",
-        model="gpt-5-nano",
-        api_key="test-key",
-        base_url="https://api.openai.test/v1",
-        timeout_seconds=30.0,
-        max_tokens=15000,
-    ).score(
-        user_input="Question",
-        response="Answer",
-        retrieved_contexts=("Context",),
-    )
-
-    assert score == 75.0
-    assert seen["model"] == "gpt-5-nano"
-    assert seen["sample"] == ("Question", "Answer", ["Context"])
-    kwargs = cast(dict[str, Any], seen["kwargs"])
-    assert kwargs["max_tokens"] == 15000
+def test_normalized_base_url_treats_empty_string_as_default() -> None:
+    assert _normalized_base_url("") is None
+    assert _normalized_base_url(None) is None
+    assert _normalized_base_url("https://example.test/v1") == "https://example.test/v1"

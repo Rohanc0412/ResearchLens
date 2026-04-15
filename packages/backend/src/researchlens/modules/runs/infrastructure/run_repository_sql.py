@@ -56,7 +56,12 @@ class SqlAlchemyRunRepository(RunRepository):
         return to_run_domain(row) if row is not None else None
 
     async def get_by_id_for_update(self, *, run_id: UUID) -> Run | None:
-        statement = select(RunRow).where(RunRow.id == run_id).with_for_update()
+        statement = (
+            select(RunRow)
+            .where(RunRow.id == run_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
         row = await self._session.scalar(statement)
         return to_run_domain(row) if row is not None else None
 
@@ -76,7 +81,11 @@ class SqlAlchemyRunRepository(RunRepository):
         return to_run_domain(row) if row is not None else None
 
     async def save(self, run: Run) -> Run:
-        row = await self._session.get(RunRow, run.id)
+        row = await self._session.scalar(
+            select(RunRow)
+            .where(RunRow.id == run.id)
+            .execution_options(populate_existing=True)
+        )
         if row is None:
             return run
         update_run_row(row, run)

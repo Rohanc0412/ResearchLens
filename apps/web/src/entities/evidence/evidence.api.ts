@@ -85,7 +85,10 @@ export function useSourceDetailQuery(sourceId: string) {
   });
 }
 
-export function useEvaluationSummaryQuery(runId: string) {
+export function useEvaluationSummaryQuery(
+  runId: string,
+  options: { enabled?: boolean } = {},
+) {
   const auth = useAuth();
 
   return useQuery({
@@ -99,7 +102,7 @@ export function useEvaluationSummaryQuery(runId: string) {
           }
           throw error;
         }),
-    enabled: auth.status === "authenticated" && Boolean(runId),
+    enabled: auth.status === "authenticated" && Boolean(runId) && (options.enabled ?? true),
   });
 }
 

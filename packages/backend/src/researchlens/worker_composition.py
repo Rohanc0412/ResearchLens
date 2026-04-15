@@ -42,6 +42,10 @@ from researchlens.modules.runs.application.ports import RunCheckpointStore, RunE
 from researchlens.modules.runs.domain import RunStage
 from researchlens.modules.runs.infrastructure import SqlAlchemyRunsRuntime
 from researchlens.modules.runs.infrastructure.queue_backend_db import DbRunQueueBackend
+from researchlens.modules.runs.infrastructure.run_checkpoint_store_sql import (
+    SqlAlchemyRunCheckpointStore,
+)
+from researchlens.modules.runs.infrastructure.run_event_store_sql import SqlAlchemyRunEventStore
 from researchlens.modules.runs.infrastructure.run_repository_sql import SqlAlchemyRunRepository
 from researchlens.modules.runs.infrastructure.runtime import RunsRequestContext
 from researchlens.modules.runs.orchestration import LangGraphRunOrchestrator, RunGraphRuntimeBridge
@@ -103,6 +107,10 @@ def _build_run_orchestrator(
         transaction_manager=transaction_manager,
         clock=UtcRunClock(),
         queue_lease_seconds=settings.queue.lease_seconds,
+        session_factory=session_factory,
+        event_store_factory=SqlAlchemyRunEventStore,
+        checkpoint_store_factory=SqlAlchemyRunCheckpointStore,
+        transaction_manager_factory=SqlAlchemyTransactionManager,
     )
     retrieval_providers = build_provider_registry(settings.retrieval)
     primary_retrieval_provider = retrieval_providers[settings.retrieval.primary_provider]
@@ -182,6 +190,7 @@ def _build_drafting_runtime(
         input_reader=SqlAlchemyDraftingRunInputReader(session),
         repository=SqlAlchemyDraftingRepository(session),
         cancellation_probe=_RunCancellationProbe(session_factory),
+        transaction_manager=SqlAlchemyTransactionManager(session),
         events=bridge.stage_event_sink(state=state, stage=RunStage.DRAFT),  # type: ignore[arg-type]
         checkpoints=bridge.stage_checkpoint_sink(
             state=state, stage=RunStage.DRAFT  # type: ignore[arg-type]
@@ -205,6 +214,7 @@ def _build_evaluation_runtime(
         repository=SqlAlchemyEvaluationRepository(session),
         evaluator=evaluation_evaluator or _build_evaluation_evaluator(settings),
         cancellation_probe=_RunCancellationProbe(session_factory),
+        transaction_manager=SqlAlchemyTransactionManager(session),
         events=bridge.stage_event_sink(state=state, stage=RunStage.EVALUATE),  # type: ignore[arg-type]
         checkpoints=bridge.stage_checkpoint_sink(
             state=state, stage=RunStage.EVALUATE  # type: ignore[arg-type]
@@ -245,6 +255,7 @@ def _build_artifact_export_runtime(
             bundle_reader=SqlAlchemyExportBundleReader(session),
             persist_artifacts=build_persist_export_artifacts(session=session, settings=settings),
         ),
+        transaction_manager=SqlAlchemyTransactionManager(session),
         events=bridge.stage_event_sink(state=state, stage=RunStage.EXPORT),  # type: ignore[arg-type]
         checkpoints=bridge.stage_checkpoint_sink(
             state=state, stage=RunStage.EXPORT  # type: ignore[arg-type]

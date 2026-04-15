@@ -28,7 +28,7 @@ from researchlens.modules.drafting.orchestration import (
 )
 from researchlens.modules.evidence.infrastructure import SqlAlchemyEvidenceQueries
 from researchlens.shared.config import get_settings, reset_settings_cache
-from researchlens.shared.db import DatabaseRuntime
+from researchlens.shared.db import DatabaseRuntime, SqlAlchemyTransactionManager
 
 from .drafting_support import FakeDraftingClient, seed_run_with_retrieval_outputs
 
@@ -137,6 +137,7 @@ async def _draft(session: AsyncSession, run_id: UUID) -> None:
         settings=get_settings(),
         input_reader=SqlAlchemyDraftingRunInputReader(session),
         repository=SqlAlchemyDraftingRepository(session),
+        transaction_manager=SqlAlchemyTransactionManager(session),
         cancellation_probe=_NoCancelProbe(),
         events=_NoopEventWriter(),
         checkpoints=_NoopCheckpointWriter(),

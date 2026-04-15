@@ -108,6 +108,7 @@ def _add_run_edges(graph: StateGraph[RunGraphState]) -> None:
         _route_after_evaluation,
         {
             "repair_subgraph": "repair_subgraph",
+            "artifact_export_subgraph": "artifact_export_subgraph",
             "finalize_run": "finalize_run",
         },
     )
@@ -118,6 +119,7 @@ def _add_run_edges(graph: StateGraph[RunGraphState]) -> None:
             "maybe_reevaluate_repaired_sections_subgraph": (
                 "maybe_reevaluate_repaired_sections_subgraph"
             ),
+            "artifact_export_subgraph": "artifact_export_subgraph",
             "finalize_run": "finalize_run",
         },
     )
@@ -194,12 +196,6 @@ def _run_stage_subgraph(
             stage == RunStage.REPAIR
             and state.get("current_stage") != RunStage.REPAIR.value
             and state["start_stage"] != RunStage.REPAIR.value
-        ):
-            return {}
-        if (
-            stage == RunStage.EXPORT
-            and state.get("current_stage") != RunStage.EXPORT.value
-            and state["start_stage"] != RunStage.EXPORT.value
         ):
             return {}
         if not await bridge.stage_entered(state=state, stage=stage):

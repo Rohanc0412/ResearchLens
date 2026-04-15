@@ -20,6 +20,7 @@ from researchlens.modules.drafting.application.ports import (
     DraftingProgressSink,
     DraftingRepository,
     RunCancellationProbe,
+    TransactionManager,
 )
 from researchlens.modules.drafting.application.prompts import build_section_request
 from researchlens.modules.drafting.application.validation import validate_section_payload
@@ -48,12 +49,14 @@ class DraftingStageSteps:
         repository: DraftingRepository,
         generation_client: DraftingGenerationClient,
         cancellation_probe: RunCancellationProbe,
+        transaction_manager: TransactionManager,
         provider_name: str,
     ) -> None:
         self._settings = settings
         self._repository = repository
         self._generation_client = generation_client
         self._cancellation_probe = cancellation_probe
+        self._transaction_manager = transaction_manager
         self._provider_name = provider_name
         self._cancellation_lock = asyncio.Lock()
 
@@ -66,10 +69,11 @@ class DraftingStageSteps:
         if not draft_input.sections or not draft_input.evidence:
             raise ValidationError("Drafting requires persisted retrieval outputs before drafting.")
         briefs = await self._prepare_briefs(draft_input, progress=progress)
-        await self._repository.replace_section_preparation(
-            run_id=draft_input.run_id,
-            briefs=briefs,
-        )
+        async with self._transaction_manager.boundary():
+            await self._repository.replace_section_preparation(
+                run_id=draft_input.run_id,
+                briefs=briefs,
+            )
         return DraftingPreparationResult(draft_input=draft_input, briefs=briefs)
 
     async def draft_sections(
@@ -107,7 +111,8 @@ class DraftingStageSteps:
             report_title=draft_input.report_title,
             drafts=drafts,
         )
-        await self._repository.replace_report_draft(draft=report)
+        async with self._transaction_manager.boundary():
+            await self._repository.replace_report_draft(draft=report)
         return DraftingRunResult(report_title=report.title, section_count=len(drafts))
 
     async def _prepare_briefs(
@@ -235,7 +240,8 @@ class DraftingStageSteps:
                         model_name=self._generation_client.model,
                     )
                     async with persistence_semaphore:
-                        await self._repository.replace_section_draft(draft=draft)
+                        async with self._transaction_manager.boundary():
+                            await self._repository.replace_section_draft(draft=draft)
                     if progress is not None:
                         await progress.section_completed(section_id=brief.section.section_id)
                     return

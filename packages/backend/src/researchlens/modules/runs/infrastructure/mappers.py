@@ -57,7 +57,6 @@ def update_run_row(row: RunRow, run: Run) -> None:
     row.retry_count = run.retry_count
     row.failure_reason = run.failure_reason
     row.error_code = run.error_code
-    row.last_event_number = run.last_event_number
     row.updated_at = run.updated_at
 
 

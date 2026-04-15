@@ -1,3 +1,4 @@
+import asyncio
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
@@ -24,10 +25,17 @@ class _ClaimOnlyQueueBackend:
     def __init__(self, queue_items: list[RunQueueItem]) -> None:
         self._queue_items = queue_items
         self.claim_calls = 0
+        self.heartbeat_calls = 0
+        self.heartbeat_seen = asyncio.Event()
 
     async def claim_available(self, **kwargs):  # type: ignore[no-untyped-def]
         self.claim_calls += 1
         return self._queue_items
+
+    async def heartbeat(self, **kwargs):  # type: ignore[no-untyped-def]
+        self.heartbeat_calls += 1
+        self.heartbeat_seen.set()
+        return True
 
 
 class _NoopProcessor:
@@ -66,10 +74,20 @@ class _FailingProcessor(_NoopProcessor):
         self.finalized.append((command, reason, error_code))
 
 
+class _BlockingProcessor(_NoopProcessor):
+    def __init__(self) -> None:
+        super().__init__()
+        self.release = asyncio.Event()
+
+    async def execute(self, command: ProcessRunQueueItemCommand) -> None:
+        self.commands.append(command)
+        await self.release.wait()
+
+
 @dataclass
 class _FakeRequestContext:
     transaction_manager: _FakeTransactionManager
-    queue_backend: _ClaimOnlyQueueBackend | None
+    queue_backend: _ClaimOnlyQueueBackend
     process_run_queue_item: _NoopProcessor
 
 
@@ -86,16 +104,9 @@ class _FakeRunsRuntime:
     @asynccontextmanager
     async def request_context(self) -> AsyncIterator[_FakeRequestContext]:
         self.context_entries += 1
-        if self.context_entries == 1:
-            yield _FakeRequestContext(
-                transaction_manager=_FakeTransactionManager(),
-                queue_backend=self._queue_backend,
-                process_run_queue_item=self._processor,
-            )
-            return
         yield _FakeRequestContext(
             transaction_manager=_FakeTransactionManager(),
-            queue_backend=None,
+            queue_backend=self._queue_backend,
             process_run_queue_item=self._processor,
         )
 
@@ -106,6 +117,19 @@ def _settings() -> ResearchLensSettings:
         SimpleNamespace(
             queue=SimpleNamespace(
                 lease_seconds=30,
+                max_attempts=5,
+                batch_size=2,
+            )
+        )
+    )
+
+
+def _settings_with_lease(lease_seconds: int) -> ResearchLensSettings:
+    return cast(
+        ResearchLensSettings,
+        SimpleNamespace(
+            queue=SimpleNamespace(
+                lease_seconds=lease_seconds,
                 max_attempts=5,
                 batch_size=2,
             )
@@ -157,3 +181,18 @@ async def test_poll_worker_once_finalizes_failure_in_fresh_request_context() -> 
     _, reason, error_code = processor.finalized[0]
     assert reason == "boom"
     assert error_code == "RuntimeError"
+
+
+@pytest.mark.asyncio
+async def test_poll_worker_once_heartbeats_while_item_is_processing() -> None:
+    processor = _BlockingProcessor()
+    runtime = _FakeRunsRuntime([_queue_item()], processor=processor)
+    poll_task = asyncio.create_task(
+        poll_worker_once(runs_runtime=runtime, settings=_settings_with_lease(1))
+    )
+
+    await runtime._queue_backend.heartbeat_seen.wait()
+    processor.release.set()
+    await poll_task
+
+    assert runtime._queue_backend.heartbeat_calls >= 1

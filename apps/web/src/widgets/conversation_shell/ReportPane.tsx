@@ -5,13 +5,19 @@ import {
   useEvaluationSummaryQuery,
   useRunEvidenceSummaryQuery,
 } from "../../entities/evidence/evidence.api";
+import { useRunQuery } from "../../entities/run/run.api";
 import { Button } from "../../shared/ui/Button";
 import { Card } from "../../shared/ui/Card";
 import { ErrorBanner } from "../../shared/ui/ErrorBanner";
 
 export function ReportPane({ runId }: { runId?: string | null }) {
+  const run = useRunQuery(runId ?? "");
+  const evaluationReady =
+    run.data?.current_stage === "repair" ||
+    run.data?.current_stage === "export" ||
+    run.data?.status === "succeeded";
   const evidence = useRunEvidenceSummaryQuery(runId ?? "");
-  const evaluation = useEvaluationSummaryQuery(runId ?? "");
+  const evaluation = useEvaluationSummaryQuery(runId ?? "", { enabled: evaluationReady });
   const issues = useEvaluationIssuesQuery(runId ?? "");
 
   if (!runId) {

@@ -13,6 +13,7 @@ from researchlens.modules.evaluation.application.ports import (
     EvaluationRepository,
     RunCancellationProbe,
     SectionGroundingEvaluator,
+    TransactionManager,
 )
 from researchlens.modules.evaluation.orchestration.progress import (
     EvaluationGraphCheckpointSink,
@@ -32,6 +33,7 @@ class EvaluationGraphRuntime:
         repository: EvaluationRepository,
         evaluator: SectionGroundingEvaluator,
         cancellation_probe: RunCancellationProbe,
+        transaction_manager: TransactionManager,
         events: EvaluationGraphEventSink,
         checkpoints: EvaluationGraphCheckpointSink,
     ) -> None:
@@ -47,6 +49,7 @@ class EvaluationGraphRuntime:
             repository=repository,
             evaluator=evaluator,
             cancellation_probe=cancellation_probe,
+            transaction_manager=transaction_manager,
         )
 
     async def load_inputs(

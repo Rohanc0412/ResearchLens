@@ -30,7 +30,11 @@ test-results/
 .idea/
 .vscode/
 .codex/
+.codex-logs/
 
 # OS
 .DS_Store
 Thumbs.db
+
+# Local reference code
+.oldcode/

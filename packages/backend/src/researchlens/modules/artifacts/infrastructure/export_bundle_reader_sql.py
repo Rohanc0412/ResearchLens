@@ -161,11 +161,15 @@ order by snap.source_id asc, c.chunk_index asc
 """
 
 _SOURCES_SQL = """
-select distinct s.id as source_id, s.canonical_key, s.title, s.identifiers_json, s.metadata_json
+with source_ids as (
+    select distinct snap.source_id
+    from retrieval_source_snapshots snap
+    join retrieval_source_chunks c on c.snapshot_id = snap.id
+    join drafting_section_evidence e on e.chunk_id = c.id
+    where e.run_id = :run_id
+)
+select s.id as source_id, s.canonical_key, s.title, s.identifiers_json, s.metadata_json
 from retrieval_sources s
-join retrieval_source_snapshots snap on snap.source_id = s.id
-join retrieval_source_chunks c on c.snapshot_id = snap.id
-join drafting_section_evidence e on e.chunk_id = c.id
-where e.run_id = :run_id
+join source_ids on source_ids.source_id = s.id
 order by s.title asc, s.canonical_key asc
 """

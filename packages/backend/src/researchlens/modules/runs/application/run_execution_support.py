@@ -78,19 +78,25 @@ class RunExecutionMutations:
     async def append_stage_started(self, *, run: Run, stage: RunStage) -> None:
         async with self.transaction_manager.boundary():
             locked_run = await self.run_repository.get_by_id_for_update(run_id=run.id) or run
+            now = self.clock.now()
+            started_run = locked_run.replace_values(
+                current_stage=stage,
+                updated_at=now,
+            )
+            await self.run_repository.save(started_run)
             await self.event_store.append(
-                run_id=locked_run.id,
+                run_id=started_run.id,
                 event_type=RunEventType.STAGE_STARTED,
                 audience=RunEventAudience.PROGRESS,
                 level=RunEventLevel.INFO,
-                status=locked_run.status.value,
+                status=started_run.status.value,
                 stage=stage.value,
                 message=stage_started_message(stage),
-                payload_json={"attempt": locked_run.retry_count + 1},
-                retry_count=locked_run.retry_count,
-                cancel_requested=locked_run.cancel_requested_at is not None,
-                created_at=self.clock.now(),
-                event_key=f"attempt-{locked_run.retry_count}:{stage.value}:started",
+                payload_json={"attempt": started_run.retry_count + 1},
+                retry_count=started_run.retry_count,
+                cancel_requested=started_run.cancel_requested_at is not None,
+                created_at=now,
+                event_key=f"attempt-{started_run.retry_count}:{stage.value}:started",
             )
 
     async def complete_stage(

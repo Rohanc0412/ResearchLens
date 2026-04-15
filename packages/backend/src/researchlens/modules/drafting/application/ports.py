@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 from typing import Protocol
 from uuid import UUID
 
@@ -24,6 +26,12 @@ class DraftingRepository(Protocol):
     async def list_persisted_section_drafts(self, *, run_id: UUID) -> tuple[SectionDraft, ...]: ...
 
     async def replace_report_draft(self, *, draft: ReportDraft) -> None: ...
+
+
+class TransactionManager(Protocol):
+    @asynccontextmanager
+    async def boundary(self) -> AsyncIterator[None]:
+        yield
 
 
 class DraftingGenerationClient(Protocol):

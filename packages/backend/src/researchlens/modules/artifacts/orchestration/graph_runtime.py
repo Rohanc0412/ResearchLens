@@ -1,6 +1,7 @@
 from uuid import UUID
 
 from researchlens.modules.artifacts.application import ExportReportResult, ExportReportUseCase
+from researchlens.modules.artifacts.application.ports import TransactionManager
 from researchlens.modules.artifacts.orchestration.progress import (
     ArtifactExportCheckpointSink,
     ArtifactExportEventSink,
@@ -12,10 +13,12 @@ class ArtifactExportGraphRuntime:
         self,
         *,
         export_report: ExportReportUseCase,
+        transaction_manager: TransactionManager,
         events: ArtifactExportEventSink,
         checkpoints: ArtifactExportCheckpointSink,
     ) -> None:
         self._export_report = export_report
+        self._transaction_manager = transaction_manager
         self._events = events
         self._checkpoints = checkpoints
 
@@ -26,7 +29,8 @@ class ArtifactExportGraphRuntime:
         completed_stages: tuple[str, ...],
     ) -> ExportReportResult:
         await self._events.info(key="export.started", message="Artifact export started", payload={})
-        result = await self._export_report.execute(run_id=run_id)
+        async with self._transaction_manager.boundary():
+            result = await self._export_report.execute(run_id=run_id)
         summary = {
             "artifact_ids": [str(item) for item in result.artifact_ids],
             "artifact_count": result.artifact_count,
