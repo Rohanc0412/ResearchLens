@@ -37,4 +37,4 @@ test-results/
 Thumbs.db
 
 # Local reference code
-.oldcode/
+.oldcode/**
