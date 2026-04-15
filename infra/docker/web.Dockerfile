@@ -8,4 +8,4 @@ COPY . .
 
 RUN pnpm install --frozen-lockfile=false
 
-CMD ["pnpm", "--filter", "web", "dev", "--host", "0.0.0.0"]
+CMD ["pnpm", "--filter", "web", "dev", "--host", "0.0.0.0", "--port", "4273"]

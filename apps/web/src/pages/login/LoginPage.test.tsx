@@ -36,10 +36,12 @@ test("switches auth modes and shows matching fields", async () => {
     </QueryClientProvider>,
   );
 
-  await userEvent.setup().click(screen.getByRole("button", { name: "Register" }));
+  await userEvent.setup().click(screen.getByRole("button", { name: "Create one" }));
   expect(screen.getByLabelText("Username")).toBeInTheDocument();
   expect(screen.getByLabelText("Email")).toBeInTheDocument();
 
-  await userEvent.setup().click(screen.getByRole("button", { name: "Reset confirm" }));
+  await userEvent.setup().click(screen.getByRole("button", { name: "Back to sign in" }));
+  await userEvent.setup().click(screen.getByRole("button", { name: "Forgot password?" }));
+  await userEvent.setup().click(screen.getByRole("button", { name: "Have a reset token?" }));
   expect(screen.getByLabelText("Reset token")).toBeInTheDocument();
 });

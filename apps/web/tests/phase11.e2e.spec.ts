@@ -19,7 +19,7 @@ async function json(route: Parameters<Parameters<typeof test>[1]>[0]["route"], b
 test("login, session restore, and logout", async ({ page }) => {
   let refreshCount = 0;
 
-  await page.route("http://127.0.0.1:8000/auth/refresh", async (route) => {
+  await page.route("http://127.0.0.1:8017/auth/refresh", async (route) => {
     refreshCount += 1;
     if (refreshCount === 1) {
       await json(route, { detail: "No session", code: "authentication_error" }, 401);
@@ -32,7 +32,7 @@ test("login, session restore, and logout", async ({ page }) => {
       user,
     });
   });
-  await page.route("http://127.0.0.1:8000/auth/login", async (route) => {
+  await page.route("http://127.0.0.1:8017/auth/login", async (route) => {
     await json(route, {
       access_token: "token-login",
       token_type: "bearer",
@@ -40,10 +40,10 @@ test("login, session restore, and logout", async ({ page }) => {
       user,
     });
   });
-  await page.route("http://127.0.0.1:8000/auth/logout", async (route) => {
+  await page.route("http://127.0.0.1:8017/auth/logout", async (route) => {
     await json(route, { status: "ok" });
   });
-  await page.route("http://127.0.0.1:8000/projects", async (route) => {
+  await page.route("http://127.0.0.1:8017/projects", async (route) => {
     await json(route, [
       {
         id: "project-1",
@@ -72,7 +72,7 @@ test("login, session restore, and logout", async ({ page }) => {
 });
 
 test("conversation flow, live run progress, and artifacts", async ({ page }) => {
-  await page.route("http://127.0.0.1:8000/auth/refresh", async (route) => {
+  await page.route("http://127.0.0.1:8017/auth/refresh", async (route) => {
     await json(route, {
       access_token: "token-1",
       token_type: "bearer",
@@ -80,7 +80,7 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
       user,
     });
   });
-  await page.route("http://127.0.0.1:8000/projects", async (route) => {
+  await page.route("http://127.0.0.1:8017/projects", async (route) => {
     await json(route, [
       {
         id: "project-1",
@@ -93,10 +93,10 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
       },
     ]);
   });
-  await page.route(/http:\/\/127\.0\.0\.1:8000\/projects\/project-1\/conversations(\?.*)?$/, async (route) => {
+  await page.route(/http:\/\/127\.0\.0\.1:8017\/projects\/project-1\/conversations(\?.*)?$/, async (route) => {
     await json(route, { items: [], next_cursor: null });
   });
-  await page.route("http://127.0.0.1:8000/conversations/conversation-1", async (route) => {
+  await page.route("http://127.0.0.1:8017/conversations/conversation-1", async (route) => {
     await json(route, {
       id: "conversation-1",
       tenant_id: "tenant-1",
@@ -108,7 +108,7 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
       last_message_at: "2026-04-13T10:05:00Z",
     });
   });
-  await page.route("http://127.0.0.1:8000/conversations/conversation-1/messages", async (route) => {
+  await page.route("http://127.0.0.1:8017/conversations/conversation-1/messages", async (route) => {
     if (route.request().method() === "GET") {
       await json(route, [
         {
@@ -141,7 +141,7 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
       idempotent_replay: false,
     }, 201);
   });
-  await page.route("http://127.0.0.1:8000/conversations/conversation-1/runs", async (route) => {
+  await page.route("http://127.0.0.1:8017/conversations/conversation-1/runs", async (route) => {
     await json(route, {
       run: {
         id: "run-1",
@@ -168,7 +168,7 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
       idempotent_replay: false,
     }, 201);
   });
-  await page.route("http://127.0.0.1:8000/runs/run-1", async (route) => {
+  await page.route("http://127.0.0.1:8017/runs/run-1", async (route) => {
     await json(route, {
       id: "run-1",
       project_id: "project-1",
@@ -192,7 +192,7 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
       can_retry: true,
     });
   });
-  await page.route(/http:\/\/127\.0\.0\.1:8000\/runs\/run-1\/events(\?.*)?$/, async (route) => {
+  await page.route(/http:\/\/127\.0\.0\.1:8017\/runs\/run-1\/events(\?.*)?$/, async (route) => {
     if (route.request().headers()["accept"]?.includes("text/event-stream")) {
       await route.fulfill({
         status: 200,
@@ -206,7 +206,7 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
 
     await json(route, []);
   });
-  await page.route("http://127.0.0.1:8000/runs/run-1/artifacts", async (route) => {
+  await page.route("http://127.0.0.1:8017/runs/run-1/artifacts", async (route) => {
     await json(route, [
       {
         id: "artifact-1",
@@ -222,7 +222,7 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
       },
     ]);
   });
-  await page.route("http://127.0.0.1:8000/runs/run-1/evidence", async (route) => {
+  await page.route("http://127.0.0.1:8017/runs/run-1/evidence", async (route) => {
     await json(route, {
       run_id: "run-1",
       project_id: "project-1",
@@ -248,7 +248,7 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
       ],
     });
   });
-  await page.route("http://127.0.0.1:8000/runs/run-1/evidence/sections/overview", async (route) => {
+  await page.route("http://127.0.0.1:8017/runs/run-1/evidence/sections/overview", async (route) => {
     await json(route, {
       section_id: "overview",
       section_title: "Overview",
@@ -273,7 +273,7 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
       unresolved_quality_findings: [],
     });
   });
-  await page.route("http://127.0.0.1:8000/runs/run-1/evaluation", async (route) => {
+  await page.route("http://127.0.0.1:8017/runs/run-1/evaluation", async (route) => {
     await json(route, {
       evaluation_pass_id: "eval-1",
       section_count: 1,
@@ -289,13 +289,13 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
       sections_requiring_repair: [],
     });
   });
-  await page.route(/http:\/\/127\.0\.0\.1:8000\/runs\/run-1\/evaluation\/issues(\?.*)?$/, async (route) => {
+  await page.route(/http:\/\/127\.0\.0\.1:8017\/runs\/run-1\/evaluation\/issues(\?.*)?$/, async (route) => {
     await json(route, []);
   });
-  await page.route("http://127.0.0.1:8000/runs/run-1/repair", async (route) => {
+  await page.route("http://127.0.0.1:8017/runs/run-1/repair", async (route) => {
     await json(route, null);
   });
-  await page.route("http://127.0.0.1:8000/artifacts/artifact-1/download", async (route) => {
+  await page.route("http://127.0.0.1:8017/artifacts/artifact-1/download", async (route) => {
     await route.fulfill({
       status: 200,
       headers: {
@@ -321,7 +321,7 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
 test("auth expiration redirects back to login", async ({ page }) => {
   let refreshCount = 0;
 
-  await page.route("http://127.0.0.1:8000/auth/refresh", async (route) => {
+  await page.route("http://127.0.0.1:8017/auth/refresh", async (route) => {
     refreshCount += 1;
     if (refreshCount === 1) {
       await json(route, {
@@ -335,7 +335,7 @@ test("auth expiration redirects back to login", async ({ page }) => {
 
     await json(route, { detail: "Expired", code: "authentication_error" }, 401);
   });
-  await page.route("http://127.0.0.1:8000/projects", async (route) => {
+  await page.route("http://127.0.0.1:8017/projects", async (route) => {
     await json(route, { detail: "Expired", code: "authentication_error" }, 401);
   });
 

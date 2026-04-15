@@ -7,7 +7,7 @@ For local and dev execution, Doppler is the runtime source of truth for both sec
 Recommended Doppler split:
 
 - `dev` for host-mode local execution
-- `compose-dev` for Docker Compose execution
+- `dev_compose` for Docker Compose execution
 
 That split keeps host-specific values such as `DATABASE_URL=...@localhost` separate from compose-safe values such as `DATABASE_URL=...@postgres` and `APP_API_HOST=0.0.0.0`.
 
@@ -37,13 +37,13 @@ Phase 11 adds one frontend runtime setting:
 Default local host-mode value:
 
 ```bash
-VITE_API_BASE_URL=http://127.0.0.1:8000
+VITE_API_BASE_URL=http://127.0.0.1:8017
 ```
 
 Required local browser settings:
 
 ```bash
-APP_CORS_ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173
+APP_CORS_ALLOWED_ORIGINS=http://127.0.0.1:4273,http://localhost:4273
 AUTH_REFRESH_COOKIE_SECURE=false
 ```
 
@@ -72,7 +72,7 @@ For compose-backed local development, set these values in the compose-specific D
 ```bash
 APP_API_HOST=0.0.0.0
 DATABASE_URL=postgresql+psycopg://researchlens:researchlens@postgres:5432/researchlens
-VITE_API_BASE_URL=http://127.0.0.1:8000
+VITE_API_BASE_URL=http://127.0.0.1:8017
 ```
 
 ## Generated client workflow

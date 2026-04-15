@@ -89,14 +89,14 @@ def test_drafting_validation_rejects_max_words_below_min_words() -> None:
 def test_app_settings_parse_cors_allowed_origins_csv(monkeypatch: MonkeyPatch) -> None:
     monkeypatch.setenv(
         "APP_CORS_ALLOWED_ORIGINS",
-        "http://127.0.0.1:4173, http://localhost:4173",
+        "http://127.0.0.1:4273, http://localhost:4273",
     )
 
     settings = get_settings()
 
     assert settings.app.cors_allowed_origins == (
-        "http://127.0.0.1:4173",
-        "http://localhost:4173",
+        "http://127.0.0.1:4273",
+        "http://localhost:4273",
     )
 
 

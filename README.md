@@ -38,15 +38,15 @@ If Doppler and `.env.example` disagree, Doppler wins for local/dev runtime behav
 
 Recommended local Doppler configs:
 
-- `dev`: host-mode execution, for example `DATABASE_URL=...@localhost:5432/...`
-- `compose-dev`: compose execution, for example `DATABASE_URL=...@postgres:5432/...` and `APP_API_HOST=0.0.0.0`
+- `dev`: host-mode execution, for example `DATABASE_URL=...@localhost:5547/...`
+- `dev_compose`: compose execution, for example `DATABASE_URL=...@postgres:5432/...` and `APP_API_HOST=0.0.0.0`
 
 Required browser-local values in Doppler:
 
 ```bash
-APP_CORS_ALLOWED_ORIGINS=http://127.0.0.1:4173,http://localhost:4173
+APP_CORS_ALLOWED_ORIGINS=http://127.0.0.1:4273,http://localhost:4273
 AUTH_REFRESH_COOKIE_SECURE=false
-VITE_API_BASE_URL=http://127.0.0.1:8000
+VITE_API_BASE_URL=http://127.0.0.1:8017
 ```
 
 ## Key commands
@@ -63,7 +63,7 @@ doppler run --config dev -- python -m uv run --package researchlens-backend alem
 Compose:
 
 ```bash
-doppler run --config compose-dev -- docker compose -f infra/compose/docker-compose.dev.yml up --build
+doppler run --config dev_compose -- docker compose -f infra/compose/docker-compose.dev.yml up --build
 ```
 
 The compose config must be container-safe. In particular, `DATABASE_URL` must target `postgres`, not `localhost`, and `APP_API_HOST` must be `0.0.0.0`.
@@ -72,7 +72,7 @@ Frontend:
 
 ```bash
 corepack pnpm --filter @researchlens/api-client run generate
-doppler run --config dev -- corepack pnpm --filter web dev --host 127.0.0.1 --port 4173
+doppler run --config dev -- corepack pnpm --filter web dev --host 127.0.0.1 --port 4273
 corepack pnpm --filter web lint
 corepack pnpm --filter web typecheck
 corepack pnpm --filter web test

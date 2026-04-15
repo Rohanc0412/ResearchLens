@@ -145,7 +145,7 @@ services:
       timeout: 5s
       retries: 10
     ports:
-      - "5432:5432"
+      - "5547:5432"
 
   api:
     build:
@@ -156,7 +156,7 @@ services:
         condition: service_healthy
     environment: *backend_env
     ports:
-      - "8000:8000"
+      - "8017:8017"
 
   worker:
     build:
@@ -173,7 +173,7 @@ services:
       dockerfile: infra/docker/web.Dockerfile
     environment: *web_env
     ports:
-      - "4173:5173"
+      - "4273:4273"
 
   tests:
     build:
