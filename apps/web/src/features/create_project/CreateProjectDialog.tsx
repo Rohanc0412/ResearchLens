@@ -33,16 +33,21 @@ export function CreateProjectDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title="Create a project"
-      description="Projects group conversations, runs, evidence, and artifacts."
+      title="New Project"
     >
       <div className="stack">
         {createProject.error ? (
           <ErrorBanner body={getErrorMessage(createProject.error)} />
         ) : null}
-        <Input label="Project name" value={name} onChange={(event) => setName(event.target.value)} />
+        <Input
+          label="Name"
+          placeholder="e.g. Market landscape: LLM evaluation"
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+        />
         <Textarea
-          label="Description"
+          label="Description (optional)"
+          placeholder="What is this project about?"
           rows={4}
           value={description}
           onChange={(event) => setDescription(event.target.value)}

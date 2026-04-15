@@ -62,13 +62,13 @@ test("login, session restore, and logout", async ({ page }) => {
   await page.getByLabel("Password").fill("CorrectHorse1!");
   await page.getByRole("button", { name: "Sign in" }).click();
 
-  await expect(page.getByText("Research workspace")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText("Research workspace")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Projects" })).toBeVisible();
 
   await page.getByRole("button", { name: "Logout" }).click();
-  await expect(page.getByText("Obsidian session access")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
 });
 
 test("conversation flow, live run progress, and artifacts", async ({ page }) => {
@@ -340,5 +340,5 @@ test("auth expiration redirects back to login", async ({ page }) => {
   });
 
   await page.goto("/projects");
-  await expect(page.getByText("Obsidian session access")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
 });
