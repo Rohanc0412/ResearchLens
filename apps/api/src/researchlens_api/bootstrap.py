@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from researchlens.modules.artifacts.infrastructure import SqlAlchemyArtifactsRuntime
 from researchlens.modules.auth.infrastructure import SqlAlchemyAuthRuntime
 from researchlens.modules.conversations.infrastructure import SqlAlchemyConversationsRuntime
+from researchlens.modules.conversations.infrastructure.chat_llm_adapter import ChatLlmAdapter
+from researchlens.modules.conversations.infrastructure.web_search_adapter import WebSearchAdapter
 from researchlens.modules.evaluation.infrastructure import SqlAlchemyEvaluationRuntime
 from researchlens.modules.evidence.infrastructure import SqlAlchemyEvidenceRuntime
 from researchlens.modules.projects.infrastructure import SqlAlchemyProjectsRuntime
@@ -30,6 +32,17 @@ class ApiBootstrapState:
     runs_runtime: SqlAlchemyRunsRuntime
 
 
+def _build_chat_llm(settings: ResearchLensSettings) -> ChatLlmAdapter | None:
+    if settings.llm.provider == "disabled" or not settings.llm.api_key:
+        return None
+    return ChatLlmAdapter(
+        api_key=settings.llm.api_key,
+        model=settings.llm.model,
+        base_url=settings.llm.base_url or "https://api.openai.com/v1",
+        timeout_seconds=settings.llm.timeout_seconds,
+    )
+
+
 def build_api_bootstrap_state() -> ApiBootstrapState:
     settings = get_settings()
     configure_logging(
@@ -52,7 +65,11 @@ def build_api_bootstrap_state() -> ApiBootstrapState:
             settings=settings,
         ),
         artifacts_runtime=SqlAlchemyArtifactsRuntime(database.session_factory, settings),
-        conversations_runtime=SqlAlchemyConversationsRuntime(database.session_factory),
+        conversations_runtime=SqlAlchemyConversationsRuntime(
+            database.session_factory,
+            llm_adapter=_build_chat_llm(settings),
+            web_search=WebSearchAdapter(),
+        ),
         evidence_runtime=SqlAlchemyEvidenceRuntime(database.session_factory),
         evaluation_runtime=SqlAlchemyEvaluationRuntime(database.session_factory),
         projects_runtime=SqlAlchemyProjectsRuntime(database.session_factory),

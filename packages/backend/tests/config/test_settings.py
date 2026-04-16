@@ -125,6 +125,22 @@ def test_validation_rejects_wildcard_cors_allowlist() -> None:
         validate_settings(settings)
 
 
+def test_validation_rejects_wrong_compose_postgres_port() -> None:
+    settings = _settings(RetrievalSettings())
+    settings = settings.model_copy(
+        update={
+            "database": settings.database.model_copy(
+                update={
+                    "url": "postgresql+psycopg://researchlens:researchlens@postgres:5643/researchlens"
+                }
+            ),
+        }
+    )
+
+    with pytest.raises(InvalidSettingsError, match="postgres:5432"):
+        validate_settings(settings)
+
+
 def _settings(
     retrieval: RetrievalSettings,
     drafting: DraftingSettings | None = None,

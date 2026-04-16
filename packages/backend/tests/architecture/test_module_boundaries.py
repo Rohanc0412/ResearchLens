@@ -13,6 +13,19 @@ MODULE_NAMES = {
     "evidence",
     "artifacts",
 }
+BACKEND_MODULE_ROOT = Path("packages/backend/src/researchlens/modules")
+PYTHON_SOURCE_ROOTS = (
+    Path("apps/api/src"),
+    Path("apps/worker/src"),
+    Path("packages/backend/src"),
+)
+TYPESCRIPT_SOURCE_ROOTS = (
+    Path("apps/web/src"),
+    Path("packages/ui/src"),
+)
+REQUIRED_LAYER_NAMES = {"domain", "application", "infrastructure", "presentation"}
+MODULES_WITH_ORCHESTRATION = {"runs", "retrieval", "drafting", "evaluation", "repair", "artifacts"}
+DISALLOWED_GENERIC_FILE_STEMS = {"utils", "helpers", "manager", "common"}
 
 
 def _owner_module_name(path: Path) -> str:
@@ -34,10 +47,39 @@ def _iter_import_targets(file_path: Path) -> list[str]:
     return imports
 
 
-def test_backend_modules_do_not_cross_import_each_other() -> None:
-    root = Path("packages/backend/src/researchlens/modules")
+def _iter_python_source_files() -> list[Path]:
+    files: list[Path] = []
+    for root in PYTHON_SOURCE_ROOTS:
+        files.extend(root.rglob("*.py"))
+    return files
 
-    for file_path in root.rglob("*.py"):
+
+def _iter_typescript_source_files() -> list[Path]:
+    files: list[Path] = []
+    for root in TYPESCRIPT_SOURCE_ROOTS:
+        files.extend(root.rglob("*.ts"))
+        files.extend(root.rglob("*.tsx"))
+    return files
+
+
+def test_backend_modules_define_required_layers() -> None:
+    for module_path in BACKEND_MODULE_ROOT.iterdir():
+        if not module_path.is_dir():
+            continue
+        layers = {
+            path.name
+            for path in module_path.iterdir()
+            if path.is_dir() and not path.name.startswith("__")
+        }
+        assert REQUIRED_LAYER_NAMES <= layers, f"{module_path} missing required layers"
+        if module_path.name in MODULES_WITH_ORCHESTRATION:
+            assert "orchestration" in layers, f"{module_path} missing orchestration"
+        else:
+            assert "orchestration" not in layers, f"{module_path} should not define orchestration"
+
+
+def test_backend_modules_do_not_cross_import_each_other() -> None:
+    for file_path in BACKEND_MODULE_ROOT.rglob("*.py"):
         owner = _owner_module_name(file_path)
         allow_runs_orchestration = (
             owner == "runs"
@@ -76,7 +118,7 @@ def test_app_entrypoints_do_not_import_business_modules() -> None:
 
 
 def test_domain_layers_do_not_import_framework_or_infrastructure_modules() -> None:
-    for file_path in Path("packages/backend/src/researchlens/modules").rglob("domain/*.py"):
+    for file_path in BACKEND_MODULE_ROOT.rglob("domain/*.py"):
         for target in _iter_import_targets(file_path):
             assert not target.startswith("fastapi")
             assert not target.startswith("sqlalchemy.orm")
@@ -86,7 +128,7 @@ def test_domain_layers_do_not_import_framework_or_infrastructure_modules() -> No
 
 
 def test_presentation_layers_do_not_reach_into_infrastructure() -> None:
-    for file_path in Path("packages/backend/src/researchlens/modules").rglob("presentation/*.py"):
+    for file_path in BACKEND_MODULE_ROOT.rglob("presentation/*.py"):
         for target in _iter_import_targets(file_path):
             assert ".infrastructure" not in target
             assert not target.startswith("sqlalchemy")
@@ -100,8 +142,7 @@ def test_projects_application_does_not_import_sqlalchemy() -> None:
 
 
 def test_application_layers_do_not_import_module_infrastructure() -> None:
-    root = Path("packages/backend/src/researchlens/modules")
-    for file_path in root.rglob("application/*.py"):
+    for file_path in BACKEND_MODULE_ROOT.rglob("application/*.py"):
         owner = _owner_module_name(file_path)
         forbidden = f"researchlens.modules.{owner}.infrastructure"
         for target in _iter_import_targets(file_path):
@@ -109,17 +150,28 @@ def test_application_layers_do_not_import_module_infrastructure() -> None:
 
 
 def test_orchestration_layers_do_not_import_module_infrastructure() -> None:
-    root = Path("packages/backend/src/researchlens/modules")
-    for file_path in root.rglob("orchestration/*.py"):
+    for file_path in BACKEND_MODULE_ROOT.rglob("orchestration/*.py"):
         owner = _owner_module_name(file_path)
         forbidden = f"researchlens.modules.{owner}.infrastructure"
         for target in _iter_import_targets(file_path):
             assert not target.startswith(forbidden)
 
 
+def test_python_production_imports_are_absolute() -> None:
+    for file_path in _iter_python_source_files():
+        tree = ast.parse(file_path.read_text(encoding="utf-8"))
+        for node in ast.walk(tree):
+            if isinstance(node, ast.ImportFrom):
+                assert node.level == 0, f"{file_path} uses relative import"
+
+
+def test_production_files_avoid_generic_dumping_ground_names() -> None:
+    for file_path in [*_iter_python_source_files(), *_iter_typescript_source_files()]:
+        assert file_path.stem not in DISALLOWED_GENERIC_FILE_STEMS, f"{file_path} has vague name"
+
+
 def test_python_production_files_stay_under_hard_size_caps() -> None:
-    root = Path("packages/backend/src")
-    for file_path in root.rglob("*.py"):
+    for file_path in Path("packages/backend/src").rglob("*.py"):
         line_count = len(file_path.read_text(encoding="utf-8").splitlines())
         assert line_count <= 300, f"{file_path} has {line_count} lines"
 
@@ -134,3 +186,9 @@ def test_python_production_functions_stay_under_hard_size_caps() -> None:
                 end_line = getattr(node, "end_lineno", start_line)
                 line_count = end_line - start_line + 1
                 assert line_count <= 60, f"{file_path}:{node.name} has {line_count} lines"
+
+
+def test_typescript_production_files_stay_under_hard_size_caps() -> None:
+    for file_path in _iter_typescript_source_files():
+        line_count = len(file_path.read_text(encoding="utf-8").splitlines())
+        assert line_count <= 280, f"{file_path} has {line_count} lines"

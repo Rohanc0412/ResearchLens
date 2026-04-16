@@ -7,6 +7,7 @@ from sqlalchemy.engine import Connection
 from researchlens.modules.artifacts.presentation import router as artifacts_router
 from researchlens.modules.auth.presentation import router as auth_router
 from researchlens.modules.conversations.presentation import (
+    chat_router,
     conversation_router,
     message_router,
 )
@@ -72,6 +73,7 @@ def create_app() -> FastAPI:
     app.include_router(projects_router)
     app.include_router(conversation_router)
     app.include_router(message_router)
+    app.include_router(chat_router)
     app.include_router(runs_router)
     app.include_router(evaluation_router)
     app.include_router(repair_router)

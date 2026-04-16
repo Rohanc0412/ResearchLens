@@ -2,6 +2,10 @@ from researchlens.modules.conversations.application.commands.create_conversation
     CreateConversationCommand,
     CreateConversationUseCase,
 )
+from researchlens.modules.conversations.application.commands.send_chat_message import (
+    SendChatMessageCommand,
+    SendChatMessageUseCase,
+)
 from researchlens.modules.conversations.application.commands.delete_conversation import (
     DeleteConversationCommand,
     DeleteConversationUseCase,
@@ -19,6 +23,9 @@ from researchlens.modules.conversations.application.commands.update_conversation
     UpdateConversationUseCase,
 )
 from researchlens.modules.conversations.application.dto import (
+    ChatSendImmediateResult,
+    ChatSendResult,
+    ChatSendStreamContext,
     ConversationListPage,
     ConversationView,
     MessageView,
@@ -43,10 +50,15 @@ from researchlens.modules.conversations.application.queries.list_messages import
 )
 
 __all__ = [
+    "ChatSendImmediateResult",
+    "ChatSendResult",
+    "ChatSendStreamContext",
     "ConversationListPage",
     "ConversationView",
     "CreateConversationCommand",
     "CreateConversationUseCase",
+    "SendChatMessageCommand",
+    "SendChatMessageUseCase",
     "DeleteConversationCommand",
     "DeleteConversationUseCase",
     "GetConversationQuery",

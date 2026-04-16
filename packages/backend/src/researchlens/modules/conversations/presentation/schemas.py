@@ -69,6 +69,37 @@ class MessageWriteResponse(MessageResponse):
     model_config = ConfigDict(extra="forbid", from_attributes=True)
 
 
+class ChatSendRequest(BaseModel):
+    message: str
+    client_message_id: str
+    llm_model: str | None = None
+    force_pipeline: bool = False
+
+    model_config = ConfigDict(extra="forbid")
+
+
+class ChatMessageView(BaseModel):
+    id: UUID
+    role: str
+    type: str
+    content_text: str | None
+    content_json: dict[str, Any] | list[Any] | None
+    created_at: datetime
+    client_message_id: str | None
+
+    model_config = ConfigDict(extra="forbid", from_attributes=True)
+
+
+class ChatSendResponse(BaseModel):
+    conversation_id: UUID
+    user_message: ChatMessageView | None
+    assistant_message: ChatMessageView | None
+    pending_action: dict[str, Any] | None
+    idempotent_replay: bool
+
+    model_config = ConfigDict(extra="forbid")
+
+
 class RecordRunTriggerRequest(BaseModel):
     source_message_id: UUID | None = None
     request_text: str

@@ -70,6 +70,15 @@ class MessageRepository(Protocol):
         conversation_id: UUID,
     ) -> list[Message]: ...
 
+    async def list_recent_chat(
+        self,
+        *,
+        tenant_id: UUID,
+        conversation_id: UUID,
+        limit: int,
+        exclude_message_id: UUID | None = None,
+    ) -> list[Message]: ...
+
 
 class RunTriggerRepository(Protocol):
     async def add(self, trigger: RunTrigger) -> RunTrigger: ...

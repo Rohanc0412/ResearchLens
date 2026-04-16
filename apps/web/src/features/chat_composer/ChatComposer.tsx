@@ -1,0 +1,130 @@
+import type { KeyboardEvent } from "react";
+
+import {
+  CUSTOM_MODEL_VALUE,
+  MODEL_OPTIONS,
+  QUICK_ACTIONS,
+} from "./chatComposer.constants";
+
+type ChatComposerProps = {
+  draft: string;
+  isTyping: boolean;
+  runPipelineArmed: boolean;
+  selectedModel: string;
+  customModel: string;
+  onDraftChange: (value: string) => void;
+  onSend: () => void;
+  onQuickAction: (action: string) => void;
+  onTogglePipeline: () => void;
+  onModelChange: (value: string) => void;
+  onCustomModelChange: (value: string) => void;
+};
+
+export function ChatComposer({
+  draft,
+  isTyping,
+  runPipelineArmed,
+  selectedModel,
+  customModel,
+  onDraftChange,
+  onSend,
+  onQuickAction,
+  onTogglePipeline,
+  onModelChange,
+  onCustomModelChange,
+}: ChatComposerProps) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      onSend();
+    }
+  };
+
+  return (
+    <>
+      <div className="flex flex-wrap gap-2 px-6 pb-3">
+        {QUICK_ACTIONS.map((action) => (
+          <button
+            key={action}
+            onClick={() => onQuickAction(action)}
+            disabled={isTyping}
+            className="rounded-full border border-slate-700 bg-slate-900 px-3.5 py-2 text-xs text-slate-400 transition-colors hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {action}
+          </button>
+        ))}
+      </div>
+
+      <div className="border-t border-slate-800 px-6 py-4">
+        <div className="mb-3 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+          <span>LLM model</span>
+          <div className="flex flex-1 flex-wrap items-center gap-2">
+            <select
+              value={selectedModel}
+              onChange={(event) => onModelChange(event.target.value)}
+              aria-label="LLM model"
+              className="min-w-[200px] rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200 focus:border-emerald-500/50 focus:outline-none"
+            >
+              {MODEL_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {selectedModel === CUSTOM_MODEL_VALUE ? (
+              <input
+                value={customModel}
+                onChange={(event) => onCustomModelChange(event.target.value)}
+                placeholder="Enter model id"
+                aria-label="Custom model ID"
+                className="min-w-[200px] flex-1 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200 focus:border-emerald-500/50 focus:outline-none"
+              />
+            ) : null}
+          </div>
+          <button
+            type="button"
+            aria-pressed={runPipelineArmed}
+            onClick={onTogglePipeline}
+            className={`rounded-full border px-3.5 py-2 text-xs transition-colors ${
+              runPipelineArmed
+                ? "border-emerald-500/60 bg-emerald-500/20 text-emerald-200"
+                : "border-slate-700 bg-slate-900 text-slate-400 hover:border-emerald-500/30 hover:text-emerald-300"
+            }`}
+          >
+            Run research report
+          </button>
+        </div>
+
+        <div className="flex items-end gap-3">
+          <textarea
+            value={draft}
+            onChange={(event) => onDraftChange(event.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              runPipelineArmed
+                ? "Describe your research topic — report will run on send..."
+                : "Ask a question or request a report..."
+            }
+            aria-label="Message input"
+            rows={1}
+            className="flex-1 resize-none rounded-xl border border-slate-700 bg-slate-900 px-4 py-3.5 text-sm text-slate-200 outline-none transition-colors focus:border-emerald-500/50"
+          />
+          <button
+            onClick={onSend}
+            disabled={!draft.trim() || isTyping}
+            aria-label="Send message"
+            className={`flex h-12 w-12 items-center justify-center rounded-xl transition-colors ${
+              draft.trim() && !isTyping
+                ? "bg-emerald-500 text-slate-900 hover:bg-emerald-400"
+                : "cursor-not-allowed bg-emerald-500/30 text-slate-500"
+            }`}
+          >
+            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+              <path d="M3.4 20.4 22 12 3.4 3.6l.1 6.5L15 12 3.5 13.9l-.1 6.5Z" />
+            </svg>
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}

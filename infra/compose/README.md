@@ -6,6 +6,8 @@ Compose is Doppler-first. Checked-in files do not provide runtime authority for 
 
 If Doppler and `.env.example` disagree, Doppler wins.
 
+Compose startup now includes a one-shot `migrate` service. `api` and `worker` wait for that Alembic upgrade to complete before starting.
+
 Use a compose-specific Doppler config, for example `dev_compose`, so container networking values stay correct:
 
 ```bash
@@ -23,6 +25,8 @@ AUTH_REFRESH_COOKIE_SECURE=false
 DATABASE_URL=postgresql+psycopg://researchlens:researchlens@postgres:5432/researchlens
 VITE_API_BASE_URL=http://127.0.0.1:8017
 ```
+
+`DATABASE_URL` must use `postgres:5432` inside compose. `5547` is the host-exposed port for tools running on your machine, not for containers talking to each other.
 
 Expected ports and URLs:
 

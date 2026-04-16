@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 
 import { useProjectsQuery } from "../../entities/project/project.api";
 import { CreateProjectDialog } from "../../features/create_project/CreateProjectDialog";
@@ -9,11 +9,14 @@ import { Page } from "../../shared/ui/Page";
 
 export function ProjectsPage() {
   const projects = useProjectsQuery();
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [search, setSearch] = useState("");
+  const dialogOpen = searchParams.get("new") === "1";
   const visibleProjects = (projects.data ?? []).filter((project) =>
     `${project.name} ${project.description ?? ""}`.toLowerCase().includes(search.toLowerCase()),
   );
+  const openDialog = () => setSearchParams({ new: "1" });
+  const closeDialog = () => setSearchParams({});
 
   return (
     <Page
@@ -21,7 +24,7 @@ export function ProjectsPage() {
       title="Projects"
       subtitle="Create and manage research projects."
       actions={
-        <Button variant="primary" onClick={() => setDialogOpen(true)}>
+        <Button variant="primary" onClick={openDialog}>
           <span aria-hidden="true">+</span>
           New Project
         </Button>
@@ -48,7 +51,7 @@ export function ProjectsPage() {
           title="No projects yet"
           body="Create your first project to start research runs."
           action={
-            <Button variant="primary" onClick={() => setDialogOpen(true)}>
+            <Button variant="primary" onClick={openDialog}>
               <span aria-hidden="true">+</span>
               New Project
             </Button>
@@ -85,7 +88,7 @@ export function ProjectsPage() {
           </div>
         </div>
       )}
-      <CreateProjectDialog open={dialogOpen} onClose={() => setDialogOpen(false)} />
+      <CreateProjectDialog open={dialogOpen} onClose={closeDialog} />
     </Page>
   );
 }

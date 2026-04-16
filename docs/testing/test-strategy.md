@@ -7,6 +7,9 @@ ResearchLens verification now spans backend, generated client, frontend logic, a
 Backend coverage still includes:
 
 - architecture and import-boundary checks
+- packaging guardrails for installed-package imports, absolute Python imports, and no `PYTHONPATH` or `sys.path.insert` hacks
+- backend module layer checks for required `domain`, `application`, `infrastructure`, and `presentation` directories, with `orchestration` limited to staged run modules
+- naming and file-size checks for production Python and TypeScript source files
 - startup smoke tests
 - migrations
 - module unit tests

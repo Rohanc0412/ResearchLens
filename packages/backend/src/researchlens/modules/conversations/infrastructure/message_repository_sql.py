@@ -4,9 +4,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from researchlens.modules.conversations.application.ports import MessageRepository
-from researchlens.modules.conversations.domain import Message
+from researchlens.modules.conversations.domain import Message, MessageType
 from researchlens.modules.conversations.infrastructure.mappers import to_message_domain
 from researchlens.modules.conversations.infrastructure.rows.message_row import MessageRow
+
+_CHAT_ROLE_VALUES = ("user", "assistant")
+_CHAT_TYPE_VALUES = (
+    MessageType.CHAT.value,
+    MessageType.ACTION.value,
+    MessageType.PIPELINE_OFFER.value,
+    MessageType.RUN_STARTED.value,
+    MessageType.ERROR.value,
+    MessageType.TEXT.value,
+)
 
 
 class SqlAlchemyMessageRepository(MessageRepository):
@@ -80,3 +90,28 @@ class SqlAlchemyMessageRepository(MessageRepository):
         )
         rows = await self._session.scalars(statement)
         return [to_message_domain(row) for row in rows]
+
+    async def list_recent_chat(
+        self,
+        *,
+        tenant_id: UUID,
+        conversation_id: UUID,
+        limit: int,
+        exclude_message_id: UUID | None = None,
+    ) -> list[Message]:
+        """Return the most recent chat-role messages, oldest-first."""
+        statement = (
+            select(MessageRow)
+            .where(
+                MessageRow.tenant_id == tenant_id,
+                MessageRow.conversation_id == conversation_id,
+                MessageRow.role.in_(_CHAT_ROLE_VALUES),
+                MessageRow.type.in_(_CHAT_TYPE_VALUES),
+            )
+            .order_by(MessageRow.created_at.desc(), MessageRow.id.desc())
+            .limit(limit)
+        )
+        if exclude_message_id is not None:
+            statement = statement.where(MessageRow.id != exclude_message_id)
+        rows = list(await self._session.scalars(statement))
+        return [to_message_domain(row) for row in reversed(rows)]

@@ -21,6 +21,12 @@ class MessageType(StrEnum):
     TEXT = "text"
     STRUCTURED = "structured"
     MIXED = "mixed"
+    # Chat-specific types used by the chat send flow
+    CHAT = "chat"
+    ACTION = "action"
+    PIPELINE_OFFER = "pipeline_offer"
+    RUN_STARTED = "run_started"
+    ERROR = "error"
 
 
 def normalize_message_text(content_text: str | None) -> str | None:
@@ -94,6 +100,14 @@ class Message:
         )
 
 
+_CHAT_TYPES_REQUIRE_TEXT = frozenset(
+    {MessageType.CHAT, MessageType.ERROR}
+)
+_CHAT_TYPES_REQUIRE_JSON = frozenset(
+    {MessageType.PIPELINE_OFFER, MessageType.RUN_STARTED}
+)
+
+
 def _validate_message_payload(
     *,
     message_type: MessageType,
@@ -108,3 +122,7 @@ def _validate_message_payload(
         raise ValidationError("Structured messages require content_json.")
     if message_type is MessageType.MIXED and (content_text is None or content_json is None):
         raise ValidationError("Mixed messages require content_text and content_json.")
+    if message_type in _CHAT_TYPES_REQUIRE_TEXT and content_text is None:
+        raise ValidationError(f"{message_type.value} messages require content_text.")
+    if message_type in _CHAT_TYPES_REQUIRE_JSON and content_json is None:
+        raise ValidationError(f"{message_type.value} messages require content_json.")

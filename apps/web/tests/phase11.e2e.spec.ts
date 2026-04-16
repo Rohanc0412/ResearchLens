@@ -342,3 +342,22 @@ test("auth expiration redirects back to login", async ({ page }) => {
   await page.goto("/projects");
   await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
 });
+
+test("auth surface stays usable on mobile and desktop", async ({ page }) => {
+  await page.route("http://127.0.0.1:8017/auth/refresh", async (route) => {
+    await json(route, { detail: "No session", code: "authentication_error" }, 401);
+  });
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto("/login");
+  await expect(page.getByRole("heading", { name: "Welcome back" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Sign in" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Forgot password?" })).toBeVisible();
+
+  await page.getByRole("button", { name: "Create one" }).click();
+  await expect(page.getByLabel("Confirm password")).toBeVisible();
+
+  await page.setViewportSize({ width: 1440, height: 960 });
+  await expect(page.getByText("AI-powered research synthesis")).toBeVisible();
+  await expect(page.getByText("Evidence management & tagging")).toBeVisible();
+});

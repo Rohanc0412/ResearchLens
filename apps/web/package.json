@@ -17,9 +17,13 @@
     "@researchlens/ui": "workspace:*",
     "@tanstack/react-query": "^5.99.0",
     "framer-motion": "^12.38.0",
+    "lucide-react": "^1.8.0",
+    "qrcode.react": "^4.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^7.14.0"
+    "react-markdown": "^10.1.0",
+    "react-router-dom": "^7.14.0",
+    "remark-gfm": "^4.0.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",

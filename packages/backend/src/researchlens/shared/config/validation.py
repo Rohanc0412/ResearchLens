@@ -121,5 +121,10 @@ def _validate_shared_runtime_settings(
         errors.append("AUTH_REFRESH_COOKIE_SECURE must be true in production.")
 
     database_url = make_url(settings.database.url)
+    if database_url.host == "postgres" and database_url.port not in {None, 5432}:
+        errors.append(
+            "DATABASE_URL must use postgres:5432 when targeting the compose postgres service."
+        )
+
     if settings.app.environment == "production" and database_url.get_backend_name() == "sqlite":
         errors.append("SQLite is not allowed as the production database backend.")

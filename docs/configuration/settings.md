@@ -75,6 +75,8 @@ DATABASE_URL=postgresql+psycopg://researchlens:researchlens@postgres:5432/resear
 VITE_API_BASE_URL=http://127.0.0.1:8017
 ```
 
+When `DATABASE_URL` targets the compose `postgres` service, the internal port must stay `5432`. The host-mapped `5547` port is only for processes running outside Docker.
+
 ## Generated client workflow
 
 Regenerate the TypeScript client after backend contract changes:

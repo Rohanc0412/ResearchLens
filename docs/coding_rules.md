@@ -4,6 +4,14 @@
 
 Use business-first, purpose-first names. Avoid vague names such as `utils`, `helpers`, `manager`, `common`, or ambiguous `service`.
 
+## Architecture
+
+- Backend modules use explicit `domain`, `application`, `infrastructure`, and `presentation` layers.
+- Only staged research execution modules add `orchestration`, and that layer owns graph state, nodes, edges, interrupts, and execution wiring.
+- Route handlers stay thin and keep workflow logic out of `presentation`.
+- Domain code must not depend on web frameworks, ORM types, or provider SDKs.
+- Infrastructure code must not contain business policy.
+
 ## File size
 
 - Python target under 250 lines, hard cap 300.
@@ -22,6 +30,7 @@ Do not create generic catch-all files or folders. Split responsibilities before 
 - Use installable packages with `src/` layout.
 - Do not use `PYTHONPATH`, `sys.path.insert`, or folder-dependent imports.
 - Use absolute imports from installed package roots where relevant.
+- Keep Python imports absolute from the installed package root rather than using relative imports across app and backend source trees.
 - Pytest, Alembic, API startup, worker startup, Docker, and CI must run from installed-package context.
 
 ## Async

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from researchlens.modules.conversations.application.cursor import (
@@ -102,6 +102,35 @@ def to_message_view(message: Message) -> MessageView:
         created_at=message.created_at,
         client_message_id=message.client_message_id,
     )
+
+
+@dataclass(frozen=True, slots=True)
+class ChatSendImmediateResult:
+    kind: Literal["immediate"] = "immediate"
+    user_message: MessageView | None = None
+    assistant_message: MessageView | None = None
+    pending_action: dict[str, Any] | None = None
+    idempotent_replay: bool = False
+
+
+@dataclass(frozen=True, slots=True)
+class ChatSendStreamContext:
+    kind: Literal["stream"] = "stream"
+    user_message: MessageView | None = None
+    conversation_id: UUID | None = None
+    tenant_id: UUID | None = None
+    user_message_id: UUID | None = None
+    history: list[MessageView] = None  # type: ignore[assignment]
+    message: str = ""
+    llm_model: str | None = None
+    metadata_json: dict[str, Any] | None = None
+
+    def __post_init__(self) -> None:
+        if self.history is None:
+            object.__setattr__(self, "history", [])
+
+
+ChatSendResult = ChatSendImmediateResult | ChatSendStreamContext
 
 
 def to_run_trigger_view(trigger: RunTrigger) -> RunTriggerView:

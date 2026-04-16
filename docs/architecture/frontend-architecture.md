@@ -42,7 +42,7 @@ Phase 11 rebuilds the browser app around generated backend contracts and a harde
 
 ## UX surfaces
 
-- `/login`: login, register, password reset request/confirm, MFA verification
+- `/login`: trust-first auth surface for login, register, password reset request/confirm, and MFA verification, with inline password policy guidance and recovery affordances
 - `/projects`: project list and project creation
 - `/projects/:projectId`: project detail and conversation launch
 - `/projects/:projectId/conversations/:conversationId`: full-bleed research workspace with header, persisted message timeline, docked composer, live run progress, and report/evidence surface
