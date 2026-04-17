@@ -19,11 +19,15 @@ from researchlens.modules.auth.application import (
     VerifyMfaEnrollmentUseCase,
 )
 from researchlens.modules.auth.application.dto import AuthenticatedActor
+from researchlens.modules.auth.application.ports import PasswordResetMailer
 from researchlens.modules.auth.application.token_lifecycle import TokenLifecycle
 from researchlens.modules.auth.domain import PasswordPolicy
 from researchlens.modules.auth.infrastructure.auth_request_context import AuthRequestContext
 from researchlens.modules.auth.infrastructure.clock import SystemClock
-from researchlens.modules.auth.infrastructure.email import CapturingPasswordResetMailer
+from researchlens.modules.auth.infrastructure.email import (
+    CapturingPasswordResetMailer,
+    SmtpPasswordResetMailer,
+)
 from researchlens.modules.auth.infrastructure.repositories import SqlAlchemyAuthRepository
 from researchlens.modules.auth.infrastructure.security import (
     BcryptPasswordHasher,
@@ -45,7 +49,7 @@ class SqlAlchemyAuthRuntime:
     ) -> None:
         self._session_factory = session_factory
         self._settings = settings
-        self.password_reset_mailer = CapturingPasswordResetMailer()
+        self.password_reset_mailer = _build_password_reset_mailer(settings)
         self._clock = SystemClock()
         self._password_policy = PasswordPolicy()
         self._password_hasher = BcryptPasswordHasher()
@@ -57,7 +61,6 @@ class SqlAlchemyAuthRuntime:
             issuer=settings.auth.mfa_totp_issuer,
             period_seconds=settings.auth.mfa_totp_period_seconds,
             digits=settings.auth.mfa_totp_digits,
-            window=settings.auth.mfa_totp_window,
         )
         self._token_issuer = JwtTokenService(
             secret=settings.auth.access_token_secret,
@@ -258,3 +261,23 @@ class SqlAlchemyAuthRuntime:
             password_hasher=self._password_hasher,
             clock=self._clock,
         )
+
+
+def _build_password_reset_mailer(settings: ResearchLensSettings) -> PasswordResetMailer:
+    if not settings.smtp.enabled:
+        return CapturingPasswordResetMailer()
+
+    host = settings.smtp.host
+    if host is None:
+        raise ValueError("SMTP host is required when SMTP delivery is enabled.")
+
+    return SmtpPasswordResetMailer(
+        host=host,
+        port=settings.smtp.port,
+        username=settings.smtp.username,
+        password=settings.smtp.password,
+        starttls=settings.smtp.starttls,
+        from_name=settings.smtp.from_name,
+        from_email=str(settings.smtp.from_email),
+        password_reset_minutes=settings.auth.password_reset_minutes,
+    )

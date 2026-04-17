@@ -12,7 +12,6 @@ import { useCreateRunMutation } from "../../entities/run/run.api";
 import { ChatMessageList } from "../../widgets/conversation_shell/ChatMessageList";
 import { ChatViewHeader } from "../../widgets/conversation_shell/ChatViewHeader";
 import { ReportPane } from "../../widgets/conversation_shell/ReportPane";
-import { RunProgressCard } from "../../widgets/run_progress/RunProgressCard";
 import { Card } from "../../shared/ui/Card";
 
 export function ConversationPage() {
@@ -144,15 +143,16 @@ export function ConversationPage() {
           </div>
         </div>
         <aside className="conversation-workspace__side">
-          {runId ? (
-            <RunProgressCard runId={runId} />
+          {conversation.data ? (
+            <ReportPane
+              runId={runId}
+              conversationTitle={conversation.data.title}
+            />
           ) : (
-            <Card className="workspace-panel" title="Run status" meta="No active run">
-              Start a research run from the composer to stream progress, evidence, and artifacts
-              here.
+            <Card className="workspace-panel" title="Report surface" meta="Loading">
+              Loading conversation report surface.
             </Card>
           )}
-          <ReportPane runId={runId} />
         </aside>
       </div>
     </div>

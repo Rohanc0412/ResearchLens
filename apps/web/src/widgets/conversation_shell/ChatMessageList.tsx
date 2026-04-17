@@ -41,7 +41,7 @@ export function ChatMessageList({
 }: ChatMessageListProps) {
   return (
     <div
-      className="flex-1 overflow-y-auto p-6"
+      className="conversation-timeline"
       role="log"
       aria-live="polite"
       aria-label="Chat messages"
@@ -65,23 +65,13 @@ export function ChatMessageList({
         return (
           <div
             key={message.id}
-            className={`mb-4 flex flex-col ${isUser ? "items-end" : "items-start"}`}
+            className={`chat-message ${isUser ? "chat-message--user" : "chat-message--assistant"} ${
+              isError ? "chat-message--error" : ""
+            }`}
           >
-            <div
-              className={`max-w-[90%] rounded-2xl px-4 py-3.5 text-sm leading-relaxed ${
-                isUser || isError || message.type === "action"
-                  ? "whitespace-pre-wrap"
-                  : "whitespace-normal"
-              } ${
-                isUser
-                  ? "rounded-br-sm border border-emerald-500/30 bg-emerald-500/15 text-slate-200"
-                  : isError
-                    ? "rounded-bl-sm border border-rose-500/40 bg-rose-500/10 text-rose-100"
-                    : "rounded-bl-sm border border-slate-800 bg-slate-900 text-slate-200"
-              }`}
-            >
+            <div className="chat-message__bubble">
               {message.type === "action" ? (
-                <span>{displayMessageText(message)}</span>
+                <span className="chat-message__action-text">{displayMessageText(message)}</span>
               ) : (
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
@@ -92,14 +82,14 @@ export function ChatMessageList({
               )}
 
               {isRunStarted && runId && activeRunId !== runId ? (
-                <div className="mt-2 text-xs text-slate-400">
-                  Run queued — open the research panel to track progress.
+                <div className="chat-message__status-note">
+                  Run queued - open the research panel to track progress.
                 </div>
               ) : null}
             </div>
 
             {isOffer && actions.length > 0 ? (
-              <div className="mt-2 flex flex-wrap gap-2">
+              <div className="chat-message__actions">
                 {actions.map((action) => (
                   <button
                     key={action.id ?? action.label}
@@ -108,7 +98,7 @@ export function ChatMessageList({
                       onAction(action.id);
                     }}
                     disabled={isActionPending}
-                    className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-200 transition-colors hover:border-emerald-500/60 hover:bg-emerald-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="chat-message__action"
                   >
                     {action.label ?? formatActionLabel(action.id ?? null)}
                   </button>
@@ -116,7 +106,7 @@ export function ChatMessageList({
               </div>
             ) : null}
 
-            <div className="mt-1.5 font-mono text-xs text-slate-500">
+            <div className="chat-message__meta">
               {new Date(message.created_at).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
@@ -129,12 +119,14 @@ export function ChatMessageList({
       })}
 
       {isTyping ? (
-        <div className="inline-block rounded-2xl rounded-bl-sm border border-slate-800 bg-slate-900 px-4 py-3.5">
-          {webSearching ? (
-            <span className="text-sm text-slate-400">Searching the web…</span>
-          ) : (
-            <TypingIndicator />
-          )}
+        <div className="chat-message chat-message--assistant">
+          <div className="chat-message__bubble">
+            {webSearching ? (
+              <span className="chat-message__status-note">Searching the web...</span>
+            ) : (
+              <TypingIndicator />
+            )}
+          </div>
         </div>
       ) : null}
 

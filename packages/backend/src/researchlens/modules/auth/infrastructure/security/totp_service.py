@@ -10,12 +10,10 @@ class PyotpTotpService:
         issuer: str,
         period_seconds: int,
         digits: int,
-        window: int,
     ) -> None:
         self._issuer = issuer
         self._period_seconds = period_seconds
         self._digits = digits
-        self._window = window
 
     def generate_secret(self) -> str:
         return pyotp.random_base32()
@@ -33,5 +31,5 @@ class PyotpTotpService:
                 secret,
                 interval=self._period_seconds,
                 digits=self._digits,
-            ).verify(code, for_time=verified_at, valid_window=self._window)
+            ).verify(code, for_time=verified_at, valid_window=0)
         )

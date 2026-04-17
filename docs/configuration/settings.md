@@ -54,6 +54,19 @@ The web app uses this base URL for:
 - authenticated artifact download requests
 - authenticated run SSE streaming
 
+## SMTP password reset delivery
+
+When `SMTP_ENABLED=false`, password reset requests stay on the local capture mailer used by tests and local-only debugging.
+
+When `SMTP_ENABLED=true`, the auth runtime sends password reset codes through the configured SMTP server using:
+
+- `SMTP_HOST`
+- `SMTP_PORT`
+- `SMTP_STARTTLS`
+- `SMTP_USERNAME` and `SMTP_PASSWORD` together when authenticated SMTP is required
+- `SMTP_FROM_NAME`
+- `SMTP_FROM_EMAIL`
+
 ## Session settings that directly affect the frontend
 
 - `APP_CORS_ALLOWED_ORIGINS`
@@ -64,6 +77,12 @@ The web app uses this base URL for:
 - `AUTH_REFRESH_TOKEN_TTL_DAYS`
 - `QUEUE_SSE_KEEPALIVE_SECONDS`
 - `QUEUE_SSE_TERMINAL_GRACE_SECONDS`
+
+## MFA TOTP behavior
+
+- `AUTH_MFA_TOTP_PERIOD_SECONDS` defaults to `30`
+
+ResearchLens accepts only the current TOTP step. A code from the previous or next 30-second window is rejected.
 
 For local Doppler-backed development, set `AUTH_REFRESH_COOKIE_SECURE=false` in the active Doppler config. If Doppler injects `true`, browser session restore over `http://127.0.0.1` will still fail even though the code default is local-safe.
 

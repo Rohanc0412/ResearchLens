@@ -20,7 +20,6 @@ class AuthSettings(BaseSettings):
     mfa_totp_issuer: str = "ResearchLens"
     mfa_totp_period_seconds: int = Field(default=30, ge=1)
     mfa_totp_digits: int = Field(default=6, ge=6, le=8)
-    mfa_totp_window: int = Field(default=1, ge=0)
     password_reset_minutes: int = Field(default=30, ge=1)
     allow_insecure_dev_tokens: bool = True
 

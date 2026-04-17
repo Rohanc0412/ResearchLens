@@ -2,32 +2,22 @@ import type { Components } from "react-markdown";
 
 export const chatMarkdownComponents: Components = {
   h1: ({ children }) => (
-    <h1 className="mb-1.5 text-base font-semibold text-slate-100">{children}</h1>
+    <h1 className="chat-markdown__heading chat-markdown__heading--1">{children}</h1>
   ),
   h2: ({ children }) => (
-    <h2 className="mb-1.5 text-sm font-semibold text-slate-100">{children}</h2>
+    <h2 className="chat-markdown__heading chat-markdown__heading--2">{children}</h2>
   ),
   h3: ({ children }) => (
-    <h3 className="mb-1.5 text-sm font-medium text-slate-100">{children}</h3>
+    <h3 className="chat-markdown__heading chat-markdown__heading--3">{children}</h3>
   ),
-  p: ({ children }) => (
-    <p className="mb-1.5 leading-[1.5] last:mb-0">{children}</p>
-  ),
-  ul: ({ children }) => (
-    <ul className="my-1.5 ml-5 list-disc space-y-1">{children}</ul>
-  ),
+  p: ({ children }) => <p className="chat-markdown__paragraph">{children}</p>,
+  ul: ({ children }) => <ul className="chat-markdown__list">{children}</ul>,
   ol: ({ children }) => (
-    <ol className="my-1.5 ml-5 list-decimal space-y-1">{children}</ol>
+    <ol className="chat-markdown__list chat-markdown__list--ordered">{children}</ol>
   ),
-  li: ({ children }) => (
-    <li className="leading-[1.45] marker:text-slate-400 [&>p]:m-0 [&>p]:leading-[1.45] [&>ul]:mt-1 [&>ol]:mt-1">
-      {children}
-    </li>
-  ),
-  strong: ({ children }) => (
-    <strong className="font-semibold text-slate-100">{children}</strong>
-  ),
-  em: ({ children }) => <em className="italic text-slate-200">{children}</em>,
+  li: ({ children }) => <li className="chat-markdown__list-item">{children}</li>,
+  strong: ({ children }) => <strong className="chat-markdown__strong">{children}</strong>,
+  em: ({ children }) => <em className="chat-markdown__emphasis">{children}</em>,
   code: (props) => {
     const inline =
       "inline" in props
@@ -35,34 +25,26 @@ export const chatMarkdownComponents: Components = {
         : false;
     const { children } = props;
     return inline ? (
-      <code className="rounded bg-slate-900 px-1 py-0.5 font-mono text-xs text-emerald-200">
-        {children}
-      </code>
+      <code className="chat-markdown__code-inline">{children}</code>
     ) : (
-      <code className="font-mono">{children}</code>
+      <code className="chat-markdown__code-block">{children}</code>
     );
   },
-  pre: ({ children }) => (
-    <pre className="mt-2 overflow-auto rounded-md bg-slate-900 p-3 text-xs text-slate-200">
-      {children}
-    </pre>
-  ),
+  pre: ({ children }) => <pre className="chat-markdown__pre">{children}</pre>,
   a: ({ href, children }) => (
     <a
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="text-emerald-300 underline underline-offset-2 hover:text-emerald-200"
+      className="chat-markdown__link"
     >
       {children}
     </a>
   ),
   blockquote: ({ children }) => (
-    <blockquote className="border-l-2 border-slate-600 pl-3 italic text-slate-300/90">
-      {children}
-    </blockquote>
+    <blockquote className="chat-markdown__quote">{children}</blockquote>
   ),
-  hr: () => <hr className="my-3 border-slate-700" />,
+  hr: () => <hr className="chat-markdown__rule" />,
 };
 
 export function normalizeChatMarkdown(input: string | null | undefined): string {

@@ -17,8 +17,8 @@ import { useLegacyLoginFlow } from "./useLegacyLoginFlow";
 
 function getSubtitle(mode: LoginMode) {
   if (mode === "register") return "Get started for free";
-  if (mode === "forgot") return "We'll send you a one-time code";
-  if (mode === "reset") return "Enter your OTP and choose a new password";
+  if (mode === "forgot") return "We'll email you a reset code";
+  if (mode === "reset") return "Enter your reset code and choose a new password";
   return "Sign in to your workspace";
 }
 

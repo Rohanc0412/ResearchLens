@@ -144,8 +144,8 @@ export function useLegacyLoginFlow(auth: LegacyAuthAdapter) {
       setMode("reset");
       setSuccess(
         token
-          ? "Reset token generated. Enter a new password to continue."
-          : "If the account exists, an OTP was generated. Enter it below to reset your password.",
+          ? "Reset code generated. Enter a new password to continue."
+          : "If the account exists, a reset code was sent to your email. Enter it below to reset your password.",
       );
     } catch (err) {
       setError(getErrorMessage(err) ?? "Password reset request failed.");

@@ -113,6 +113,10 @@ def _validate_shared_runtime_settings(
 
     if settings.smtp.enabled and not settings.smtp.host:
         errors.append("SMTP_HOST is required when SMTP_ENABLED=true.")
+    if settings.smtp.enabled and bool(settings.smtp.username) != bool(settings.smtp.password):
+        errors.append(
+            "SMTP_USERNAME and SMTP_PASSWORD must be provided together when SMTP_ENABLED=true."
+        )
 
     if settings.auth.refresh_cookie_samesite not in {"lax", "strict", "none"}:
         errors.append("AUTH_REFRESH_COOKIE_SAMESITE must be lax, strict, or none.")

@@ -41,29 +41,29 @@ export function ChatComposer({
   };
 
   return (
-    <>
-      <div className="flex flex-wrap gap-2 px-6 pb-3">
+    <div className="chat-composer">
+      <div className="chat-composer__quick-actions">
         {QUICK_ACTIONS.map((action) => (
           <button
             key={action}
             onClick={() => onQuickAction(action)}
             disabled={isTyping}
-            className="rounded-full border border-slate-700 bg-slate-900 px-3.5 py-2 text-xs text-slate-400 transition-colors hover:border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-400 disabled:cursor-not-allowed disabled:opacity-50"
+            className="chat-composer__quick-action"
           >
             {action}
           </button>
         ))}
       </div>
 
-      <div className="border-t border-slate-800 px-6 py-4">
-        <div className="mb-3 flex flex-wrap items-center gap-3 text-xs text-slate-400">
-          <span>LLM model</span>
-          <div className="flex flex-1 flex-wrap items-center gap-2">
+      <div className="chat-composer__controls">
+        <div className="chat-composer__model-row">
+          <span className="chat-composer__label">LLM model</span>
+          <div className="chat-composer__model-fields">
             <select
               value={selectedModel}
               onChange={(event) => onModelChange(event.target.value)}
               aria-label="LLM model"
-              className="min-w-[200px] rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200 focus:border-emerald-500/50 focus:outline-none"
+              className="chat-composer__select"
             >
               {MODEL_OPTIONS.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -77,7 +77,7 @@ export function ChatComposer({
                 onChange={(event) => onCustomModelChange(event.target.value)}
                 placeholder="Enter model id"
                 aria-label="Custom model ID"
-                className="min-w-[200px] flex-1 rounded-md border border-slate-700 bg-slate-900 px-2 py-1 text-xs text-slate-200 focus:border-emerald-500/50 focus:outline-none"
+                className="chat-composer__input"
               />
             ) : null}
           </div>
@@ -85,46 +85,42 @@ export function ChatComposer({
             type="button"
             aria-pressed={runPipelineArmed}
             onClick={onTogglePipeline}
-            className={`rounded-full border px-3.5 py-2 text-xs transition-colors ${
-              runPipelineArmed
-                ? "border-emerald-500/60 bg-emerald-500/20 text-emerald-200"
-                : "border-slate-700 bg-slate-900 text-slate-400 hover:border-emerald-500/30 hover:text-emerald-300"
+            className={`chat-composer__pipeline-toggle ${
+              runPipelineArmed ? "chat-composer__pipeline-toggle--armed" : ""
             }`}
           >
             Run research report
           </button>
         </div>
 
-        <div className="flex items-end gap-3">
+        <div className="chat-composer__editor">
           <textarea
             value={draft}
             onChange={(event) => onDraftChange(event.target.value)}
             onKeyDown={handleKeyDown}
             placeholder={
               runPipelineArmed
-                ? "Describe your research topic — report will run on send..."
+                ? "Describe your research topic - report will run on send..."
                 : "Ask a question or request a report..."
             }
             aria-label="Message input"
-            rows={1}
-            className="flex-1 resize-none rounded-xl border border-slate-700 bg-slate-900 px-4 py-3.5 text-sm text-slate-200 outline-none transition-colors focus:border-emerald-500/50"
+            rows={3}
+            className="chat-composer__textarea"
           />
           <button
             onClick={onSend}
             disabled={!draft.trim() || isTyping}
             aria-label="Send message"
-            className={`flex h-12 w-12 items-center justify-center rounded-xl transition-colors ${
-              draft.trim() && !isTyping
-                ? "bg-emerald-500 text-slate-900 hover:bg-emerald-400"
-                : "cursor-not-allowed bg-emerald-500/30 text-slate-500"
+            className={`chat-composer__send ${
+              draft.trim() && !isTyping ? "chat-composer__send--active" : ""
             }`}
           >
-            <svg viewBox="0 0 24 24" className="h-5 w-5 fill-current" aria-hidden="true">
+            <svg viewBox="0 0 24 24" className="chat-composer__send-icon" aria-hidden="true">
               <path d="M3.4 20.4 22 12 3.4 3.6l.1 6.5L15 12 3.5 13.9l-.1 6.5Z" />
             </svg>
           </button>
         </div>
       </div>
-    </>
+    </div>
   );
 }

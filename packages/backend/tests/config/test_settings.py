@@ -141,6 +141,25 @@ def test_validation_rejects_wrong_compose_postgres_port() -> None:
         validate_settings(settings)
 
 
+def test_validation_rejects_partial_smtp_credentials() -> None:
+    settings = _settings(RetrievalSettings())
+    settings = settings.model_copy(
+        update={
+            "smtp": settings.smtp.model_copy(
+                update={
+                    "enabled": True,
+                    "host": "smtp.example.com",
+                    "username": "mailer",
+                    "password": None,
+                }
+            ),
+        }
+    )
+
+    with pytest.raises(InvalidSettingsError, match="SMTP_USERNAME and SMTP_PASSWORD"):
+        validate_settings(settings)
+
+
 def _settings(
     retrieval: RetrievalSettings,
     drafting: DraftingSettings | None = None,

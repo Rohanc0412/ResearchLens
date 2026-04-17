@@ -92,14 +92,14 @@ test("switches into register and reset flows", async () => {
   await user.click(screen.getByRole("button", { name: "Sign in" }));
   await user.click(screen.getByRole("button", { name: "Forgot password?" }));
   await user.type(screen.getByLabelText("Email"), "owner@company.com");
-  await user.click(screen.getByRole("button", { name: "Send OTP" }));
+  await user.click(screen.getByRole("button", { name: "Email reset code" }));
 
   await waitFor(() =>
     expect(requestPasswordResetMock).toHaveBeenCalledWith({ email: "owner@company.com" }),
   );
-  expect(await screen.findByLabelText("OTP code")).toBeInTheDocument();
+  expect(await screen.findByLabelText("Reset code")).toBeInTheDocument();
   expect(
-    screen.getByText("If the account exists, an OTP was generated. Enter it below to reset your password."),
+    screen.getByText("If the account exists, a reset code was sent to your email. Enter it below to reset your password."),
   ).toBeInTheDocument();
 });
 

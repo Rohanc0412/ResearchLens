@@ -56,13 +56,13 @@ export function LegacyForgotPasswordForm({
         />
 
         <LegacyLoginButton loading={isSubmitting} type="submit">
-          {isSubmitting ? "Requesting..." : "Send OTP"}
+          {isSubmitting ? "Requesting..." : "Email reset code"}
         </LegacyLoginButton>
       </form>
 
       <LegacyStackedFooter>
         <LegacyFooterLinkRow prompt="Remembered your password?" action="Back to sign in" onClick={onGoToLogin} />
-        <LegacyFooterLinkRow prompt="Already have an OTP?" action="Enter OTP" onClick={onGoToReset} />
+        <LegacyFooterLinkRow prompt="Already have a reset code?" action="Enter code" onClick={onGoToReset} />
       </LegacyStackedFooter>
     </>
   );
@@ -91,7 +91,7 @@ export function LegacyResetPasswordForm({
       >
         {resetToken ? (
           <div className="legacy-login__dev-token">
-            <p>OTP (local dev)</p>
+            <p>Reset code (local dev)</p>
             <code>{resetToken}</code>
           </div>
         ) : null}
@@ -99,8 +99,8 @@ export function LegacyResetPasswordForm({
         <LegacyLoginField
           id="reset-token"
           autoComplete="one-time-code"
-          label="OTP code"
-          placeholder="Enter OTP"
+          label="Reset code"
+          placeholder="Enter reset code"
           required
           value={resetToken}
           onChange={(event) => onResetTokenChange(event.target.value)}
@@ -136,7 +136,7 @@ export function LegacyResetPasswordForm({
 
       <LegacyStackedFooter>
         <LegacyFooterLinkRow prompt="Back to sign in?" action="Sign in" onClick={onGoToLogin} />
-        <LegacyFooterLinkRow prompt="Need a new OTP?" action="Send again" onClick={onGoToForgot} />
+        <LegacyFooterLinkRow prompt="Need a new reset code?" action="Send again" onClick={onGoToForgot} />
       </LegacyStackedFooter>
     </>
   );

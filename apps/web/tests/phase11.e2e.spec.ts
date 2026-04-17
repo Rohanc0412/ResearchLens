@@ -308,6 +308,7 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
 
   await page.goto("/projects/project-1/conversations/conversation-1?runId=run-1");
   await expect(page.getByText("Cancer biomarkers")).toBeVisible();
+  await expect(page.getByTestId("report-document")).toContainText("Melanoma biomarker summary.");
   await expect(page.getByRole("link", { name: "View artifacts", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "View artifacts", exact: true }).click();
   await expect(page.getByText("Run outputs")).toBeVisible();

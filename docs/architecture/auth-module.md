@@ -18,7 +18,7 @@ Public auth responses use centralized DTOs from the auth application/presentatio
 
 - `domain`: user normalization, password policy, session/refresh/password reset invariants, MFA factor state
 - `application`: use cases, strict DTOs, and ports for persistence, crypto, token issuing, TOTP, mail, clock, and transactions
-- `infrastructure`: SQLAlchemy rows/repository, bcrypt hashing, JWT, HMAC token hashing, random token generation, TOTP, password reset mail capture, runtime assembly
+- `infrastructure`: SQLAlchemy rows/repository, bcrypt hashing, JWT, HMAC token hashing, random token generation, TOTP, password reset mail capture/SMTP delivery, runtime assembly
 - `presentation`: FastAPI request parsing, bearer/cookie handling, response shaping, and thin route delegation
 
 Shared code remains generic. Auth-specific business policy does not live under `shared/`.

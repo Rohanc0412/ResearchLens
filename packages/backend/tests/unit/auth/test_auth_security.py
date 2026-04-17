@@ -136,12 +136,14 @@ def test_totp_service_generates_uri_and_verifies_code() -> None:
         issuer="ResearchLens",
         period_seconds=30,
         digits=6,
-        window=1,
     )
     secret = service.generate_secret()
     uri = service.provisioning_uri(secret=secret, account_name="casey@example.com")
-    code = pyotp.TOTP(secret).at(now)
+    totp = pyotp.TOTP(secret, interval=30, digits=6)
+    code = totp.at(now)
+    previous_code = totp.at(now.timestamp() - 30)
 
     assert uri.startswith("otpauth://totp/ResearchLens:casey%40example.com")
     assert service.verify_code(secret=secret, code=code, verified_at=now)
+    assert not service.verify_code(secret=secret, code=previous_code, verified_at=now)
     assert not service.verify_code(secret=secret, code="000000", verified_at=now)
