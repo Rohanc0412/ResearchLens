@@ -37,13 +37,13 @@ Phase 11 adds one frontend runtime setting:
 Default local host-mode value:
 
 ```bash
-VITE_API_BASE_URL=http://127.0.0.1:8017
+VITE_API_BASE_URL=http://localhost:8017
 ```
 
 Required local browser settings:
 
 ```bash
-APP_CORS_ALLOWED_ORIGINS=http://127.0.0.1:4273,http://localhost:4273
+APP_CORS_ALLOWED_ORIGINS=http://localhost:4273
 AUTH_REFRESH_COOKIE_SECURE=false
 ```
 
@@ -78,20 +78,29 @@ When `SMTP_ENABLED=true`, the auth runtime sends password reset codes through th
 - `QUEUE_SSE_KEEPALIVE_SECONDS`
 - `QUEUE_SSE_TERMINAL_GRACE_SECONDS`
 
+## Quick-answer web search
+
+Conversation quick answers can optionally use web search during the `/conversations/{conversation_id}/send` SSE flow.
+
+- `TAVILY_API_KEY` enables Tavily-backed web search for quick answers
+- `CHAT_SEARCH_MODEL` optionally overrides the model used for quick-answer chat without changing the default `LLM_MODEL`
+
+If `TAVILY_API_KEY` is unset, quick answers stay in pure LLM mode and no web-search status event is emitted.
+
 ## MFA TOTP behavior
 
 - `AUTH_MFA_TOTP_PERIOD_SECONDS` defaults to `30`
 
 ResearchLens accepts only the current TOTP step. A code from the previous or next 30-second window is rejected.
 
-For local Doppler-backed development, set `AUTH_REFRESH_COOKIE_SECURE=false` in the active Doppler config. If Doppler injects `true`, browser session restore over `http://127.0.0.1` will still fail even though the code default is local-safe.
+For local Doppler-backed development, set `AUTH_REFRESH_COOKIE_SECURE=false` in the active Doppler config. If Doppler injects `true`, browser session restore over `http://localhost` will still fail even though the code default is local-safe.
 
 For compose-backed local development, set these values in the compose-specific Doppler config as well:
 
 ```bash
 APP_API_HOST=0.0.0.0
 DATABASE_URL=postgresql+psycopg://researchlens:researchlens@postgres:5432/researchlens
-VITE_API_BASE_URL=http://127.0.0.1:8017
+VITE_API_BASE_URL=http://localhost:8017
 ```
 
 When `DATABASE_URL` targets the compose `postgres` service, the internal port must stay `5432`. The host-mapped `5547` port is only for processes running outside Docker.

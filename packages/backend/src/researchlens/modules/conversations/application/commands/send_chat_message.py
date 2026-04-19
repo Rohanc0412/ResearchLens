@@ -36,6 +36,8 @@ ACTION_PREFIX = "__ACTION__:"
 ACTION_RUN_PIPELINE = "run_pipeline"
 ACTION_QUICK_ANSWER = "quick_answer"
 PIPELINE_OFFER_LOOK_BACK = 10
+PENDING_ACTION_RESEARCH_RUN_OFFER = "research_run_offer"
+PENDING_ACTION_START_RESEARCH_RUN = "start_research_run"
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,7 +100,9 @@ class SendChatMessageUseCase:
                 conversation_id=command.conversation_id,
                 message_id=UUID(str(reply_id)),
             )
-        pending = await self._find_pending_action(command)
+        pending = _pending_action_from_assistant(assistant)
+        if pending is None:
+            pending = await self._find_pending_action(command)
         return ChatSendImmediateResult(
             user_message=to_message_view(existing),
             assistant_message=to_message_view(assistant) if assistant else None,
@@ -196,8 +200,15 @@ class SendChatMessageUseCase:
         now: datetime,
     ) -> ChatSendResult:
         prompt = command.message.strip()
-        pending = _build_pending_payload(prompt, command.llm_model, now)
-        assistant = await self._save_pipeline_offer(command, pending, now)
+        pending = _build_run_start_payload(prompt)
+        assistant = await self._save_message(
+            command,
+            role=MessageRole.ASSISTANT,
+            type=MessageType.RUN_STARTED,
+            content_text="Starting the research pipeline. Open the run panel to track progress.",
+            content_json={"question": prompt, "status": "queued"},
+            now=now,
+        )
         await self._link_reply(command, user_msg, assistant)
         return ChatSendImmediateResult(
             user_message=to_message_view(user_msg),
@@ -250,7 +261,7 @@ class SendChatMessageUseCase:
         return ChatSendImmediateResult(
             user_message=to_message_view(user_msg),
             assistant_message=to_message_view(assistant),
-            pending_action={"type": "start_research_run", "prompt": prompt},
+            pending_action=_build_run_start_payload(prompt),
         )
 
     async def _handle_quick_answer_action(
@@ -310,19 +321,22 @@ class SendChatMessageUseCase:
         pending_model = pending.get("llm_model") or command.llm_model
 
         if decision == "yes":
-            assistant = await self._save_message(
+            new_pending = _build_offer_pending_payload(pending_prompt, pending_model, now)
+            assistant = await self._save_pipeline_offer(
                 command,
-                role=MessageRole.ASSISTANT,
-                type=MessageType.RUN_STARTED,
-                content_text="Starting the research pipeline. Open the run panel to track progress.",
-                content_json={"question": pending_prompt, "status": "queued"},
-                now=now,
+                new_pending,
+                now,
+                content_text=(
+                    "Select Run research report to start the report, or choose Quick answer "
+                    "to stay in chat."
+                ),
+                prompt_preview=pending_prompt,
             )
             await self._link_reply(command, user_msg, assistant)
             return ChatSendImmediateResult(
                 user_message=to_message_view(user_msg),
                 assistant_message=to_message_view(assistant),
-                pending_action={"type": "start_research_run", "prompt": pending_prompt},
+                pending_action=new_pending,
             )
 
         if decision == "no":
@@ -380,7 +394,7 @@ class SendChatMessageUseCase:
                 llm_model=pending_model,
                 metadata_json={"consent": "default_quick_answer"},
             )
-        new_pending = _build_pending_payload(
+        new_pending = _build_offer_pending_payload(
             pending_prompt, pending_model, now, ambiguous_count=ambiguous_count + 1
         )
         assistant = await self._save_message(
@@ -405,7 +419,7 @@ class SendChatMessageUseCase:
         decision: Any,
         now: datetime,
     ) -> ChatSendImmediateResult:
-        pending = _build_pending_payload(command.message, command.llm_model, now)
+        pending = _build_offer_pending_payload(command.message, command.llm_model, now)
         assistant = await self._save_pipeline_offer(command, pending, now)
         await self._link_reply(command, user_msg, assistant)
         return ChatSendImmediateResult(
@@ -419,18 +433,22 @@ class SendChatMessageUseCase:
         command: SendChatMessageCommand,
         pending: dict[str, Any],
         now: datetime,
+        *,
+        content_text: str | None = None,
+        prompt_preview: str | None = None,
     ) -> Message:
         return await self._save_message(
             command,
             role=MessageRole.ASSISTANT,
             type=MessageType.PIPELINE_OFFER,
-            content_text=(
+            content_text=content_text
+            or (
                 "This looks like a research-style request. "
                 "Do you want me to run the research pipeline and generate a cited report?"
             ),
             content_json={
                 "offer": {
-                    "prompt_preview": command.message[:160],
+                    "prompt_preview": (prompt_preview or command.message)[:160],
                     "actions": [
                         {"id": ACTION_RUN_PIPELINE, "label": _action_label(ACTION_RUN_PIPELINE)},
                         {"id": ACTION_QUICK_ANSWER, "label": _action_label(ACTION_QUICK_ANSWER)},
@@ -478,19 +496,12 @@ class SendChatMessageUseCase:
         user_msg: Message,
         assistant_msg: Message,
     ) -> None:
-        updated = Message(
-            id=user_msg.id,
-            tenant_id=user_msg.tenant_id,
-            conversation_id=user_msg.conversation_id,
-            role=user_msg.role,
-            type=user_msg.type,
-            content_text=user_msg.content_text,
-            content_json=user_msg.content_json,
+        await self._msg_repo.update_metadata(
+            tenant_id=command.tenant_id,
+            conversation_id=command.conversation_id,
+            message_id=user_msg.id,
             metadata_json={"reply_message_id": str(assistant_msg.id)},
-            created_at=user_msg.created_at,
-            client_message_id=user_msg.client_message_id,
         )
-        await self._msg_repo.add(updated)
 
 
 def _parse_action_id(message: str) -> str | None:
@@ -508,14 +519,14 @@ def _action_label(action_id: str) -> str:
     return action_id.replace("_", " ").title()
 
 
-def _build_pending_payload(
+def _build_offer_pending_payload(
     prompt: str,
     llm_model: str | None,
     now: datetime,
     ambiguous_count: int = 0,
 ) -> dict[str, Any]:
     payload: dict[str, Any] = {
-        "type": "start_research_run",
+        "type": PENDING_ACTION_RESEARCH_RUN_OFFER,
         "prompt": prompt,
         "created_at": now.isoformat(),
         "ambiguous_count": ambiguous_count,
@@ -523,6 +534,27 @@ def _build_pending_payload(
     if llm_model:
         payload["llm_model"] = llm_model
     return payload
+
+
+def _build_run_start_payload(prompt: str) -> dict[str, Any]:
+    return {
+        "type": PENDING_ACTION_START_RESEARCH_RUN,
+        "prompt": prompt,
+    }
+
+
+def _pending_action_from_assistant(assistant: Message | None) -> dict[str, Any] | None:
+    if assistant is None:
+        return None
+    if assistant.type is MessageType.RUN_STARTED:
+        question = (assistant.content_json or {}).get("question")
+        if isinstance(question, str) and question.strip():
+            return _build_run_start_payload(question.strip())
+    if assistant.type is MessageType.PIPELINE_OFFER:
+        pending = (assistant.content_json or {}).get("pending")
+        if isinstance(pending, dict):
+            return pending
+    return None
 
 
 def _advance_timestamp(now: datetime, last_ts: datetime | None) -> datetime:

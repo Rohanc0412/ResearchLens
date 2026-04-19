@@ -73,7 +73,7 @@ def test_register_sets_non_secure_refresh_cookie_for_local_http(
 
 
 def test_auth_refresh_supports_credentialed_cors(migrated_database_url: str) -> None:
-    origin = "http://127.0.0.1:4273"
+    origin = "http://localhost:4273"
     with TestClient(create_app()) as client:
         client.post(
             "/auth/register",

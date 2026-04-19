@@ -2,6 +2,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from dataclasses import replace
 from datetime import UTC, datetime
+from typing import Any
 from uuid import UUID, uuid4
 
 from researchlens.modules.conversations.application.cursor import ConversationListCursor
@@ -104,6 +105,25 @@ class InMemoryMessageRepository(MessageRepository):
         self._messages[message.id] = message
         return message
 
+    async def update_metadata(
+        self,
+        *,
+        tenant_id: UUID,
+        conversation_id: UUID,
+        message_id: UUID,
+        metadata_json: dict[str, Any] | None,
+    ) -> Message | None:
+        message = await self.get_by_id_for_tenant(
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
+            message_id=message_id,
+        )
+        if message is None:
+            return None
+        updated = replace(message, metadata_json=metadata_json)
+        self._messages[message_id] = updated
+        return updated
+
     async def get_by_id_for_tenant(
         self,
         *,
@@ -150,6 +170,22 @@ class InMemoryMessageRepository(MessageRepository):
             ],
             key=lambda item: (item.created_at, item.id),
         )
+
+    async def list_recent_chat(
+        self,
+        *,
+        tenant_id: UUID,
+        conversation_id: UUID,
+        limit: int,
+        exclude_message_id: UUID | None = None,
+    ) -> list[Message]:
+        messages = await self.list_by_conversation(
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
+        )
+        if exclude_message_id is not None:
+            messages = [message for message in messages if message.id != exclude_message_id]
+        return messages[-limit:]
 
 
 class InMemoryRunTriggerRepository(RunTriggerRepository):

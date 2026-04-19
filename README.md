@@ -44,9 +44,9 @@ Recommended local Doppler configs:
 Required browser-local values in Doppler:
 
 ```bash
-APP_CORS_ALLOWED_ORIGINS=http://127.0.0.1:4273,http://localhost:4273
+APP_CORS_ALLOWED_ORIGINS=http://localhost:4273
 AUTH_REFRESH_COOKIE_SECURE=false
-VITE_API_BASE_URL=http://127.0.0.1:8017
+VITE_API_BASE_URL=http://localhost:8017
 ```
 
 ## Key commands
@@ -73,7 +73,7 @@ Frontend:
 
 ```bash
 corepack pnpm --filter @researchlens/api-client run generate
-doppler run --config dev -- corepack pnpm --filter web dev --host 127.0.0.1 --port 4273
+doppler run --config dev -- corepack pnpm --filter web dev --host localhost --port 4273
 corepack pnpm --filter web lint
 corepack pnpm --filter web typecheck
 corepack pnpm --filter web test

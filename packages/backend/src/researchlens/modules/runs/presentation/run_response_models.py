@@ -41,6 +41,8 @@ class RunEventResponse(BaseModel):
     run_id: UUID
     event_number: int
     event_type: str
+    audience: str
+    level: str
     status: str
     stage: str | None
     display_status: str

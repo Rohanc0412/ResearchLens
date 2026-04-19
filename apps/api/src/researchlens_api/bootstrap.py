@@ -37,7 +37,7 @@ def _build_chat_llm(settings: ResearchLensSettings) -> ChatLlmAdapter | None:
         return None
     return ChatLlmAdapter(
         api_key=settings.llm.api_key,
-        model=settings.llm.model,
+        model=settings.llm.chat_search_model or settings.llm.model,
         base_url=settings.llm.base_url or "https://api.openai.com/v1",
         timeout_seconds=settings.llm.timeout_seconds,
     )
@@ -68,7 +68,7 @@ def build_api_bootstrap_state() -> ApiBootstrapState:
         conversations_runtime=SqlAlchemyConversationsRuntime(
             database.session_factory,
             llm_adapter=_build_chat_llm(settings),
-            web_search=WebSearchAdapter(),
+            web_search=WebSearchAdapter(api_key=settings.llm.tavily_api_key),
         ),
         evidence_runtime=SqlAlchemyEvidenceRuntime(database.session_factory),
         evaluation_runtime=SqlAlchemyEvaluationRuntime(database.session_factory),

@@ -185,14 +185,14 @@ export function ProjectSidebar() {
     <aside className={cn("app-sidebar", collapsed && "is-collapsed")}>
       <SidebarBrand collapsed={collapsed} onCollapse={() => setCollapsed(true)} onExpand={() => setCollapsed(false)} />
       <nav className="app-sidebar__nav">
-        <SidebarProjects
-          collapsed={collapsed}
-          hasError={projects.isError}
-          loading={projects.isLoading}
-          onCreateProject={() => navigate("/projects?new=1")}
-          projects={projectItems}
-        />
         <div className="app-sidebar__scroll">
+          <SidebarProjects
+            collapsed={collapsed}
+            hasError={projects.isError}
+            loading={projects.isLoading}
+            onCreateProject={() => navigate("/projects?new=1")}
+            projects={projectItems}
+          />
           {!collapsed ? <SidebarConversations conversations={recentConversations} currentProjectId={currentProjectId} /> : null}
         </div>
         <SidebarAccount collapsed={collapsed} onLogout={() => void auth.logout()} />

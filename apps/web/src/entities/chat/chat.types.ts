@@ -23,9 +23,27 @@ export type ChatSendResponse = {
   conversation_id: string;
   user_message: ChatMessage | null;
   assistant_message: ChatMessage | null;
-  pending_action: Record<string, unknown> | null;
+  pending_action: ChatPendingAction | null;
   idempotent_replay: boolean;
 };
+
+export type ResearchRunOfferAction = {
+  type: "research_run_offer";
+  prompt: string;
+  created_at: string;
+  ambiguous_count: number;
+  llm_model?: string;
+};
+
+export type StartResearchRunAction = {
+  type: "start_research_run";
+  prompt: string;
+};
+
+export type ChatPendingAction =
+  | ResearchRunOfferAction
+  | StartResearchRunAction
+  | Record<string, unknown>;
 
 export type PipelineOfferAction = {
   id: string;
@@ -35,4 +53,9 @@ export type PipelineOfferAction = {
 export type PipelineOffer = {
   prompt_preview?: string;
   actions?: PipelineOfferAction[];
+};
+
+export type ConversationLaunchState = {
+  initialMessage?: string;
+  runPipeline?: boolean;
 };

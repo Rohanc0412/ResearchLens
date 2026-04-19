@@ -83,6 +83,12 @@ export function useSendChatMessageMutation(
   return useMutation({
     mutationFn: async (input: SendInput): Promise<ChatSendResponse> => {
       const token = auth.accessToken;
+      const payload = {
+        message: input.message,
+        client_message_id: input.client_message_id,
+        llm_model: input.llm_model,
+        force_pipeline: input.force_pipeline ?? false,
+      };
       const response = await fetch(
         `${env.apiBaseUrl}/conversations/${encodeURIComponent(conversationId)}/send`,
         {
@@ -92,7 +98,7 @@ export function useSendChatMessageMutation(
             "Content-Type": "application/json",
             ...(token ? { Authorization: `Bearer ${token}` } : {}),
           },
-          body: JSON.stringify(input),
+          body: JSON.stringify(payload),
         },
       );
 

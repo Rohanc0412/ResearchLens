@@ -184,6 +184,32 @@ def test_run_trigger_route_is_a_compatibility_alias_for_run_creation(
     assert trigger_response.json()["run"]["status"] == "queued"
 
 
+def test_chat_send_greeting_returns_immediate_messages(migrated_database_url: str) -> None:
+    with TestClient(create_app()) as client:
+        token, _ = _register_user(client, "casey", "casey@example.com")
+        headers = {"Authorization": f"Bearer {token}"}
+        project_id = _create_project(client, headers, name="Alpha")
+        conversation_id = _create_conversation(client, headers, project_id)
+
+        send_response = client.post(
+            f"/conversations/{conversation_id}/send",
+            json={
+                "message": "hello",
+                "client_message_id": "chat-hello-1",
+                "llm_model": "gpt-5-nano",
+                "force_pipeline": False,
+            },
+            headers=headers,
+        )
+        list_response = client.get(f"/conversations/{conversation_id}/messages", headers=headers)
+
+    assert send_response.status_code == 200
+    body = send_response.json()
+    assert body["assistant_message"]["type"] == "chat"
+    assert body["user_message"]["content_text"] == "hello"
+    assert [item["role"] for item in list_response.json()] == ["user", "assistant"]
+
+
 def _register_user(client: TestClient, username: str, email: str) -> tuple[str, str]:
     response = client.post(
         "/auth/register",

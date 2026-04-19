@@ -1,7 +1,4 @@
-import { useMemo } from "react";
-import ReactMarkdown from "react-markdown";
-import { Link } from "react-router-dom";
-import remarkGfm from "remark-gfm";
+import { useEffect, useMemo, useState } from "react";
 
 import {
   useArtifactDownloadMutation,
@@ -9,37 +6,44 @@ import {
   useArtifactTextQuery,
 } from "../../entities/artifact/artifact.api";
 import { useRunQuery } from "../../entities/run/run.api";
-import { Button } from "../../shared/ui/Button";
 import { ErrorBanner } from "../../shared/ui/ErrorBanner";
-import { RunProgressCard } from "../run_progress/RunProgressCard";
-import {
-  extractReportTitle,
-  normalizeReportMarkdown,
-  reportMarkdownComponents,
-  stripReportTitle,
-} from "./reportMarkdown";
+import { ReportExportModal } from "./ReportExportModal";
+import { ReportPaneView } from "./ReportPaneView";
+import { ReportShareModal } from "./ReportShareModal";
+import { saveBlob } from "./reportPane.download";
+import { deriveReportExportOptions, type ReportExportOption } from "./reportExportOptions";
+import { isReportCleared, setReportCleared } from "./reportPane.storage";
+import { extractReportTitle, normalizeReportMarkdown, stripReportTitle } from "./reportMarkdown";
 
-function downloadBlob(blob: Blob, filename: string) {
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = filename;
-  link.click();
-  URL.revokeObjectURL(link.href);
-}
-
-function reportStatusClass(status: string | undefined) {
-  if (status === "succeeded") return "pill pill--success";
-  if (status === "failed" || status === "canceled") return "pill pill--danger";
-  return "pill pill--warning";
-}
-
-export function ReportPane({
-  runId,
-  conversationTitle,
-}: {
+type ReportPaneProps = {
   runId?: string | null;
+  conversationId: string;
   conversationTitle?: string;
-}) {
+};
+
+function getReportStatusClassName(status?: string) {
+  if (status === "succeeded") return "legacy-report-pane__status--success";
+  if (status === "failed" || status === "canceled") return "legacy-report-pane__status--danger";
+  return "legacy-report-pane__status--warning";
+}
+
+function useReportDismissal(conversationId: string, runId?: string | null) {
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    setDismissed(isReportCleared(conversationId, runId));
+  }, [conversationId, runId]);
+
+  function dismiss() {
+    if (!runId) return;
+    setReportCleared(conversationId, runId);
+    setDismissed(true);
+  }
+
+  return { dismissed, dismiss };
+}
+
+export function ReportPane({ runId, conversationId, conversationTitle }: ReportPaneProps) {
   const run = useRunQuery(runId ?? "");
   const artifacts = useArtifactsQuery(runId ?? "", {
     enabled: Boolean(runId),
@@ -47,128 +51,68 @@ export function ReportPane({
       run.data && ["succeeded", "failed", "canceled"].includes(run.data.status) ? false : 2500,
   });
   const download = useArtifactDownloadMutation();
+  const [exportOpen, setExportOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
+  const { dismissed, dismiss } = useReportDismissal(conversationId, runId);
 
   const reportArtifact = useMemo(
     () =>
       (artifacts.data ?? []).find(
         (artifact) =>
-          artifact.kind === "report_markdown" ||
-          artifact.media_type === "text/markdown",
+          artifact.kind === "report_markdown" || artifact.media_type === "text/markdown",
       ) ?? null,
     [artifacts.data],
   );
   const report = useArtifactTextQuery(reportArtifact?.id ?? "", reportArtifact?.filename, {
     enabled: Boolean(reportArtifact),
   });
-
-  if (!runId) {
-    return (
-      <section className="report-pane">
-        <header className="report-pane__header">
-          <div>
-            <div className="eyebrow">Research report</div>
-            <h2 className="display-heading report-pane__title">Research report</h2>
-            <div className="meta-line">Run progress and the generated report appear here.</div>
-          </div>
-        </header>
-        <div className="report-pane__content">
-          <div className="report-pane__empty">
-            <strong className="report-pane__empty-title">No report yet</strong>
-            <p className="report-pane__empty-copy">
-              Start research from the composer to stream progress and render the report here.
-            </p>
-          </div>
-        </div>
-      </section>
-    );
-  }
+  const exportOptions = useMemo(
+    () => deriveReportExportOptions(artifacts.data ?? []),
+    [artifacts.data],
+  );
 
   const reportMarkdown = normalizeReportMarkdown(report.data?.text);
   const reportTitle =
-    extractReportTitle(reportMarkdown) ??
-    conversationTitle?.trim() ??
-    "Research report";
+    extractReportTitle(reportMarkdown) ?? conversationTitle?.trim() ?? "Research report";
   const reportBody = stripReportTitle(reportMarkdown);
-  const runStatus = run.data?.status;
+  const reportStatus = run.data?.status;
 
-  async function handleDownload() {
-    if (!reportArtifact) return;
-    const result = await download.mutateAsync(reportArtifact);
-    downloadBlob(result.blob, result.filename);
+  async function handleExport(option: ReportExportOption) {
+    if (!option.artifact) return;
+    const result = await download.mutateAsync(option.artifact);
+    saveBlob(result.blob, result.filename);
+    setExportOpen(false);
   }
 
   return (
-    <section className="report-pane">
-      <header className="report-pane__header">
-        <div>
-          <div className="eyebrow">Research report</div>
-          <h2 className="display-heading report-pane__title">{reportTitle}</h2>
-          <div className="meta-line">
-            {run.data
-              ? `${run.data.display_status} | ${run.data.display_stage}`
-              : "Waiting for run state"}
-          </div>
-        </div>
-        <div className="report-pane__actions">
-          {runStatus ? (
-            <span className={reportStatusClass(runStatus)}>
-              {run.data?.display_status ?? "Running"}
-            </span>
-          ) : null}
-          <Link to={`/runs/${runId}/artifacts`}>
-            <Button compact variant="ghost">
-              Open review
-            </Button>
-          </Link>
-          <Button
-            compact
-            variant="secondary"
-            onClick={() => void handleDownload()}
-            disabled={!reportArtifact}
-            loading={download.isPending}
-          >
-            Download report
-          </Button>
-        </div>
-      </header>
-
-      <div className="report-pane__content">
-        <div className="report-pane__body">
-          <div className="report-pane__progress">
-            <RunProgressCard runId={runId} />
-          </div>
-
-          {artifacts.error ? <ErrorBanner body="Run artifacts could not be loaded." /> : null}
-          {report.error ? <ErrorBanner body="Report artifact could not be loaded." /> : null}
-
-          {report.isLoading ? (
-            <div className="report-pane__empty">
-              <strong className="report-pane__empty-title">Loading report</strong>
-              <p className="report-pane__empty-copy">
-                Fetching the latest markdown artifact for this run.
-              </p>
-            </div>
-          ) : reportBody ? (
-            <article className="report-pane__document" data-testid="report-document">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={reportMarkdownComponents}
-              >
-                {reportBody}
-              </ReactMarkdown>
-            </article>
-          ) : (
-            <div className="report-pane__empty">
-              <strong className="report-pane__empty-title">Report pending</strong>
-              <p className="report-pane__empty-copy">
-                {runStatus && !["succeeded", "failed", "canceled"].includes(runStatus)
-                  ? "The report will appear here as soon as the export artifact is written."
-                  : "This run does not have a markdown report artifact yet."}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </section>
+    <>
+      {artifacts.error ? <ErrorBanner body="Run artifacts could not be loaded." /> : null}
+      {report.error ? <ErrorBanner body="Report artifact could not be loaded." /> : null}
+      <ReportPaneView
+        runId={runId}
+        conversationTitle={conversationTitle ?? "Research report"}
+        reportTitle={reportTitle}
+        reportStatusLabel={run.data?.display_status ?? "Idle"}
+        reportStatusClassName={getReportStatusClassName(reportStatus)}
+        reportBody={reportBody}
+        showToolbar={Boolean(runId || reportBody)}
+        dismissed={dismissed}
+        loading={report.isLoading}
+        onExport={() => setExportOpen(true)}
+        onClear={dismiss}
+        onShare={() => setShareOpen(true)}
+      />
+      <ReportExportModal
+        open={exportOpen}
+        options={exportOptions}
+        onClose={() => setExportOpen(false)}
+        onExport={(option) => void handleExport(option)}
+      />
+      <ReportShareModal
+        open={shareOpen}
+        shareUrl={window.location.href}
+        onClose={() => setShareOpen(false)}
+      />
+    </>
   );
 }

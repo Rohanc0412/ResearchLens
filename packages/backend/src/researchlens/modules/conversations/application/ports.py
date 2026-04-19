@@ -1,4 +1,5 @@
 from contextlib import AbstractAsyncContextManager
+from typing import Any
 from typing import Protocol
 from uuid import UUID
 
@@ -46,6 +47,15 @@ class ConversationRepository(Protocol):
 
 class MessageRepository(Protocol):
     async def add(self, message: Message) -> Message: ...
+
+    async def update_metadata(
+        self,
+        *,
+        tenant_id: UUID,
+        conversation_id: UUID,
+        message_id: UUID,
+        metadata_json: dict[str, Any] | None,
+    ) -> Message | None: ...
 
     async def get_by_id_for_tenant(
         self,

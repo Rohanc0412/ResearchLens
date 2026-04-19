@@ -1,40 +1,29 @@
+import { ArrowLeft } from "lucide-react";
 import { Link } from "react-router-dom";
-
-import { Button } from "../../shared/ui/Button";
 
 export function ChatViewHeader({
   title,
   projectId,
-  messageCount,
-  runId,
+  projectName,
 }: {
   title: string;
   projectId: string;
-  messageCount: number;
-  runId?: string | null;
+  projectName: string;
 }) {
   return (
-    <header className="conversation-header">
-      <div>
-        <div className="eyebrow">Research workspace</div>
-        <h1 className="display-heading conversation-header__title">{title}</h1>
-        <div className="meta-line">
-          Project {projectId} | {messageCount} persisted messages
-        </div>
-      </div>
-      <div className="row">
-        {runId ? (
-          <Link to={`/runs/${runId}/artifacts`}>
-            <Button compact variant="ghost">
-              Review artifacts
-            </Button>
-          </Link>
-        ) : null}
-        <Link to={`/projects/${projectId}`}>
-          <Button compact variant="secondary">
-            Project
-          </Button>
+    <header className="legacy-chat-header">
+      <div className="legacy-chat-header__content">
+        <Link
+          to={`/projects/${projectId}`}
+          aria-label="Back to project"
+          className="legacy-chat-header__back"
+        >
+          <ArrowLeft className="legacy-chat-header__back-icon" aria-hidden="true" />
         </Link>
+        <div className="legacy-chat-header__copy">
+          <h1 className="legacy-chat-header__title">{title}</h1>
+          <p className="legacy-chat-header__subtitle">{projectName}</p>
+        </div>
       </div>
     </header>
   );

@@ -35,15 +35,18 @@ class ChatLlmAdapter:
         self,
         messages: list[dict[str, Any]],
         *,
+        model: str | None = None,
         max_tokens: int = 10000,
         temperature: float = 0.4,
     ) -> str:
+        selected_model = model or self._model
         payload: dict[str, Any] = {
-            "model": self._model,
+            "model": selected_model,
             "messages": messages,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
+            **_chat_token_limit_kwargs(model=selected_model, max_tokens=max_tokens),
         }
+        if not _uses_fixed_temperature(selected_model):
+            payload["temperature"] = temperature
         data = await self._post(payload)
         return _extract_content(data)
 
@@ -52,19 +55,22 @@ class ChatLlmAdapter:
         messages: list[dict[str, Any]],
         tools: list[dict[str, Any]],
         *,
+        model: str | None = None,
         tool_choice: str = "auto",
         max_tokens: int = 10000,
         temperature: float = 0.4,
     ) -> dict[str, Any]:
         """Return the raw first choice message dict (including tool_calls if any)."""
+        selected_model = model or self._model
         payload: dict[str, Any] = {
-            "model": self._model,
+            "model": selected_model,
             "messages": messages,
             "tools": tools,
             "tool_choice": tool_choice,
-            "max_tokens": max_tokens,
-            "temperature": temperature,
+            **_chat_token_limit_kwargs(model=selected_model, max_tokens=max_tokens),
         }
+        if not _uses_fixed_temperature(selected_model):
+            payload["temperature"] = temperature
         data = await self._post(payload)
         choices = data.get("choices") or []
         if not choices:
@@ -137,3 +143,17 @@ def extract_tool_call_query(tool_call: dict[str, Any], fallback: str) -> str:
         except Exception:
             raw_args = {}
     return str(raw_args.get("query") or fallback)
+
+
+def _uses_reasoning_effort(model: str) -> bool:
+    return model.startswith("gpt-5")
+
+
+def _uses_fixed_temperature(model: str) -> bool:
+    return model.startswith("gpt-5")
+
+
+def _chat_token_limit_kwargs(*, model: str, max_tokens: int) -> dict[str, int | str]:
+    if _uses_reasoning_effort(model):
+        return {"max_completion_tokens": max_tokens, "reasoning_effort": "low"}
+    return {"max_tokens": max_tokens}

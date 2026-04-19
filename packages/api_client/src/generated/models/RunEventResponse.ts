@@ -6,6 +6,8 @@ export type RunEventResponse = {
     run_id: string;
     event_number: number;
     event_type: string;
+    audience: string;
+    level: string;
     status: string;
     stage: (string | null);
     display_status: string;

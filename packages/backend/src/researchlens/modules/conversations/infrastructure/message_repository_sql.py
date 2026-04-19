@@ -1,3 +1,4 @@
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy import select
@@ -37,6 +38,26 @@ class SqlAlchemyMessageRepository(MessageRepository):
             client_message_id=message.client_message_id,
         )
         self._session.add(row)
+        await self._session.flush()
+        return to_message_domain(row)
+
+    async def update_metadata(
+        self,
+        *,
+        tenant_id: UUID,
+        conversation_id: UUID,
+        message_id: UUID,
+        metadata_json: dict[str, Any] | None,
+    ) -> Message | None:
+        statement = select(MessageRow).where(
+            MessageRow.tenant_id == tenant_id,
+            MessageRow.conversation_id == conversation_id,
+            MessageRow.id == message_id,
+        )
+        row = await self._session.scalar(statement)
+        if row is None:
+            return None
+        row.metadata_json = metadata_json
         await self._session.flush()
         return to_message_domain(row)
 

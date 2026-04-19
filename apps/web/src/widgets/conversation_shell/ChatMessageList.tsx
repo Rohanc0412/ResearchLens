@@ -2,11 +2,7 @@ import { type RefObject } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import {
-  chatMarkdownComponents,
-  formatActionLabel,
-  normalizeChatMarkdown,
-} from "./chatMarkdown";
+import { chatMarkdownComponents, formatActionLabel, normalizeChatMarkdown } from "./chatMarkdown";
 import { TypingIndicator } from "./TypingIndicator";
 import type { ChatMessage, PipelineOfferAction } from "../../entities/chat/chat.types";
 
@@ -41,7 +37,7 @@ export function ChatMessageList({
 }: ChatMessageListProps) {
   return (
     <div
-      className="conversation-timeline"
+      className="legacy-chat-timeline"
       role="log"
       aria-live="polite"
       aria-label="Chat messages"
@@ -65,31 +61,30 @@ export function ChatMessageList({
         return (
           <div
             key={message.id}
-            className={`chat-message ${isUser ? "chat-message--user" : "chat-message--assistant"} ${
-              isError ? "chat-message--error" : ""
-            }`}
+            className={`legacy-chat-message ${
+              isUser ? "legacy-chat-message--user" : "legacy-chat-message--assistant"
+            } ${isError ? "legacy-chat-message--error" : ""}`}
           >
-            <div className="chat-message__bubble">
+            <div className="legacy-chat-message__bubble">
               {message.type === "action" ? (
-                <span className="chat-message__action-text">{displayMessageText(message)}</span>
+                <span className="legacy-chat-message__action-text">
+                  {displayMessageText(message)}
+                </span>
               ) : (
-                <ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
-                  components={chatMarkdownComponents}
-                >
+                <ReactMarkdown remarkPlugins={[remarkGfm]} components={chatMarkdownComponents}>
                   {normalizeChatMarkdown(message.content_text)}
                 </ReactMarkdown>
               )}
 
               {isRunStarted && runId && activeRunId !== runId ? (
-                <div className="chat-message__status-note">
-                  Run queued - open the research panel to track progress.
+                <div className="legacy-chat-message__status-note">
+                  Tracking progress in the research report panel.
                 </div>
               ) : null}
             </div>
 
             {isOffer && actions.length > 0 ? (
-              <div className="chat-message__actions">
+              <div className="legacy-chat-message__actions">
                 {actions.map((action) => (
                   <button
                     key={action.id ?? action.label}
@@ -98,7 +93,7 @@ export function ChatMessageList({
                       onAction(action.id);
                     }}
                     disabled={isActionPending}
-                    className="chat-message__action"
+                    className="legacy-chat-message__action"
                   >
                     {action.label ?? formatActionLabel(action.id ?? null)}
                   </button>
@@ -106,7 +101,7 @@ export function ChatMessageList({
               </div>
             ) : null}
 
-            <div className="chat-message__meta">
+            <div className="legacy-chat-message__meta">
               {new Date(message.created_at).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
@@ -119,10 +114,10 @@ export function ChatMessageList({
       })}
 
       {isTyping ? (
-        <div className="chat-message chat-message--assistant">
-          <div className="chat-message__bubble">
+        <div className="legacy-chat-message legacy-chat-message--assistant">
+          <div className="legacy-chat-message__bubble">
             {webSearching ? (
-              <span className="chat-message__status-note">Searching the web...</span>
+              <span className="legacy-chat-message__status-note">Searching the web...</span>
             ) : (
               <TypingIndicator />
             )}

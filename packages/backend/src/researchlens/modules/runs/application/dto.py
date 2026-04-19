@@ -51,6 +51,8 @@ class RunEventView:
     run_id: UUID
     event_number: int
     event_type: str
+    audience: str
+    level: str
     status: str
     stage: str | None
     display_status: str
@@ -112,6 +114,8 @@ def to_run_event_view(event: RunEventRecord) -> RunEventView:
         run_id=event.run_id,
         event_number=event.event_number,
         event_type=event.event_type.value,
+        audience=event.audience.value,
+        level=event.level.value,
         status=event.status.value,
         stage=event.stage.value if event.stage is not None else None,
         display_status=display_status_for(event.status),

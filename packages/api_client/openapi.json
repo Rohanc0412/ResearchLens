@@ -1046,6 +1046,59 @@
         }
       }
     },
+    "/conversations/{conversation_id}/send": {
+      "post": {
+        "tags": [
+          "chat"
+        ],
+        "summary": "Send Chat Message",
+        "operationId": "send_chat_message_conversations__conversation_id__send_post",
+        "parameters": [
+          {
+            "name": "conversation_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Conversation Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChatSendRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "title": "Response Send Chat Message Conversations  Conversation Id  Send Post"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/conversations/{conversation_id}/run-triggers": {
       "post": {
         "tags": [
@@ -2051,6 +2104,41 @@
           "roles"
         ],
         "title": "AuthenticatedUserDto"
+      },
+      "ChatSendRequest": {
+        "properties": {
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "client_message_id": {
+            "type": "string",
+            "title": "Client Message Id"
+          },
+          "llm_model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Llm Model"
+          },
+          "force_pipeline": {
+            "type": "boolean",
+            "title": "Force Pipeline",
+            "default": false
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "message",
+          "client_message_id"
+        ],
+        "title": "ChatSendRequest"
       },
       "ChunkDetailResponse": {
         "properties": {
@@ -3520,6 +3608,14 @@
             "type": "string",
             "title": "Event Type"
           },
+          "audience": {
+            "type": "string",
+            "title": "Audience"
+          },
+          "level": {
+            "type": "string",
+            "title": "Level"
+          },
           "status": {
             "type": "string",
             "title": "Status"
@@ -3579,6 +3675,8 @@
           "run_id",
           "event_number",
           "event_type",
+          "audience",
+          "level",
           "status",
           "stage",
           "display_status",

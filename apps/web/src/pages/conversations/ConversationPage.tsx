@@ -1,45 +1,36 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useSearchParams, useParams } from "react-router-dom";
 
+import { useProjectQuery } from "../../entities/project/project.api";
 import { ChatComposer } from "../../features/chat_composer/ChatComposer";
-import {
-  CUSTOM_MODEL_VALUE,
-  DEFAULT_MODEL,
-} from "../../features/chat_composer/chatComposer.constants";
-import { useChatMessagesQuery, useSendChatMessageMutation } from "../../entities/chat/chat.api";
+import { useChatMessagesQuery } from "../../entities/chat/chat.api";
 import { useConversationQuery } from "../../entities/conversation/conversation.api";
-import { useCreateRunMutation } from "../../entities/run/run.api";
 import { ChatMessageList } from "../../widgets/conversation_shell/ChatMessageList";
 import { ChatViewHeader } from "../../widgets/conversation_shell/ChatViewHeader";
 import { ReportPane } from "../../widgets/conversation_shell/ReportPane";
-import { Card } from "../../shared/ui/Card";
+import { useConversationSendFlow } from "./useConversationSendFlow";
+import { useInitialConversationMessage } from "./useInitialConversationMessage";
 
 export function ConversationPage() {
   const { projectId = "", conversationId = "" } = useParams();
   const [searchParams, setSearchParams] = useSearchParams();
 
   const conversation = useConversationQuery(conversationId);
+  const project = useProjectQuery(projectId);
   const messages = useChatMessagesQuery(conversationId);
-  const createRun = useCreateRunMutation(conversationId);
-
-  const [draft, setDraft] = useState("");
-  const [isTyping, setIsTyping] = useState(false);
-  const [webSearching, setWebSearching] = useState(false);
-  const [selectedModel, setSelectedModel] = useState(DEFAULT_MODEL);
-  const [customModel, setCustomModel] = useState("");
-  const [runPipelineArmed, setRunPipelineArmed] = useState(false);
-
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
   const runId =
-    searchParams.get("runId") ??
-    localStorage.getItem(`researchlens:last-run:${conversationId}`);
-
-  const sendChat = useSendChatMessageMutation(conversationId, {
-    onStatus: () => setWebSearching(true),
+    searchParams.get("runId") ?? localStorage.getItem(`researchlens:last-run:${conversationId}`);
+  const sendFlow = useConversationSendFlow({
+    conversationId,
+    onRunCreated: (nextRunId) => {
+      localStorage.setItem(`researchlens:last-run:${conversationId}`, nextRunId);
+      setSearchParams({ runId: nextRunId });
+    },
   });
 
-  // Auto-scroll when messages change
+  useInitialConversationMessage(conversationId, sendFlow.sendMessage);
+
   useEffect(() => {
     const node = messagesEndRef.current;
     if (node && typeof node.scrollIntoView === "function") {
@@ -47,114 +38,47 @@ export function ConversationPage() {
     }
   }, [messages.data?.length]);
 
-  const resolvedModel =
-    selectedModel === CUSTOM_MODEL_VALUE ? customModel.trim() : selectedModel;
-
-  async function sendMessage(text: string, forcePipeline?: boolean) {
-    const trimmed = text.trim();
-    if (!trimmed) return;
-
-    setIsTyping(true);
-    try {
-      const response = await sendChat.mutateAsync({
-        conversation_id: conversationId,
-        message: trimmed,
-        client_message_id: crypto.randomUUID(),
-        llm_model: resolvedModel || undefined,
-        force_pipeline:
-          forcePipeline !== undefined
-            ? forcePipeline
-            : runPipelineArmed && !trimmed.startsWith("__ACTION__:"),
-      });
-
-      // If backend signals a research run should start, create it
-      const pending = response.pending_action;
-      if (
-        pending &&
-        typeof pending === "object" &&
-        pending["type"] === "start_research_run" &&
-        typeof pending["prompt"] === "string"
-      ) {
-        const run = await createRun.mutateAsync({
-          request_text: pending["prompt"],
-          source_message_id: response.user_message?.id ?? undefined,
-        });
-        localStorage.setItem(`researchlens:last-run:${conversationId}`, run.run.id);
-        setSearchParams({ runId: run.run.id });
-      }
-    } finally {
-      setIsTyping(false);
-      setWebSearching(false);
-    }
-  }
-
-  function handleSend() {
-    const text = draft.trim();
-    if (!text || isTyping) return;
-    void sendMessage(text).then(() => {
-      setDraft("");
-      setRunPipelineArmed(false);
-    });
-  }
-
-  function handleQuickAction(action: string) {
-    setDraft("");
-    setRunPipelineArmed(false);
-    void sendMessage(action, false);
-  }
-
-  function handleAction(actionId: string) {
-    void sendMessage(`__ACTION__:${actionId}`);
-  }
-
   return (
-    <div className="conversation-workspace">
-      <ChatViewHeader
-        title={conversation.data?.title ?? "Conversation"}
-        projectId={projectId}
-        messageCount={messages.data?.length ?? 0}
-        runId={runId}
-      />
-      <div className="conversation-workspace__grid">
-        <div className="conversation-workspace__main">
+    <div className="legacy-conversation-shell">
+      <section className="legacy-conversation-shell__chat">
+        <ChatViewHeader
+          title={conversation.data?.title ?? "Conversation"}
+          projectId={projectId}
+          projectName={project.data?.name ?? "Project"}
+        />
+        <div className="legacy-conversation-shell__timeline">
           <ChatMessageList
             messages={messages.data ?? []}
-            isTyping={isTyping}
-            webSearching={webSearching}
-            isActionPending={isTyping}
+            isTyping={sendFlow.isTyping}
+            webSearching={sendFlow.webSearching}
+            isActionPending={sendFlow.isTyping}
             activeRunId={runId}
             messagesEndRef={messagesEndRef}
-            onAction={handleAction}
+            onAction={sendFlow.handleAction}
           />
-          <div className="composer-dock">
-            <ChatComposer
-              draft={draft}
-              isTyping={isTyping}
-              runPipelineArmed={runPipelineArmed}
-              selectedModel={selectedModel}
-              customModel={customModel}
-              onDraftChange={setDraft}
-              onSend={handleSend}
-              onQuickAction={handleQuickAction}
-              onTogglePipeline={() => setRunPipelineArmed((prev) => !prev)}
-              onModelChange={setSelectedModel}
-              onCustomModelChange={setCustomModel}
-            />
-          </div>
         </div>
-        <aside className="conversation-workspace__side">
-          {conversation.data ? (
-            <ReportPane
-              runId={runId}
-              conversationTitle={conversation.data.title}
-            />
-          ) : (
-            <Card className="workspace-panel" title="Report surface" meta="Loading">
-              Loading conversation report surface.
-            </Card>
-          )}
-        </aside>
-      </div>
+        <div className="legacy-conversation-shell__composer">
+          <ChatComposer
+            draft={sendFlow.draft}
+            isTyping={sendFlow.isTyping}
+            runPipelineArmed={sendFlow.runPipelineArmed}
+            selectedModel={sendFlow.selectedModel}
+            customModel={sendFlow.customModel}
+            onDraftChange={sendFlow.setDraft}
+            onSend={() => void sendFlow.handleSend()}
+            onTogglePipeline={() => sendFlow.setRunPipelineArmed((prev) => !prev)}
+            onModelChange={sendFlow.setSelectedModel}
+            onCustomModelChange={sendFlow.setCustomModel}
+          />
+        </div>
+      </section>
+      <aside className="legacy-conversation-shell__report">
+        <ReportPane
+          runId={runId}
+          conversationId={conversationId}
+          conversationTitle={conversation.data?.title ?? "Research report"}
+        />
+      </aside>
     </div>
   );
 }
