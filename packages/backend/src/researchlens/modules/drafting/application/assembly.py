@@ -13,7 +13,7 @@ def assemble_report(
     ordered = tuple(sorted(drafts, key=lambda item: item.section.section_order))
     parts = [f"# {report_title}"]
     for draft in ordered:
-        parts.append(f"## {draft.section.title}")
+        parts.append(f"## {draft.section.section_order}. {draft.section.title}")
         parts.append(draft.section_text)
     return ReportDraft(
         run_id=run_id,

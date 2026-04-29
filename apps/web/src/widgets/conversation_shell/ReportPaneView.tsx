@@ -1,26 +1,25 @@
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
-
 import { RunProgressCard } from "../run_progress/RunProgressCard";
-import { reportMarkdownComponents } from "./reportMarkdown";
+import { ReportSectionView } from "./ReportSectionView";
+import type { ReportDocument } from "./reportDocument";
 import { ReportPaneToolbar } from "./ReportPaneToolbar";
 
 type ReportPaneViewProps = {
   runId?: string | null;
   conversationTitle: string;
-  reportTitle: string;
+  report: ReportDocument;
   reportStatusLabel: string;
   reportStatusClassName: string;
-  reportBody: string;
+  isRunning: boolean;
   showToolbar: boolean;
   dismissed: boolean;
   loading: boolean;
   onExport: () => void;
   onClear: () => void;
   onShare: () => void;
+  onSectionSave: (sectionId: string, content: string) => void;
 };
 
-function renderEmptyState(loading: boolean, dismissed: boolean) {
+function renderEmptyState(loading: boolean, dismissed: boolean, showNoReportYet: boolean) {
   if (loading) {
     return (
       <div className="legacy-report-pane__empty">
@@ -41,6 +40,9 @@ function renderEmptyState(loading: boolean, dismissed: boolean) {
       </div>
     );
   }
+  if (!showNoReportYet) {
+    return null;
+  }
   return (
     <div className="legacy-report-pane__empty">
       <p className="legacy-report-pane__empty-title">No report yet</p>
@@ -55,25 +57,28 @@ function renderEmptyState(loading: boolean, dismissed: boolean) {
 export function ReportPaneView({
   runId,
   conversationTitle,
-  reportTitle,
+  report,
   reportStatusLabel,
   reportStatusClassName,
-  reportBody,
+  isRunning,
   showToolbar,
   dismissed,
   loading,
   onExport,
   onClear,
   onShare,
+  onSectionSave,
 }: ReportPaneViewProps) {
+  const emptyState = renderEmptyState(loading, dismissed, !runId);
+
   return (
-    <section className="legacy-report-pane">
+    <section className={`legacy-report-pane ${isRunning ? "legacy-report-pane--running" : ""}`}>
       <header className="legacy-report-pane__header">
         <div>
           <div className="legacy-report-pane__eyebrow">Research report</div>
-          <h2 className="legacy-report-pane__title">{reportTitle || conversationTitle}</h2>
+          <h2 className="legacy-report-pane__title">{report.title || conversationTitle}</h2>
         </div>
-        {(runId || reportBody) && (
+        {(runId || report.sections.length > 0) && (
           <span className={`legacy-report-pane__status ${reportStatusClassName}`}>
             {reportStatusLabel}
           </span>
@@ -88,16 +93,16 @@ export function ReportPaneView({
       />
 
       <div className="legacy-report-pane__content">
-        {runId ? <RunProgressCard runId={runId} conversationTitle={conversationTitle} /> : null}
-        {reportBody && !dismissed ? (
+        {runId && isRunning ? (
+          <RunProgressCard runId={runId} conversationTitle={conversationTitle} />
+        ) : null}
+        {report.sections.length > 0 && !dismissed ? (
           <article className="legacy-report-pane__document" data-testid="report-document">
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={reportMarkdownComponents}>
-              {reportBody}
-            </ReactMarkdown>
+            {report.sections.map((section) => (
+              <ReportSectionView key={section.id} section={section} onSave={onSectionSave} />
+            ))}
           </article>
-        ) : (
-          renderEmptyState(loading, dismissed)
-        )}
+        ) : emptyState}
       </div>
     </section>
   );

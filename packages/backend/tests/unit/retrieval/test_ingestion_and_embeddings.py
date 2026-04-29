@@ -12,10 +12,16 @@ from researchlens.modules.retrieval.domain.candidate import (
     SourceProvenance,
 )
 from researchlens.modules.retrieval.domain.ranking_policy import RankedCandidate, ScoreBreakdown
+from researchlens.modules.retrieval.domain.retrieval_outline import (
+    RetrievalOutline,
+    RetrievalOutlineSection,
+)
 from researchlens.modules.retrieval.infrastructure.ingestion.content_selection import (
     choose_ingestible_content,
 )
 from researchlens.modules.retrieval.infrastructure.persistence.rows import (
+    RetrievalOutlineRow,
+    RetrievalOutlineSectionRow,
     RetrievalChunkEmbeddingRow,
     RetrievalSourceChunkRow,
     RetrievalSourceRow,
@@ -24,6 +30,8 @@ from researchlens.modules.retrieval.infrastructure.persistence.rows import (
 from researchlens.modules.retrieval.infrastructure.persistence.source_repository_sql import (
     SqlAlchemyRetrievalIngestionRepository,
 )
+from researchlens.modules.projects.infrastructure.project_row import ProjectRow
+from researchlens.modules.runs.infrastructure.rows import RunRow
 from researchlens.shared.db import DatabaseRuntime
 from researchlens.shared.embeddings.batching import (
     EmbeddingBatch,
@@ -169,3 +177,99 @@ async def test_retrieval_ingestion_persists_chunk_before_embedding(
     assert chunk_count == 1
     assert embedding_count == 1
     assert embedding_chunk_ids[0] is not None
+
+
+@pytest.mark.asyncio
+async def test_retrieval_ingestion_persists_outline_metadata(
+    database_runtime: DatabaseRuntime,
+) -> None:
+    tenant_id = uuid4()
+    project_id = uuid4()
+    run_id = uuid4()
+    user_id = uuid4()
+    outline = RetrievalOutline(
+        report_title="AI Safety Benchmarking Outlook",
+        sections=(
+            RetrievalOutlineSection(
+                section_id="s1",
+                title="Recent Developments",
+                goal="Summarize current progress.",
+                suggested_evidence_themes=(),
+                key_points=("benchmarks",),
+                section_order=1,
+            ),
+            RetrievalOutlineSection(
+                section_id="s2",
+                title="Challenges",
+                goal="Describe remaining gaps.",
+                suggested_evidence_themes=(),
+                key_points=("robustness", "coverage"),
+                section_order=2,
+            ),
+        ),
+    )
+
+    async with database_runtime.session_factory() as session:
+        now = datetime.now(tz=UTC)
+        session.add(
+            ProjectRow(
+                id=project_id,
+                tenant_id=tenant_id,
+                name="Project",
+                description=None,
+                created_by=str(user_id),
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        session.add(
+            RunRow(
+                id=run_id,
+                tenant_id=tenant_id,
+                project_id=project_id,
+                conversation_id=None,
+                created_by_user_id=user_id,
+                status="running",
+                current_stage="retrieve",
+                output_type="report",
+                trigger_message_id=None,
+                client_request_id=None,
+                cancel_requested_at=None,
+                started_at=now,
+                finished_at=None,
+                retry_count=0,
+                failure_reason=None,
+                error_code=None,
+                last_event_number=0,
+                created_at=now,
+                updated_at=now,
+            )
+        )
+        repository = SqlAlchemyRetrievalIngestionRepository(
+            session,
+            embedding_model="text-embedding-3-small",
+        )
+
+        count = await repository.persist_selected_sources(run_id=run_id, outline=outline, selected=[])
+        await session.commit()
+
+        stored_outline = await session.scalar(
+            select(RetrievalOutlineRow).where(RetrievalOutlineRow.run_id == run_id)
+        )
+        stored_sections = (
+            await session.scalars(
+                select(RetrievalOutlineSectionRow)
+                .join(RetrievalOutlineRow, RetrievalOutlineSectionRow.outline_id == RetrievalOutlineRow.id)
+                .where(RetrievalOutlineRow.run_id == run_id)
+                .order_by(RetrievalOutlineSectionRow.section_order.asc())
+            )
+        ).all()
+
+    assert count == 0
+    assert stored_outline is not None
+    assert stored_outline.report_title == "AI Safety Benchmarking Outlook"
+    assert [(row.section_id, row.title, row.section_order) for row in stored_sections] == [
+        ("s1", "Recent Developments", 1),
+        ("s2", "Challenges", 2),
+    ]
+    assert [row.key_points_json for row in stored_sections] == [["benchmarks"], ["robustness", "coverage"]]

@@ -116,6 +116,7 @@ class RetrievalStageSteps:
         if self._ingestion_repository is not None:
             ingested_sources = await self._ingestion_repository.persist_selected_sources(
                 run_id=run_id,
+                outline=planning.outline,
                 selected=enriched,
             )
         return RetrievalSummary(

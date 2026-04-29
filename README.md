@@ -68,6 +68,7 @@ doppler run --config dev_compose -- docker compose -f infra/compose/docker-compo
 
 The compose config must be container-safe. In particular, `DATABASE_URL` must target `postgres`, not `localhost`, and `APP_API_HOST` must be `0.0.0.0`.
 Compose startup runs Alembic through a one-shot `migrate` service before `api` and `worker` start.
+Compose also shares the repo-root `.data/artifacts` directory between `worker` and `api` so local artifact exports remain downloadable.
 
 Frontend:
 

@@ -222,3 +222,29 @@ async def test_drafting_stage_drafts_sections_concurrently(
         await task
 
     assert client.max_active_calls > 1
+
+
+@pytest.mark.asyncio
+async def test_drafting_input_reader_uses_persisted_outline_order_and_titles(
+    database_runtime: DatabaseRuntime,
+) -> None:
+    async with database_runtime.session_factory() as session:
+        _, run_id = await seed_run_with_retrieval_outputs(
+            session,
+            section_ids=("s2", "s1"),
+            outline_sections=(
+                ("s1", "Recent Developments"),
+                ("s2", "Challenges"),
+            ),
+        )
+
+    async with database_runtime.session_factory() as session:
+        draft_input = await SqlAlchemyDraftingRunInputReader(session).load_run_drafting_input(
+            run_id=run_id
+        )
+
+    assert [(section.section_id, section.title, section.section_order) for section in draft_input.sections] == [
+        ("s1", "Recent Developments", 1),
+        ("s2", "Challenges", 2),
+    ]
+    assert [item.target_section for item in draft_input.evidence] == ["s2", "s1"]

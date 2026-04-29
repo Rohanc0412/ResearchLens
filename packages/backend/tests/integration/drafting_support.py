@@ -9,6 +9,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from researchlens.modules.conversations.infrastructure.rows.conversation_row import ConversationRow
 from researchlens.modules.projects.infrastructure.project_row import ProjectRow
 from researchlens.modules.retrieval.infrastructure.persistence.rows import (
+    RetrievalOutlineRow,
+    RetrievalOutlineSectionRow,
     RetrievalSourceChunkRow,
     RetrievalSourceRow,
     RetrievalSourceSnapshotRow,
@@ -96,6 +98,7 @@ async def seed_run_with_retrieval_outputs(
     session: AsyncSession,
     *,
     section_ids: tuple[str, ...],
+    outline_sections: tuple[tuple[str, str], ...] | None = None,
 ) -> tuple[UUID, UUID]:
     tenant_id = uuid4()
     user_id = uuid4()
@@ -144,6 +147,17 @@ async def seed_run_with_retrieval_outputs(
             output_type="report",
         )
     )
+    await _insert_outline(
+        session,
+        run_id=run.run.id,
+        outline_sections=outline_sections
+        if outline_sections is not None
+        else tuple(
+            (section_id, section_id.replace("-", " ").replace("_", " ").title())
+            for section_id in (section_ids or ("overview",))
+        ),
+        report_title="What is the state of AI safety benchmarking?",
+    )
     for rank, section_id in enumerate(section_ids, start=1):
         await _insert_source_bundle(
             session,
@@ -154,6 +168,40 @@ async def seed_run_with_retrieval_outputs(
         )
     await session.commit()
     return tenant_id, run.run.id
+
+
+async def _insert_outline(
+    session: AsyncSession,
+    *,
+    run_id: UUID,
+    outline_sections: tuple[tuple[str, str], ...],
+    report_title: str,
+) -> None:
+    now = datetime.now(tz=UTC)
+    outline_id = uuid4()
+    session.add(
+        RetrievalOutlineRow(
+            id=outline_id,
+            run_id=run_id,
+            report_title=report_title,
+            created_at=now,
+            updated_at=now,
+        )
+    )
+    for order, (section_id, title) in enumerate(outline_sections, start=1):
+        session.add(
+            RetrievalOutlineSectionRow(
+                id=uuid4(),
+                outline_id=outline_id,
+                section_id=section_id,
+                title=title,
+                goal=f"Draft the {title} section using only its allowed evidence.",
+                section_order=order,
+                key_points_json=[],
+                created_at=now,
+                updated_at=now,
+            )
+        )
 
 
 async def _insert_source_bundle(

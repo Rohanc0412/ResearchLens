@@ -3,6 +3,7 @@ from pathlib import Path
 from uuid import uuid4
 
 import pytest
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from researchlens.modules.artifacts.application.citation_resolution import resolve_citations
@@ -19,6 +20,7 @@ from researchlens.modules.artifacts.infrastructure import (
     FilesystemArtifactStore,
     SqlAlchemyArtifactRepository,
 )
+from researchlens.modules.artifacts.infrastructure.rows import ArtifactManifestRow
 from researchlens.modules.projects.infrastructure.project_row import ProjectRow
 from researchlens.modules.runs.infrastructure.rows import RunRow
 from researchlens.shared.db import DatabaseRuntime
@@ -76,6 +78,31 @@ async def test_artifact_persistence_is_idempotent(
         await session.commit()
 
     assert tuple(item.id for item in first) == tuple(item.id for item in second)
+
+
+@pytest.mark.asyncio
+async def test_artifact_manifest_preserves_section_order_and_titles(
+    database_runtime: DatabaseRuntime,
+    tmp_path: Path,
+) -> None:
+    bundle = _bundle_with_multiple_sections()
+    async with database_runtime.session_factory() as session:
+        _add_run_row(session, bundle=bundle)
+        repository = SqlAlchemyArtifactRepository(session)
+        store = FilesystemArtifactStore(root=tmp_path)
+        use_case = PersistExportArtifactsUseCase(repository=repository, storage=store)
+
+        await use_case.execute(bundle=bundle)
+        manifest = await session.scalar(
+            select(ArtifactManifestRow).where(ArtifactManifestRow.run_id == bundle.run_id)
+        )
+        await session.commit()
+
+    assert manifest is not None
+    assert [(item["order"], item["title"]) for item in manifest.final_sections_json] == [
+        (1, "Recent Developments"),
+        (2, "Challenges"),
+    ]
 
 
 def _add_run_row(session: AsyncSession, *, bundle: ReportExportBundle) -> None:
@@ -156,6 +183,67 @@ def _bundle() -> ReportExportBundle:
             section_texts=(f"Grounded [[chunk:{chunk_id}]]",),
             chunks=(
                 ExportChunk(chunk_id=chunk_id, source_id=source_id, chunk_index=0, text="chunk"),
+            ),
+        ),
+        latest_evaluation_pass_id=None,
+        latest_repair_pass_id=None,
+        warnings=(),
+    )
+
+
+def _bundle_with_multiple_sections() -> ReportExportBundle:
+    tenant_id = uuid4()
+    project_id = uuid4()
+    run_id = uuid4()
+    source_id = uuid4()
+    chunk_one = uuid4()
+    chunk_two = uuid4()
+    return ReportExportBundle(
+        tenant_id=tenant_id,
+        project_id=project_id,
+        run_id=run_id,
+        conversation_id=None,
+        report_title="Report",
+        sections=(
+            FinalSection(
+                section_id="s1",
+                title="Recent Developments",
+                section_order=1,
+                text=f"Grounded [[chunk:{chunk_one}]]",
+                summary="Recent",
+                repaired=False,
+                draft_id=uuid4(),
+                repair_result_id=None,
+            ),
+            FinalSection(
+                section_id="s2",
+                title="Challenges",
+                section_order=2,
+                text=f"Risks [[chunk:{chunk_two}]]",
+                summary="Challenges",
+                repaired=False,
+                draft_id=uuid4(),
+                repair_result_id=None,
+            ),
+        ),
+        chunks=(
+            ExportChunk(chunk_id=chunk_one, source_id=source_id, chunk_index=0, text="chunk-one"),
+            ExportChunk(chunk_id=chunk_two, source_id=source_id, chunk_index=1, text="chunk-two"),
+        ),
+        sources=(
+            ExportSource(
+                source_id=source_id,
+                canonical_key="source",
+                title="Source",
+                identifiers={},
+                metadata={},
+            ),
+        ),
+        citations=resolve_citations(
+            section_texts=(f"Grounded [[chunk:{chunk_one}]]", f"Risks [[chunk:{chunk_two}]]"),
+            chunks=(
+                ExportChunk(chunk_id=chunk_one, source_id=source_id, chunk_index=0, text="chunk-one"),
+                ExportChunk(chunk_id=chunk_two, source_id=source_id, chunk_index=1, text="chunk-two"),
             ),
         ),
         latest_evaluation_pass_id=None,

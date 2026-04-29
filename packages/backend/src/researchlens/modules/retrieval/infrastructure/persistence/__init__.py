@@ -1,5 +1,7 @@
 from researchlens.modules.retrieval.infrastructure.persistence.rows import (
     RetrievalChunkEmbeddingRow,
+    RetrievalOutlineRow,
+    RetrievalOutlineSectionRow,
     RetrievalSourceChunkRow,
     RetrievalSourceRow,
     RetrievalSourceSnapshotRow,
@@ -8,6 +10,8 @@ from researchlens.modules.retrieval.infrastructure.persistence.rows import (
 
 __all__ = [
     "RetrievalChunkEmbeddingRow",
+    "RetrievalOutlineRow",
+    "RetrievalOutlineSectionRow",
     "RetrievalSourceChunkRow",
     "RetrievalSourceRow",
     "RetrievalSourceSnapshotRow",

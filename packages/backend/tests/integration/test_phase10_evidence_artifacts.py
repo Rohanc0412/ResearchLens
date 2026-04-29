@@ -132,6 +132,39 @@ async def test_phase10_records_artifact_download(
     assert download_count == 1
 
 
+@pytest.mark.asyncio
+async def test_phase10_exports_outline_titles_in_outline_order(
+    database_runtime: DatabaseRuntime,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    monkeypatch.setenv("LLM_PROVIDER", "openai")
+    monkeypatch.setenv("LLM_API_KEY", "test-key")
+    monkeypatch.setenv("STORAGE_LOCAL_ARTIFACT_ROOT", str(tmp_path))
+    reset_settings_cache()
+    async with database_runtime.session_factory() as session:
+        tenant_id, run_id = await seed_run_with_retrieval_outputs(
+            session,
+            section_ids=("s2", "s1"),
+            outline_sections=(
+                ("s1", "Recent Developments"),
+                ("s2", "Challenges"),
+            ),
+        )
+        await _draft(session, run_id)
+        await _export(session, run_id)
+        repository = SqlAlchemyArtifactRepository(session)
+        artifacts = await repository.list_for_run(tenant_id=tenant_id, run_id=run_id)
+        markdown_artifact = next(item for item in artifacts if item.kind == "final_report_markdown")
+        store = FilesystemArtifactStore(root=get_settings().storage.local_artifact_root)
+        content = (await store.read(storage_key=markdown_artifact.storage_key)).decode("utf-8")
+        await session.commit()
+
+    assert "## 1. Recent Developments" in content
+    assert "## 2. Challenges" in content
+    assert content.index("## 1. Recent Developments") < content.index("## 2. Challenges")
+
+
 async def _draft(session: AsyncSession, run_id: UUID) -> None:
     runtime = DraftingGraphRuntime(
         settings=get_settings(),

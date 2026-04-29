@@ -1,7 +1,7 @@
 from typing import cast
 from uuid import UUID
 
-from sqlalchemy import Table, case, func, select
+from sqlalchemy import Table, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from researchlens.modules.drafting.application.dto import (
@@ -10,8 +10,12 @@ from researchlens.modules.drafting.application.dto import (
     SectionPlanRecord,
 )
 from researchlens.modules.drafting.application.ports import DraftingRunInputReader
+from researchlens.modules.retrieval.infrastructure.persistence.rows import (
+    RetrievalOutlineRow,
+    RetrievalOutlineSectionRow,
+)
 from researchlens.shared.db import metadata
-from researchlens.shared.errors import NotFoundError
+from researchlens.shared.errors import NotFoundError, ValidationError
 
 
 class SqlAlchemyDraftingRunInputReader(DraftingRunInputReader):
@@ -21,12 +25,13 @@ class SqlAlchemyDraftingRunInputReader(DraftingRunInputReader):
     async def load_run_drafting_input(self, *, run_id: UUID) -> RunDraftingInput:
         run_data = await self._load_run_row(run_id=run_id)
         request_text = await self._run_request_text(run_id=run_id)
-        sections = await self._derive_sections(run_id=run_id)
+        report_title = await self._report_title(run_id=run_id)
+        sections = await self._load_outline_sections(run_id=run_id)
         evidence = await self._load_evidence(run_id=run_id)
         return RunDraftingInput(
             tenant_id=cast(UUID, run_data["tenant_id"]),
             run_id=cast(UUID, run_data["id"]),
-            report_title=request_text[:240],
+            report_title=report_title,
             research_question=request_text,
             sections=sections,
             evidence=evidence,
@@ -64,36 +69,45 @@ class SqlAlchemyDraftingRunInputReader(DraftingRunInputReader):
                 return request_text.strip()
         return f"Research report {run_id}"
 
-    async def _derive_sections(self, *, run_id: UUID) -> tuple[SectionPlanRecord, ...]:
-        run_retrieval_sources = _table("run_retrieval_sources")
-        section_expr = func.coalesce(run_retrieval_sources.c.target_section, "overview")
+    async def _report_title(self, *, run_id: UUID) -> str:
+        result = await self._session.execute(
+            select(RetrievalOutlineRow.report_title).where(RetrievalOutlineRow.run_id == run_id)
+        )
+        report_title = result.scalar_one_or_none()
+        if not isinstance(report_title, str) or not report_title.strip():
+            raise ValidationError("Drafting requires persisted retrieval outline metadata.")
+        return report_title.strip()
+
+    async def _load_outline_sections(self, *, run_id: UUID) -> tuple[SectionPlanRecord, ...]:
         result = await self._session.execute(
             select(
-                section_expr.label("section_id"),
-                func.min(run_retrieval_sources.c.rank).label("first_rank"),
+                RetrievalOutlineSectionRow.section_id,
+                RetrievalOutlineSectionRow.title,
+                RetrievalOutlineSectionRow.section_order,
+                RetrievalOutlineSectionRow.goal,
+                RetrievalOutlineSectionRow.key_points_json,
             )
-            .where(run_retrieval_sources.c.run_id == run_id)
-            .group_by(section_expr)
+            .select_from(RetrievalOutlineSectionRow)
+            .join(RetrievalOutlineRow, RetrievalOutlineSectionRow.outline_id == RetrievalOutlineRow.id)
+            .where(RetrievalOutlineRow.run_id == run_id)
             .order_by(
-                case((section_expr == "overview", 0), else_=1),
-                func.min(run_retrieval_sources.c.rank),
-                section_expr,
+                RetrievalOutlineSectionRow.section_order.asc(),
+                RetrievalOutlineSectionRow.section_id.asc(),
             )
         )
-        sections = []
-        for order, row in enumerate(result.mappings().all(), start=1):
-            section_id = row["section_id"]
-            title = " ".join(str(section_id).replace("_", " ").replace("-", " ").split()).title()
-            sections.append(
-                SectionPlanRecord(
-                    section_id=section_id,
-                    title=title,
-                    section_order=order,
-                    goal=f"Draft the {title} section using only its allowed evidence.",
-                    key_points=(),
-                )
+        rows = result.mappings().all()
+        if not rows:
+            raise ValidationError("Drafting requires persisted retrieval outline sections.")
+        return tuple(
+            SectionPlanRecord(
+                section_id=str(row["section_id"]),
+                title=str(row["title"]),
+                section_order=int(row["section_order"]),
+                goal=str(row["goal"]),
+                key_points=tuple(str(item) for item in row["key_points_json"]),
             )
-        return tuple(sections)
+            for row in rows
+        )
 
     async def _load_evidence(self, *, run_id: UUID) -> tuple[EvidenceRecord, ...]:
         runs_table = _table("runs")

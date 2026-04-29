@@ -19,13 +19,10 @@ export function ReportExportModal({ open, options, onClose, onExport }: ReportEx
             <button
               key={option.id}
               onClick={() => onExport(option)}
-              disabled={!option.artifact}
               className="legacy-report-modal__option"
             >
               <span className="legacy-report-modal__option-label">{option.label}</span>
-              <span className="legacy-report-modal__option-description">
-                {option.artifact ? option.description : "Not available for this run"}
-              </span>
+              <span className="legacy-report-modal__option-description">{option.description}</span>
             </button>
           ))}
         </div>

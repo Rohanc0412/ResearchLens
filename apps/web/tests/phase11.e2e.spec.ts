@@ -123,12 +123,28 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
           created_at: "2026-04-13T10:05:00Z",
           client_message_id: "client-1",
         },
+        {
+          id: "message-2",
+          tenant_id: "tenant-1",
+          conversation_id: "conversation-1",
+          role: "assistant",
+          type: "run_started",
+          content_text: "Starting the research pipeline.",
+          content_json: {
+            run_id: "run-1",
+            status: "running",
+            question: "Review biomarkers for melanoma.",
+          },
+          metadata_json: null,
+          created_at: "2026-04-13T10:06:00Z",
+          client_message_id: null,
+        },
       ]);
       return;
     }
 
     await json(route, {
-      id: "message-2",
+      id: "message-3",
       tenant_id: "tenant-1",
       conversation_id: "conversation-1",
       role: "user",
@@ -211,9 +227,9 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
       {
         id: "artifact-1",
         run_id: "run-1",
-        kind: "report_markdown",
+        kind: "final_report_markdown",
         filename: "report.md",
-        media_type: "text/markdown",
+        media_type: "text/markdown; charset=utf-8",
         storage_backend: "local",
         byte_size: 128,
         sha256: "abc",
@@ -307,11 +323,13 @@ test("conversation flow, live run progress, and artifacts", async ({ page }) => 
   });
 
   await page.goto("/projects/project-1/conversations/conversation-1?runId=run-1");
-  await expect(page.getByText("Cancer biomarkers")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Cancer biomarkers", level: 1 })).toBeVisible();
   await expect(page.getByTestId("report-document")).toContainText("Melanoma biomarker summary.");
-  await expect(page.getByRole("link", { name: "View artifacts", exact: true })).toBeVisible();
-  await page.getByRole("link", { name: "View artifacts", exact: true }).click();
-  await expect(page.getByText("Run outputs")).toBeVisible();
+  await expect(page.getByRole("button", { name: "Edit" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "View all artifacts" })).toBeVisible();
+  await expect(page.getByRole("link", { name: "View Artifacts", exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "View Artifacts", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Artifacts", level: 1 })).toBeVisible();
 
   const downloadPromise = page.waitForEvent("download");
   await page.getByRole("button", { name: "Download" }).click();

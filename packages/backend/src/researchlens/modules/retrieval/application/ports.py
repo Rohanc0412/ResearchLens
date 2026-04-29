@@ -5,6 +5,7 @@ from uuid import UUID
 from researchlens.modules.retrieval.domain.candidate import NormalizedSearchCandidate
 from researchlens.modules.retrieval.domain.query_plan import RetrievalQuery
 from researchlens.modules.retrieval.domain.ranking_policy import RankedCandidate
+from researchlens.modules.retrieval.domain.retrieval_outline import RetrievalOutline
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,5 +46,6 @@ class RetrievalIngestionRepository(Protocol):
         self,
         *,
         run_id: UUID,
+        outline: RetrievalOutline,
         selected: list[RankedCandidate],
     ) -> int: ...

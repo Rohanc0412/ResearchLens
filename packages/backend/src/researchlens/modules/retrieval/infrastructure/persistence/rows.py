@@ -1,7 +1,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import JSON, DateTime, ForeignKey, Index, String, Text, UniqueConstraint
+from sqlalchemy import JSON, DateTime, ForeignKey, Index, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.types import Uuid
 
@@ -101,3 +101,43 @@ class RunRetrievalSourceRow(Base):
     rank: Mapped[int] = mapped_column(nullable=False)
     score: Mapped[float] = mapped_column(nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class RetrievalOutlineRow(Base):
+    __tablename__ = "retrieval_outlines"
+    __table_args__ = (UniqueConstraint("run_id", name="uq_retrieval_outlines_run"),)
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+    run_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("runs.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    report_title: Mapped[str] = mapped_column(String(240), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class RetrievalOutlineSectionRow(Base):
+    __tablename__ = "retrieval_outline_sections"
+    __table_args__ = (
+        UniqueConstraint("outline_id", "section_id"),
+        UniqueConstraint("outline_id", "section_order"),
+        Index("ix_retrieval_outline_sections_outline_order", "outline_id", "section_order"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True)
+    outline_id: Mapped[UUID] = mapped_column(
+        Uuid,
+        ForeignKey("retrieval_outlines.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    section_id: Mapped[str] = mapped_column(String(120), nullable=False)
+    title: Mapped[str] = mapped_column(String(240), nullable=False)
+    goal: Mapped[str] = mapped_column(Text, nullable=False)
+    section_order: Mapped[int] = mapped_column(Integer, nullable=False)
+    key_points_json: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

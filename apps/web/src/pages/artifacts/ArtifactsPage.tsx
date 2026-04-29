@@ -1,26 +1,36 @@
-import { useSearchParams, useParams } from "react-router-dom";
+import { ChevronLeft } from "lucide-react";
+import { useNavigate, useParams } from "react-router-dom";
 
+import { Button } from "../../shared/ui/Button";
 import { Page } from "../../shared/ui/Page";
-import { ArtifactBrowser } from "../../widgets/artifact_list/ArtifactBrowser";
-import { EvidenceOverview } from "../../widgets/evidence_panel/EvidenceOverview";
+import { RunArtifactsWorkspace } from "../../widgets/artifacts_workspace/RunArtifactsWorkspace";
 
 export function ArtifactsPage() {
   const { runId = "" } = useParams();
-  const [searchParams] = useSearchParams();
-  const sectionId = searchParams.get("section");
+  const navigate = useNavigate();
+
+  function handleBack() {
+    if (window.history.length > 1) {
+      navigate(-1);
+      return;
+    }
+
+    navigate("/projects");
+  }
 
   return (
     <Page
       eyebrow="Artifacts"
-      title="Run outputs"
-      subtitle="Artifacts, previewable exports, evaluation summary, and evidence linkage."
+      title="Artifacts"
+      subtitle={`Run ${runId}`}
+      actions={
+        <Button variant="ghost" compact onClick={handleBack}>
+          <ChevronLeft size={16} />
+          Back
+        </Button>
+      }
     >
-      <div className="inspection-shell">
-        <ArtifactBrowser runId={runId} />
-      </div>
-      <div id="evidence">
-        <EvidenceOverview runId={runId} sectionId={sectionId} />
-      </div>
+      <RunArtifactsWorkspace runId={runId} />
     </Page>
   );
 }

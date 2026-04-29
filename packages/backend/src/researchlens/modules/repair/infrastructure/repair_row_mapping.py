@@ -81,7 +81,7 @@ def result_row(
 def assemble_markdown(*, title: str, rows: Sequence[Mapping[str, Any]]) -> str:
     parts = [f"# {title}"]
     for row in rows:
-        parts.append(f"## {row['title']}")
+        parts.append(f"## {row['section_order']}. {row['title']}")
         parts.append(str(row["section_text"]))
     return "\n\n".join(parts)
 

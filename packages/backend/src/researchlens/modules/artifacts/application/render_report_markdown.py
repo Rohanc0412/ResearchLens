@@ -8,7 +8,7 @@ def render_report_markdown(bundle: ReportExportBundle) -> RenderedArtifact:
     for section in bundle.sections:
         lines.extend(
             [
-                f"## {section.title}",
+                f"## {section.section_order}. {section.title}",
                 "",
                 replace_citation_tokens(section.text, bundle.citations),
                 "",

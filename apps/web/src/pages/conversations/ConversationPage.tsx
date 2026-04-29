@@ -8,6 +8,7 @@ import { useConversationQuery } from "../../entities/conversation/conversation.a
 import { ChatMessageList } from "../../widgets/conversation_shell/ChatMessageList";
 import { ChatViewHeader } from "../../widgets/conversation_shell/ChatViewHeader";
 import { ReportPane } from "../../widgets/conversation_shell/ReportPane";
+import { resolveReportRunId } from "./reportRunSelection";
 import { useConversationSendFlow } from "./useConversationSendFlow";
 import { useInitialConversationMessage } from "./useInitialConversationMessage";
 
@@ -19,8 +20,11 @@ export function ConversationPage() {
   const project = useProjectQuery(projectId);
   const messages = useChatMessagesQuery(conversationId);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const runId =
-    searchParams.get("runId") ?? localStorage.getItem(`researchlens:last-run:${conversationId}`);
+  const runId = resolveReportRunId({
+    urlRunId: searchParams.get("runId"),
+    messages: messages.data ?? [],
+    conversationId,
+  });
   const sendFlow = useConversationSendFlow({
     conversationId,
     onRunCreated: (nextRunId) => {

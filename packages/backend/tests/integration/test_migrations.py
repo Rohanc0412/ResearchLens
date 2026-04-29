@@ -43,6 +43,8 @@ def test_alembic_upgrade_creates_phase_5_tables(
     assert inspector.has_table("retrieval_source_chunks")
     assert inspector.has_table("retrieval_chunk_embeddings")
     assert inspector.has_table("run_retrieval_sources")
+    assert inspector.has_table("retrieval_outlines")
+    assert inspector.has_table("retrieval_outline_sections")
     assert inspector.has_table("drafting_sections")
     assert inspector.has_table("drafting_section_evidence")
     assert inspector.has_table("drafting_section_drafts")

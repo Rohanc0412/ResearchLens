@@ -160,6 +160,8 @@ services:
     environment: *backend_env
     ports:
       - "8017:8017"
+    volumes:
+      - ../../.data/artifacts:/workspace/.data/artifacts
 
   worker:
     build:
@@ -171,6 +173,8 @@ services:
       postgres:
         condition: service_healthy
     environment: *backend_env
+    volumes:
+      - ../../.data/artifacts:/workspace/.data/artifacts
 
   migrate:
     build:

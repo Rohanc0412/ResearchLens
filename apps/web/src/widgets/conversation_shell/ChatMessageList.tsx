@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { chatMarkdownComponents, formatActionLabel, normalizeChatMarkdown } from "./chatMarkdown";
+import { RunArtifactLinks } from "./RunArtifactLinks";
 import { TypingIndicator } from "./TypingIndicator";
 import type { ChatMessage, PipelineOfferAction } from "../../entities/chat/chat.types";
 
@@ -76,11 +77,7 @@ export function ChatMessageList({
                 </ReactMarkdown>
               )}
 
-              {isRunStarted && runId && activeRunId !== runId ? (
-                <div className="legacy-chat-message__status-note">
-                  Tracking progress in the research report panel.
-                </div>
-              ) : null}
+              {isRunStarted && runId ? <RunArtifactLinks runId={runId} activeRunId={activeRunId} /> : null}
             </div>
 
             {isOffer && actions.length > 0 ? (

@@ -35,3 +35,5 @@ Expected ports and URLs:
 - Postgres: `localhost:5547`
 
 The compose file passes runtime settings through from the Doppler process environment. It does not silently rewrite `DATABASE_URL` or host binding values inside YAML.
+
+For `STORAGE_MODE=local`, compose now bind-mounts the repo-root `.data/artifacts` directory into both `api` and `worker` so artifact downloads can read files written during run export.

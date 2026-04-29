@@ -3,16 +3,19 @@ from datetime import UTC, datetime
 from hashlib import sha256
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from researchlens.modules.retrieval.application.ports import RetrievalIngestionRepository
 from researchlens.modules.retrieval.domain.ranking_policy import RankedCandidate
+from researchlens.modules.retrieval.domain.retrieval_outline import RetrievalOutline
 from researchlens.modules.retrieval.infrastructure.ingestion.content_selection import (
     choose_ingestible_content,
 )
 from researchlens.modules.retrieval.infrastructure.persistence.rows import (
     RetrievalChunkEmbeddingRow,
+    RetrievalOutlineRow,
+    RetrievalOutlineSectionRow,
     RetrievalSourceChunkRow,
     RetrievalSourceRow,
     RetrievalSourceSnapshotRow,
@@ -41,19 +44,26 @@ class SqlAlchemyRetrievalIngestionRepository(RetrievalIngestionRepository):
         self,
         *,
         run_id: UUID,
+        outline: RetrievalOutline,
         selected: list[RankedCandidate],
     ) -> int:
         if self._transaction_manager is not None:
             async with self._transaction_manager.boundary():
-                return await self._persist_selected_sources(run_id=run_id, selected=selected)
-        return await self._persist_selected_sources(run_id=run_id, selected=selected)
+                return await self._persist_selected_sources(
+                    run_id=run_id,
+                    outline=outline,
+                    selected=selected,
+                )
+        return await self._persist_selected_sources(run_id=run_id, outline=outline, selected=selected)
 
     async def _persist_selected_sources(
         self,
         *,
         run_id: UUID,
+        outline: RetrievalOutline,
         selected: list[RankedCandidate],
     ) -> int:
+        await self._replace_outline(run_id=run_id, outline=outline)
         count = 0
         for rank, item in enumerate(selected, start=1):
             source_id = await self._upsert_source(item)
@@ -64,6 +74,45 @@ class SqlAlchemyRetrievalIngestionRepository(RetrievalIngestionRepository):
             count += 1
         await self._session.flush()
         return count
+
+    async def _replace_outline(self, *, run_id: UUID, outline: RetrievalOutline) -> None:
+        now = datetime.now(tz=UTC)
+        row = await self._session.scalar(
+            select(RetrievalOutlineRow).where(RetrievalOutlineRow.run_id == run_id)
+        )
+        if row is None:
+            row = RetrievalOutlineRow(
+                id=uuid4(),
+                run_id=run_id,
+                report_title=outline.report_title[:240],
+                created_at=now,
+                updated_at=now,
+            )
+            self._session.add(row)
+            await self._session.flush()
+        else:
+            row.report_title = outline.report_title[:240]
+            row.updated_at = now
+            await self._session.execute(
+                delete(RetrievalOutlineSectionRow).where(
+                    RetrievalOutlineSectionRow.outline_id == row.id
+                )
+            )
+        for section in sorted(outline.sections, key=lambda item: item.section_order):
+            self._session.add(
+                RetrievalOutlineSectionRow(
+                    id=uuid4(),
+                    outline_id=row.id,
+                    section_id=section.section_id,
+                    title=section.title[:240],
+                    goal=section.goal,
+                    section_order=section.section_order,
+                    key_points_json=list(section.key_points),
+                    created_at=now,
+                    updated_at=now,
+                )
+            )
+        await self._session.flush()
 
     async def _upsert_source(self, item: RankedCandidate) -> UUID:
         candidate = item.candidate

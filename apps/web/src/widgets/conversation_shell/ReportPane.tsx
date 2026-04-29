@@ -1,7 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import {
-  useArtifactDownloadMutation,
   useArtifactsQuery,
   useArtifactTextQuery,
 } from "../../entities/artifact/artifact.api";
@@ -10,10 +9,17 @@ import { ErrorBanner } from "../../shared/ui/ErrorBanner";
 import { ReportExportModal } from "./ReportExportModal";
 import { ReportPaneView } from "./ReportPaneView";
 import { ReportShareModal } from "./ReportShareModal";
-import { saveBlob } from "./reportPane.download";
+import { EMPTY_REPORT, type ReportDocument } from "./reportDocument";
+import { exportReport } from "./reportExport";
 import { deriveReportExportOptions, type ReportExportOption } from "./reportExportOptions";
-import { isReportCleared, setReportCleared } from "./reportPane.storage";
-import { extractReportTitle, normalizeReportMarkdown, stripReportTitle } from "./reportMarkdown";
+import {
+  clearStoredReport,
+  isReportCleared,
+  loadStoredReport,
+  persistStoredReport,
+  setReportCleared,
+} from "./reportPane.storage";
+import { parseReportMarkdown } from "./reportParser";
 
 type ReportPaneProps = {
   runId?: string | null;
@@ -45,62 +51,137 @@ function useReportDismissal(conversationId: string, runId?: string | null) {
 
 export function ReportPane({ runId, conversationId, conversationTitle }: ReportPaneProps) {
   const run = useRunQuery(runId ?? "");
-  const artifacts = useArtifactsQuery(runId ?? "", {
-    enabled: Boolean(runId),
-    refetchInterval:
-      run.data && ["succeeded", "failed", "canceled"].includes(run.data.status) ? false : 2500,
-  });
-  const download = useArtifactDownloadMutation();
+  const [report, setReport] = useState<ReportDocument>(EMPTY_REPORT);
+  const [storageReady, setStorageReady] = useState(false);
+  const skipPersistRef = useRef(false);
   const [exportOpen, setExportOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const { dismissed, dismiss } = useReportDismissal(conversationId, runId);
+  const reportStatus = run.data?.status;
+
+  const artifactRefetchInterval =
+    !runId
+      ? false
+      : reportStatus === "succeeded" && report.sections.length === 0
+        ? 2500
+        : reportStatus && ["succeeded", "failed", "canceled"].includes(reportStatus)
+          ? false
+          : 2500;
+  const artifacts = useArtifactsQuery(runId ?? "", {
+    enabled: Boolean(runId),
+    refetchInterval: artifactRefetchInterval,
+  });
 
   const reportArtifact = useMemo(
     () =>
       (artifacts.data ?? []).find(
         (artifact) =>
-          artifact.kind === "report_markdown" || artifact.media_type === "text/markdown",
+          artifact.kind === "final_report_markdown" ||
+          artifact.kind === "report_markdown" ||
+          artifact.media_type.toLowerCase().startsWith("text/markdown"),
       ) ?? null,
     [artifacts.data],
   );
-  const report = useArtifactTextQuery(reportArtifact?.id ?? "", reportArtifact?.filename, {
-    enabled: Boolean(reportArtifact),
+  const reportArtifactText = useArtifactTextQuery(reportArtifact?.id ?? "", reportArtifact?.filename, {
+    enabled: Boolean(reportArtifact) && storageReady && !dismissed && report.sections.length === 0,
   });
-  const exportOptions = useMemo(
-    () => deriveReportExportOptions(artifacts.data ?? []),
-    [artifacts.data],
-  );
+  const exportOptions = useMemo(() => deriveReportExportOptions(), []);
 
-  const reportMarkdown = normalizeReportMarkdown(report.data?.text);
-  const reportTitle =
-    extractReportTitle(reportMarkdown) ?? conversationTitle?.trim() ?? "Research report";
-  const reportBody = stripReportTitle(reportMarkdown);
-  const reportStatus = run.data?.status;
+  const isRunning =
+    Boolean(runId) && !["succeeded", "failed", "canceled"].includes(reportStatus ?? "");
+  const waitingForCompletedReport =
+    reportStatus === "succeeded" && !dismissed && report.sections.length === 0;
+  const loading =
+    waitingForCompletedReport && (!reportArtifact || reportArtifactText.isLoading || !storageReady);
+
+  useEffect(() => {
+    skipPersistRef.current = true;
+    setStorageReady(false);
+    const stored = loadStoredReport(conversationId, runId);
+    setReport(
+      stored ?? {
+        ...EMPTY_REPORT,
+        title: conversationTitle?.trim() || EMPTY_REPORT.title,
+      },
+    );
+    setStorageReady(true);
+  }, [conversationId, conversationTitle, runId]);
+
+  useEffect(() => {
+    if (!conversationId || !runId || !storageReady) return;
+    if (skipPersistRef.current) {
+      skipPersistRef.current = false;
+      return;
+    }
+    persistStoredReport(conversationId, runId, report);
+  }, [conversationId, report, runId, storageReady]);
+
+  useEffect(() => {
+    if (!runId || !storageReady || dismissed || report.sections.length > 0) return;
+    const markdown = reportArtifactText.data?.text;
+    if (!markdown) return;
+    const nextReport = parseReportMarkdown(markdown, conversationTitle);
+    if (nextReport.sections.length === 0) return;
+    setReport(nextReport);
+  }, [
+    conversationTitle,
+    dismissed,
+    report.sections.length,
+    reportArtifactText.data?.text,
+    runId,
+    storageReady,
+  ]);
 
   async function handleExport(option: ReportExportOption) {
-    if (!option.artifact) return;
-    const result = await download.mutateAsync(option.artifact);
-    saveBlob(result.blob, result.filename);
+    await exportReport(report, option.id);
     setExportOpen(false);
+  }
+
+  function handleSectionSave(sectionId: string, content: string) {
+    const blocks = content
+      .split(/\n{2,}/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map((item) => ({
+        text: item,
+      }));
+
+    setReport((current) => ({
+      ...current,
+      sections: current.sections.map((section) =>
+        section.id === sectionId ? { ...section, content: blocks } : section,
+      ),
+    }));
+  }
+
+  function handleClear() {
+    if (!runId) return;
+    clearStoredReport(conversationId, runId);
+    setReport({
+      ...EMPTY_REPORT,
+      title: conversationTitle?.trim() || EMPTY_REPORT.title,
+    });
+    dismiss();
   }
 
   return (
     <>
       {artifacts.error ? <ErrorBanner body="Run artifacts could not be loaded." /> : null}
-      {report.error ? <ErrorBanner body="Report artifact could not be loaded." /> : null}
+      {reportArtifactText.error ? <ErrorBanner body="Report artifact could not be loaded." /> : null}
       <ReportPaneView
         runId={runId}
         conversationTitle={conversationTitle ?? "Research report"}
-        reportTitle={reportTitle}
+        report={report}
         reportStatusLabel={run.data?.display_status ?? "Idle"}
         reportStatusClassName={getReportStatusClassName(reportStatus)}
-        reportBody={reportBody}
-        showToolbar={Boolean(runId || reportBody)}
+        isRunning={isRunning}
+        showToolbar={Boolean(runId || report.sections.length > 0)}
         dismissed={dismissed}
-        loading={report.isLoading}
+        loading={loading}
         onExport={() => setExportOpen(true)}
-        onClear={dismiss}
+        onClear={handleClear}
         onShare={() => setShareOpen(true)}
+        onSectionSave={handleSectionSave}
       />
       <ReportExportModal
         open={exportOpen}

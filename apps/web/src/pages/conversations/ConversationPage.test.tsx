@@ -172,3 +172,16 @@ test("creates a run when the offered report action is selected", async () => {
     force_pipeline: false,
   });
 });
+
+test("renders chat and report as separate panes", () => {
+  renderConversationPage();
+
+  const chatPane = document.querySelector(".legacy-conversation-shell__chat");
+  const reportPane = document.querySelector(".legacy-conversation-shell__report");
+
+  expect(chatPane).not.toBeNull();
+  expect(chatPane?.querySelector('[role="log"][aria-label="Chat messages"]')).not.toBeNull();
+  expect(chatPane?.querySelector(".legacy-conversation-shell__composer")).not.toBeNull();
+  expect(reportPane).not.toBeNull();
+  expect(reportPane).toHaveTextContent("Report pane");
+});
